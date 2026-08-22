@@ -1,0 +1,428 @@
+const DEFAULT_BET_MODE_META = {
+  BASE: {
+    mode: "BASE",
+    costMultiplier: 1,
+    type: "default",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "",
+      dialogImage: "",
+      dialogVolatility: "",
+      volatility: "",
+      button: ""
+    },
+    text: {
+      title: "",
+      dialog: "",
+      button: "",
+      betAmountLabel: "",
+      tickerIdle: "",
+      tickerSpin: "",
+      bannerText: ""
+    },
+    maxWin: 8888
+  },
+  ANTE: {
+    mode: "ANTE",
+    costMultiplier: 1.2,
+    type: "activate",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/icon_doubleboost.webp",
+      dialogImage: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/doubleboost_image.webp",
+      dialogVolatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_01.webp",
+      volatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_white_01.webp",
+      button: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/button_activate.webp",
+      bannerText: "example banner text"
+    },
+    text: {
+      title: "DOUBLE BOOST",
+      dialog: "Double the chance to trigger the FREE SPINS round when activated for 1.2x the player bet amount. DOUBLE BOOST remains active until disabled by the player.",
+      description: "Greatly increase your chance of landing a bonus symbol each spin.",
+      button: "ACTIVATE",
+      betAmountLabel: "DOUBLE BOOST",
+      tickerIdle: "DOUBLE BOOST IS ACTIVE",
+      tickerSpin: "GOOD LUCK",
+      bannerText: "example banner text"
+    }
+  },
+  SUPERANTE: {
+    mode: "SUPERANTE",
+    costMultiplier: 5,
+    type: "activate",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/icon_superboost.webp",
+      dialogImage: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/superboost_image.webp",
+      dialogVolatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_02.webp",
+      volatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_white_02.webp",
+      button: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/button_activate.webp"
+    },
+    text: {
+      title: "SUPER BOOST",
+      dialog: "1 in 20 chance to trigger the FREE SPINS round when activated for 5x the player bet amount. Guarantees 1 or more Scatter symbols every spin. SUPER BOOST remains active until disabled by the player.",
+      description: "Guaranteed to land at least 1+ bonus symbol each spin.",
+      button: "ACTIVATE",
+      betAmountLabel: "SUPER BOOST",
+      tickerIdle: "SUPER BOOST IS ACTIVE",
+      tickerSpin: "GOOD LUCK",
+      bannerText: "example banner text"
+    }
+  },
+  SUPERSPIN: {
+    mode: "SUPERSPIN",
+    costMultiplier: 25,
+    type: "activate",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/icon_superspin.webp",
+      dialogImage: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/superspin_image.webp",
+      dialogVolatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_03.webp",
+      volatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_white_03.webp",
+      button: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/button_activate.webp"
+    },
+    text: {
+      title: "SAMURAI SPIN",
+      dialog: "All game features are boosted when activated for 25x the player bet amount. SAMURAI SPIN remains active until disabled by the player.",
+      description: "SAMURAI SPIN is AWESOME! ",
+      button: "ACTIVATE",
+      betAmountLabel: "SAMURAI SPIN",
+      tickerIdle: "SAMURAI SPIN IS ACTIVE",
+      tickerSpin: "GOOD LUCK",
+      bannerText: "example banner text"
+    }
+  },
+  BONUS: {
+    mode: "BONUS",
+    costMultiplier: 100,
+    type: "buy",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/icon_bonusbuy.webp",
+      dialogImage: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/bonus_image.webp",
+      dialogVolatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_04.webp",
+      volatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_white_04.webp",
+      button: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_8_97/betModes/button_buy.webp"
+    },
+    text: {
+      title: "BONUS",
+      dialog: "Triggers FREE SPINS feature when activated for 100x the player bet amount. The Global Multiplier can reach up to 64x and remains active for the duration of FREE SPINS.",
+      description: "Each spin may have a random multiplier applied to winning lines.",
+      button: "BUY",
+      tickerIdle: "PLACE YOUR BET",
+      tickerSpin: "BONUS BUY ACTIVATED",
+      bannerText: "example banner text"
+    }
+  },
+  SUPER: {
+    mode: "SUPER",
+    costMultiplier: 200,
+    type: "buy",
+    parent: "",
+    children: "",
+    assets: {
+      icon: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/icon_superbonusbuy.webp",
+      dialogImage: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/superbonus_image.webp",
+      dialogVolatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_05.webp",
+      volatility: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_9_97/betModes/volatility/volatility_white_05.webp",
+      button: "https://test-fart-cdn-bucket.s3.ap-southeast-2.amazonaws.com/1_8_97/betModes/button_buy.webp"
+    },
+    text: {
+      title: "SUPER BONUS",
+      dialog: "Triggers FREE SPINS feature when activated for 200x the player bet amount. The Global Multiplier can reach up to 256x and remains active for the duration of FREE SPINS.",
+      description: "Enter the mothership! Land values and multiply them with action symbols.",
+      button: "BUY",
+      tickerIdle: "PLACE YOUR BET",
+      tickerSpin: "SUPER BONUS BUY ACTIVATED",
+      bannerText: "example banner text"
+    }
+  }
+};
+const DEFAULT_GAME_RULE_META = {
+  payTable: [
+    {
+      containers: [
+        {
+          title: "WILD SYMBOL",
+          text: "The Wild symbol substitutes all other symbols except Scatter.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 0,
+          column: 0
+        },
+        {
+          title: "FREE SPINS",
+          text: "Scatter Symbols are on all reels. If at least 3 Scatters land in a spin sequence, FREE SPINS is triggered. 3 Scatters award 8 FREE SPINS. 4 Scatters award 12 FREE SPINS. 5 Scatters award 16 FREE SPINS. ",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 1,
+          column: 0
+        },
+        {
+          title: "FREE SPINS RETRIGGER",
+          text: "During FREE SPINS, Scatter Symbols are on all reels. If at least 3 Scatters land in a spin sequence, additional FREE SPINS rounds are triggered. 3 Scatters award 4 additional FREE SPINS. 4 Scatters award 6 additional FREE SPINS. 5 Scatters award 8 additional FREE SPINS. ",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 2,
+          column: 0
+        }
+      ],
+      rows: 3,
+      columns: 1,
+      title: "PAYTABLE"
+    },
+    {
+      containers: [
+        {
+          title: "",
+          text: "5	|	10x\n4	|	5x\n3	|	2x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 0,
+          column: 0
+        },
+        {
+          title: "",
+          text: "5	|	5x\n4	|	2x\n3	|	1x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 0,
+          column: 1
+        },
+        {
+          title: "",
+          text: "5	|	5x\n4	|	2x\n3	|	1x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 0,
+          column: 2
+        },
+        {
+          title: "",
+          text: "5	|	3x\n4	|	1x\n3	|	0.5x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 1,
+          column: 0
+        },
+        {
+          title: "",
+          text: "5	|	3x\n4	|	1x\n3	|	0.5x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 1,
+          column: 1
+        },
+        {
+          title: "",
+          text: "5	|	2x\n4	|	0.8x\n3	|	0.4x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 3,
+          column: 0
+        },
+        {
+          title: "",
+          text: "5	|	2x\n4	|	0.8x\n3	|	0.4x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 3,
+          column: 1
+        },
+        {
+          title: "",
+          text: "5	|	1.5x\n4	|	0.5x\n3	|	0.2x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 3,
+          column: 2
+        },
+        {
+          title: "",
+          text: "5	|	1.5x\n4	|	0.5x\n3	|	0.2x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 4,
+          column: 0
+        },
+        {
+          title: "",
+          text: "5	|	1x\n4	|	0.3x\n3	|	0.1x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 4,
+          column: 1
+        },
+        {
+          title: "",
+          text: "5	|	1x\n4	|	0.3x\n3	|	0.1x\n",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/wild.ac78fbf6.png",
+          imagePosition: "left",
+          row: 4,
+          column: 2
+        }
+      ],
+      rows: 5,
+      columns: 3,
+      title: "SYMBOLS"
+    },
+    {
+      containers: [
+        {
+          title: "",
+          text: "All symbols pay from left to right. Starting from the left most reel. Only symbols on adjacent reels will be a valid win way. This does not apply to Scatter. ",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/winWays.be45a8a4.png",
+          imagePosition: "top",
+          row: 0,
+          column: 0
+        }
+      ],
+      rows: 1,
+      columns: 1,
+      title: "WIN WAYS"
+    }
+  ],
+  gameRules: [
+    {
+      containers: [
+        {
+          title: "",
+          text: "The normal mode of this game has a theoretical expected return of 97.0%.\n\nThe player also has the option to select an ANTE BET mode. This costs 1.25x the underlying bet. The ANTE BET mode has a theoretical expected return of 97.0%. The ANTE BET doubles the chance of FREE SPINS.\n\nThe player also has the option to buy FREE SPINS. This costs 100x the underlying bet. The FREE SPINS buy mode has a theoretical expected return of 97.0%. \n\nThe player has the option to buy a SUPER SPIN. This costs 25x the underlying bet. The SUPER SPIN buy mode has a theoretical expected return of 97.0%. In SUPER SPIN one spin is initially awarded. On each spin stacked Wild Symbols are on Reel Strips\n\n The maximum win in each Bet Mode is 5000x the underlining bet.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/rtp97.d2febd7d.svg",
+          imagePosition: "top",
+          row: 0,
+          column: 0
+        }
+      ],
+      rows: 1,
+      columns: 1,
+      title: "BET MODES"
+    },
+    {
+      containers: [
+        {
+          title: "",
+          text: "Malfunction voids all pays and plays. A consistent internet connection is required. In the event of a disconnection, reload the game to finish any uncompleted bets. The theoretical expected return is calculated over many spins. Movement of reels are not representative of any physical device, and is for illustrative purposes only. TM and © 2023 Twist Gaming.",
+          image: "",
+          row: 0,
+          column: 0
+        }
+      ],
+      rows: 1,
+      columns: 1,
+      title: "LEGAL NOTICE"
+    },
+    {
+      containers: [
+        {
+          title: "",
+          text: "SPIN BUTTON | Initiates the Betting Round.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleSpin.daacc43a.webp",
+          imagePosition: "left",
+          row: 0,
+          column: 0
+        },
+        {
+          title: "",
+          text: "STOP BUTTON | Stops the current Spin.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleStop.30db74c5.webp",
+          imagePosition: "left",
+          row: 1,
+          column: 0
+        },
+        {
+          title: "",
+          text: "INFORMATION | Provides Game Information.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 2,
+          column: 0
+        },
+        {
+          title: "",
+          text: "SETTINGS | Adjust Game Settings.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 4,
+          column: 0
+        },
+        {
+          title: "",
+          text: "PAY TABLE | View the Paytable to see Symbol Values.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 6,
+          column: 0
+        },
+        {
+          title: "",
+          text: "AUTO SPIN | Open the Auto Spin pop-up menu.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleAutoSpin.d542a3b0.webp",
+          imagePosition: "left",
+          row: 7,
+          column: 0
+        },
+        {
+          title: "",
+          text: "TURBO | Activate Turbo Mode.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleTurbo.a0fcfd04.webp",
+          imagePosition: "left",
+          row: 9,
+          column: 0
+        },
+        {
+          title: "",
+          text: "MENU | Expands the Sidebar Menu for more Options.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 10,
+          column: 0
+        },
+        {
+          title: "",
+          text: "CLOSE | Exit the pop-up menu.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 11,
+          column: 0
+        },
+        {
+          title: "",
+          text: "SOUND | Mute or Unmute Game Audio.",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 12,
+          column: 0
+        },
+        {
+          title: "",
+          text: "INCREASE | Increase your Bet Amount",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 13,
+          column: 0
+        },
+        {
+          title: "",
+          text: "DECREASE | Decrease your Bet Amount",
+          image: "https://staging-1-0.twist-game.app/_app/immutable/assets/gameRuleDown.716ec429.webp",
+          imagePosition: "left",
+          row: 14,
+          column: 0
+        }
+      ],
+      rows: 16,
+      columns: 1,
+      title: "USER INTERFACE GUIDE"
+    }
+  ],
+  splashScreen: []
+};
+export { DEFAULT_BET_MODE_META, DEFAULT_GAME_RULE_META };
+
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbImNvbnN0YW50cy50cyJdLCJzb3VyY2VzQ29udGVudCI6WyJjb25zdCBERUZBVUxUX0JFVF9NT0RFX01FVEEgPSB7XHJcblx0QkFTRToge1xyXG5cdFx0bW9kZTogJ0JBU0UnLFxyXG5cdFx0Y29zdE11bHRpcGxpZXI6IDEuMCxcclxuXHRcdHR5cGU6ICdkZWZhdWx0JyxcclxuXHRcdHBhcmVudDogJycsXHJcblx0XHRjaGlsZHJlbjogJycsXHJcblx0XHRhc3NldHM6IHtcclxuXHRcdFx0aWNvbjogJycsXHJcblx0XHRcdGRpYWxvZ0ltYWdlOiAnJyxcclxuXHRcdFx0ZGlhbG9nVm9sYXRpbGl0eTogJycsXHJcblx0XHRcdHZvbGF0aWxpdHk6ICcnLFxyXG5cdFx0XHRidXR0b246ICcnLFxyXG5cdFx0fSxcclxuXHRcdHRleHQ6IHtcclxuXHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRkaWFsb2c6ICcnLFxyXG5cdFx0XHRidXR0b246ICcnLFxyXG5cdFx0XHRiZXRBbW91bnRMYWJlbDogJycsXHJcblx0XHRcdHRpY2tlcklkbGU6ICcnLFxyXG5cdFx0XHR0aWNrZXJTcGluOiAnJyxcclxuXHRcdFx0YmFubmVyVGV4dDogJycsXHJcblx0XHR9LFxyXG5cdFx0bWF4V2luOiA4ODg4LFxyXG5cdH0sXHJcblx0QU5URToge1xyXG5cdFx0bW9kZTogJ0FOVEUnLFxyXG5cdFx0Y29zdE11bHRpcGxpZXI6IDEuMixcclxuXHRcdHR5cGU6ICdhY3RpdmF0ZScsXHJcblx0XHRwYXJlbnQ6ICcnLFxyXG5cdFx0Y2hpbGRyZW46ICcnLFxyXG5cdFx0YXNzZXRzOiB7XHJcblx0XHRcdGljb246ICdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL2ljb25fZG91YmxlYm9vc3Qud2VicCcsXHJcblx0XHRcdGRpYWxvZ0ltYWdlOlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL2RvdWJsZWJvb3N0X2ltYWdlLndlYnAnLFxyXG5cdFx0XHRkaWFsb2dWb2xhdGlsaXR5OlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3ZvbGF0aWxpdHkvdm9sYXRpbGl0eV8wMS53ZWJwJyxcclxuXHRcdFx0dm9sYXRpbGl0eTpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy92b2xhdGlsaXR5L3ZvbGF0aWxpdHlfd2hpdGVfMDEud2VicCcsXHJcblx0XHRcdGJ1dHRvbjpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy9idXR0b25fYWN0aXZhdGUud2VicCcsXHJcblx0XHRcdGJhbm5lclRleHQ6ICdleGFtcGxlIGJhbm5lciB0ZXh0JyxcclxuXHRcdH0sXHJcblx0XHR0ZXh0OiB7XHJcblx0XHRcdHRpdGxlOiAnRE9VQkxFIEJPT1NUJyxcclxuXHRcdFx0ZGlhbG9nOlxyXG5cdFx0XHRcdCdEb3VibGUgdGhlIGNoYW5jZSB0byB0cmlnZ2VyIHRoZSBGUkVFIFNQSU5TIHJvdW5kIHdoZW4gYWN0aXZhdGVkIGZvciAxLjJ4IHRoZSBwbGF5ZXIgYmV0IGFtb3VudC4gRE9VQkxFIEJPT1NUIHJlbWFpbnMgYWN0aXZlIHVudGlsIGRpc2FibGVkIGJ5IHRoZSBwbGF5ZXIuJyxcclxuXHRcdFx0ZGVzY3JpcHRpb246ICdHcmVhdGx5IGluY3JlYXNlIHlvdXIgY2hhbmNlIG9mIGxhbmRpbmcgYSBib251cyBzeW1ib2wgZWFjaCBzcGluLicsXHJcblx0XHRcdGJ1dHRvbjogJ0FDVElWQVRFJyxcclxuXHRcdFx0YmV0QW1vdW50TGFiZWw6ICdET1VCTEUgQk9PU1QnLFxyXG5cdFx0XHR0aWNrZXJJZGxlOiAnRE9VQkxFIEJPT1NUIElTIEFDVElWRScsXHJcblx0XHRcdHRpY2tlclNwaW46ICdHT09EIExVQ0snLFxyXG5cdFx0XHRiYW5uZXJUZXh0OiAnZXhhbXBsZSBiYW5uZXIgdGV4dCcsXHJcblx0XHR9LFxyXG5cdH0sXHJcblx0U1VQRVJBTlRFOiB7XHJcblx0XHRtb2RlOiAnU1VQRVJBTlRFJyxcclxuXHRcdGNvc3RNdWx0aXBsaWVyOiA1LFxyXG5cdFx0dHlwZTogJ2FjdGl2YXRlJyxcclxuXHRcdHBhcmVudDogJycsXHJcblx0XHRjaGlsZHJlbjogJycsXHJcblx0XHRhc3NldHM6IHtcclxuXHRcdFx0aWNvbjogJ2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvaWNvbl9zdXBlcmJvb3N0LndlYnAnLFxyXG5cdFx0XHRkaWFsb2dJbWFnZTpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy9zdXBlcmJvb3N0X2ltYWdlLndlYnAnLFxyXG5cdFx0XHRkaWFsb2dWb2xhdGlsaXR5OlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3ZvbGF0aWxpdHkvdm9sYXRpbGl0eV8wMi53ZWJwJyxcclxuXHRcdFx0dm9sYXRpbGl0eTpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy92b2xhdGlsaXR5L3ZvbGF0aWxpdHlfd2hpdGVfMDIud2VicCcsXHJcblx0XHRcdGJ1dHRvbjpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy9idXR0b25fYWN0aXZhdGUud2VicCcsXHJcblx0XHR9LFxyXG5cdFx0dGV4dDoge1xyXG5cdFx0XHR0aXRsZTogJ1NVUEVSIEJPT1NUJyxcclxuXHRcdFx0ZGlhbG9nOlxyXG5cdFx0XHRcdCcxIGluIDIwIGNoYW5jZSB0byB0cmlnZ2VyIHRoZSBGUkVFIFNQSU5TIHJvdW5kIHdoZW4gYWN0aXZhdGVkIGZvciA1eCB0aGUgcGxheWVyIGJldCBhbW91bnQuIEd1YXJhbnRlZXMgMSBvciBtb3JlIFNjYXR0ZXIgc3ltYm9scyBldmVyeSBzcGluLiBTVVBFUiBCT09TVCByZW1haW5zIGFjdGl2ZSB1bnRpbCBkaXNhYmxlZCBieSB0aGUgcGxheWVyLicsXHJcblx0XHRcdGRlc2NyaXB0aW9uOiAnR3VhcmFudGVlZCB0byBsYW5kIGF0IGxlYXN0IDErIGJvbnVzIHN5bWJvbCBlYWNoIHNwaW4uJyxcclxuXHRcdFx0YnV0dG9uOiAnQUNUSVZBVEUnLFxyXG5cdFx0XHRiZXRBbW91bnRMYWJlbDogJ1NVUEVSIEJPT1NUJyxcclxuXHRcdFx0dGlja2VySWRsZTogJ1NVUEVSIEJPT1NUIElTIEFDVElWRScsXHJcblx0XHRcdHRpY2tlclNwaW46ICdHT09EIExVQ0snLFxyXG5cdFx0XHRiYW5uZXJUZXh0OiAnZXhhbXBsZSBiYW5uZXIgdGV4dCcsXHJcblx0XHR9LFxyXG5cdH0sXHJcblx0U1VQRVJTUElOOiB7XHJcblx0XHRtb2RlOiAnU1VQRVJTUElOJyxcclxuXHRcdGNvc3RNdWx0aXBsaWVyOiAyNSxcclxuXHRcdHR5cGU6ICdhY3RpdmF0ZScsXHJcblx0XHRwYXJlbnQ6ICcnLFxyXG5cdFx0Y2hpbGRyZW46ICcnLFxyXG5cdFx0YXNzZXRzOiB7XHJcblx0XHRcdGljb246ICdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL2ljb25fc3VwZXJzcGluLndlYnAnLFxyXG5cdFx0XHRkaWFsb2dJbWFnZTpcclxuXHRcdFx0XHQnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy9zdXBlcnNwaW5faW1hZ2Uud2VicCcsXHJcblx0XHRcdGRpYWxvZ1ZvbGF0aWxpdHk6XHJcblx0XHRcdFx0J2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvdm9sYXRpbGl0eS92b2xhdGlsaXR5XzAzLndlYnAnLFxyXG5cdFx0XHR2b2xhdGlsaXR5OlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3ZvbGF0aWxpdHkvdm9sYXRpbGl0eV93aGl0ZV8wMy53ZWJwJyxcclxuXHRcdFx0YnV0dG9uOlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL2J1dHRvbl9hY3RpdmF0ZS53ZWJwJyxcclxuXHRcdH0sXHJcblx0XHR0ZXh0OiB7XHJcblx0XHRcdHRpdGxlOiAnU0FNVVJBSSBTUElOJyxcclxuXHRcdFx0ZGlhbG9nOlxyXG5cdFx0XHRcdCdBbGwgZ2FtZSBmZWF0dXJlcyBhcmUgYm9vc3RlZCB3aGVuIGFjdGl2YXRlZCBmb3IgMjV4IHRoZSBwbGF5ZXIgYmV0IGFtb3VudC4gU0FNVVJBSSBTUElOIHJlbWFpbnMgYWN0aXZlIHVudGlsIGRpc2FibGVkIGJ5IHRoZSBwbGF5ZXIuJyxcclxuXHRcdFx0ZGVzY3JpcHRpb246ICdTQU1VUkFJIFNQSU4gaXMgQVdFU09NRSEgJyxcclxuXHRcdFx0YnV0dG9uOiAnQUNUSVZBVEUnLFxyXG5cdFx0XHRiZXRBbW91bnRMYWJlbDogJ1NBTVVSQUkgU1BJTicsXHJcblx0XHRcdHRpY2tlcklkbGU6ICdTQU1VUkFJIFNQSU4gSVMgQUNUSVZFJyxcclxuXHRcdFx0dGlja2VyU3BpbjogJ0dPT0QgTFVDSycsXHJcblx0XHRcdGJhbm5lclRleHQ6ICdleGFtcGxlIGJhbm5lciB0ZXh0JyxcclxuXHRcdH0sXHJcblx0fSxcclxuXHRCT05VUzoge1xyXG5cdFx0bW9kZTogJ0JPTlVTJyxcclxuXHRcdGNvc3RNdWx0aXBsaWVyOiAxMDAsXHJcblx0XHR0eXBlOiAnYnV5JyxcclxuXHRcdHBhcmVudDogJycsXHJcblx0XHRjaGlsZHJlbjogJycsXHJcblx0XHRhc3NldHM6IHtcclxuXHRcdFx0aWNvbjogJ2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvaWNvbl9ib251c2J1eS53ZWJwJyxcclxuXHRcdFx0ZGlhbG9nSW1hZ2U6XHJcblx0XHRcdFx0J2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvYm9udXNfaW1hZ2Uud2VicCcsXHJcblx0XHRcdGRpYWxvZ1ZvbGF0aWxpdHk6XHJcblx0XHRcdFx0J2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvdm9sYXRpbGl0eS92b2xhdGlsaXR5XzA0LndlYnAnLFxyXG5cdFx0XHR2b2xhdGlsaXR5OlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3ZvbGF0aWxpdHkvdm9sYXRpbGl0eV93aGl0ZV8wNC53ZWJwJyxcclxuXHRcdFx0YnV0dG9uOlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV84Xzk3L2JldE1vZGVzL2J1dHRvbl9idXkud2VicCcsXHJcblx0XHR9LFxyXG5cdFx0dGV4dDoge1xyXG5cdFx0XHR0aXRsZTogJ0JPTlVTJyxcclxuXHRcdFx0ZGlhbG9nOlxyXG5cdFx0XHRcdCdUcmlnZ2VycyBGUkVFIFNQSU5TIGZlYXR1cmUgd2hlbiBhY3RpdmF0ZWQgZm9yIDEwMHggdGhlIHBsYXllciBiZXQgYW1vdW50LiBUaGUgR2xvYmFsIE11bHRpcGxpZXIgY2FuIHJlYWNoIHVwIHRvIDY0eCBhbmQgcmVtYWlucyBhY3RpdmUgZm9yIHRoZSBkdXJhdGlvbiBvZiBGUkVFIFNQSU5TLicsXHJcblx0XHRcdGRlc2NyaXB0aW9uOiAnRWFjaCBzcGluIG1heSBoYXZlIGEgcmFuZG9tIG11bHRpcGxpZXIgYXBwbGllZCB0byB3aW5uaW5nIGxpbmVzLicsXHJcblx0XHRcdGJ1dHRvbjogJ0JVWScsXHJcblx0XHRcdHRpY2tlcklkbGU6ICdQTEFDRSBZT1VSIEJFVCcsXHJcblx0XHRcdHRpY2tlclNwaW46ICdCT05VUyBCVVkgQUNUSVZBVEVEJyxcclxuXHRcdFx0YmFubmVyVGV4dDogJ2V4YW1wbGUgYmFubmVyIHRleHQnLFxyXG5cdFx0fSxcclxuXHR9LFxyXG5cdFNVUEVSOiB7XHJcblx0XHRtb2RlOiAnU1VQRVInLFxyXG5cdFx0Y29zdE11bHRpcGxpZXI6IDIwMCxcclxuXHRcdHR5cGU6ICdidXknLFxyXG5cdFx0cGFyZW50OiAnJyxcclxuXHRcdGNoaWxkcmVuOiAnJyxcclxuXHRcdGFzc2V0czoge1xyXG5cdFx0XHRpY29uOiAnaHR0cHM6Ly90ZXN0LWZhcnQtY2RuLWJ1Y2tldC5zMy5hcC1zb3V0aGVhc3QtMi5hbWF6b25hd3MuY29tLzFfOV85Ny9iZXRNb2Rlcy9pY29uX3N1cGVyYm9udXNidXkud2VicCcsXHJcblx0XHRcdGRpYWxvZ0ltYWdlOlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3N1cGVyYm9udXNfaW1hZ2Uud2VicCcsXHJcblx0XHRcdGRpYWxvZ1ZvbGF0aWxpdHk6XHJcblx0XHRcdFx0J2h0dHBzOi8vdGVzdC1mYXJ0LWNkbi1idWNrZXQuczMuYXAtc291dGhlYXN0LTIuYW1hem9uYXdzLmNvbS8xXzlfOTcvYmV0TW9kZXMvdm9sYXRpbGl0eS92b2xhdGlsaXR5XzA1LndlYnAnLFxyXG5cdFx0XHR2b2xhdGlsaXR5OlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV85Xzk3L2JldE1vZGVzL3ZvbGF0aWxpdHkvdm9sYXRpbGl0eV93aGl0ZV8wNS53ZWJwJyxcclxuXHRcdFx0YnV0dG9uOlxyXG5cdFx0XHRcdCdodHRwczovL3Rlc3QtZmFydC1jZG4tYnVja2V0LnMzLmFwLXNvdXRoZWFzdC0yLmFtYXpvbmF3cy5jb20vMV84Xzk3L2JldE1vZGVzL2J1dHRvbl9idXkud2VicCcsXHJcblx0XHR9LFxyXG5cdFx0dGV4dDoge1xyXG5cdFx0XHR0aXRsZTogJ1NVUEVSIEJPTlVTJyxcclxuXHRcdFx0ZGlhbG9nOlxyXG5cdFx0XHRcdCdUcmlnZ2VycyBGUkVFIFNQSU5TIGZlYXR1cmUgd2hlbiBhY3RpdmF0ZWQgZm9yIDIwMHggdGhlIHBsYXllciBiZXQgYW1vdW50LiBUaGUgR2xvYmFsIE11bHRpcGxpZXIgY2FuIHJlYWNoIHVwIHRvIDI1NnggYW5kIHJlbWFpbnMgYWN0aXZlIGZvciB0aGUgZHVyYXRpb24gb2YgRlJFRSBTUElOUy4nLFxyXG5cdFx0XHRkZXNjcmlwdGlvbjogJ0VudGVyIHRoZSBtb3RoZXJzaGlwISBMYW5kIHZhbHVlcyBhbmQgbXVsdGlwbHkgdGhlbSB3aXRoIGFjdGlvbiBzeW1ib2xzLicsXHJcblx0XHRcdGJ1dHRvbjogJ0JVWScsXHJcblx0XHRcdHRpY2tlcklkbGU6ICdQTEFDRSBZT1VSIEJFVCcsXHJcblx0XHRcdHRpY2tlclNwaW46ICdTVVBFUiBCT05VUyBCVVkgQUNUSVZBVEVEJyxcclxuXHRcdFx0YmFubmVyVGV4dDogJ2V4YW1wbGUgYmFubmVyIHRleHQnLFxyXG5cdFx0fSxcclxuXHR9LFxyXG59O1xyXG5cclxuY29uc3QgREVGQVVMVF9HQU1FX1JVTEVfTUVUQSA9IHtcclxuXHRwYXlUYWJsZTogW1xyXG5cdFx0e1xyXG5cdFx0XHRjb250YWluZXJzOiBbXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICdXSUxEIFNZTUJPTCcsXHJcblx0XHRcdFx0XHR0ZXh0OiAnVGhlIFdpbGQgc3ltYm9sIHN1YnN0aXR1dGVzIGFsbCBvdGhlciBzeW1ib2xzIGV4Y2VwdCBTY2F0dGVyLicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnRlJFRSBTUElOUycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnU2NhdHRlciBTeW1ib2xzIGFyZSBvbiBhbGwgcmVlbHMuIElmIGF0IGxlYXN0IDMgU2NhdHRlcnMgbGFuZCBpbiBhIHNwaW4gc2VxdWVuY2UsIEZSRUUgU1BJTlMgaXMgdHJpZ2dlcmVkLiAzIFNjYXR0ZXJzIGF3YXJkIDggRlJFRSBTUElOUy4gNCBTY2F0dGVycyBhd2FyZCAxMiBGUkVFIFNQSU5TLiA1IFNjYXR0ZXJzIGF3YXJkIDE2IEZSRUUgU1BJTlMuICcsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMSxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnRlJFRSBTUElOUyBSRVRSSUdHRVInLFxyXG5cdFx0XHRcdFx0dGV4dDogJ0R1cmluZyBGUkVFIFNQSU5TLCBTY2F0dGVyIFN5bWJvbHMgYXJlIG9uIGFsbCByZWVscy4gSWYgYXQgbGVhc3QgMyBTY2F0dGVycyBsYW5kIGluIGEgc3BpbiBzZXF1ZW5jZSwgYWRkaXRpb25hbCBGUkVFIFNQSU5TIHJvdW5kcyBhcmUgdHJpZ2dlcmVkLiAzIFNjYXR0ZXJzIGF3YXJkIDQgYWRkaXRpb25hbCBGUkVFIFNQSU5TLiA0IFNjYXR0ZXJzIGF3YXJkIDYgYWRkaXRpb25hbCBGUkVFIFNQSU5TLiA1IFNjYXR0ZXJzIGF3YXJkIDggYWRkaXRpb25hbCBGUkVFIFNQSU5TLiAnLFxyXG5cdFx0XHRcdFx0aW1hZ2U6ICdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy93aWxkLmFjNzhmYmY2LnBuZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDIsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XSxcclxuXHRcdFx0cm93czogMyxcclxuXHRcdFx0Y29sdW1uczogMSxcclxuXHRcdFx0dGl0bGU6ICdQQVlUQUJMRScsXHJcblx0XHR9LFxyXG5cdFx0e1xyXG5cdFx0XHRjb250YWluZXJzOiBbXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJzVcdHxcdDEweFxcbjRcdHxcdDV4XFxuM1x0fFx0MnhcXG4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6ICdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy93aWxkLmFjNzhmYmY2LnBuZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDAsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnNVx0fFx0NXhcXG40XHR8XHQyeFxcbjNcdHxcdDF4XFxuJyxcclxuXHRcdFx0XHRcdGltYWdlOiAnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvd2lsZC5hYzc4ZmJmNi5wbmcnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAwLFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAxLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJzVcdHxcdDV4XFxuNFx0fFx0MnhcXG4zXHR8XHQxeFxcbicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMixcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICc1XHR8XHQzeFxcbjRcdHxcdDF4XFxuM1x0fFx0MC41eFxcbicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMSxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICc1XHR8XHQzeFxcbjRcdHxcdDF4XFxuM1x0fFx0MC41eFxcbicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMSxcclxuXHRcdFx0XHRcdGNvbHVtbjogMSxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICc1XHR8XHQyeFxcbjRcdHxcdDAuOHhcXG4zXHR8XHQwLjR4XFxuJyxcclxuXHRcdFx0XHRcdGltYWdlOiAnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvd2lsZC5hYzc4ZmJmNi5wbmcnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAzLFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAwLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJzVcdHxcdDJ4XFxuNFx0fFx0MC44eFxcbjNcdHxcdDAuNHhcXG4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6ICdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy93aWxkLmFjNzhmYmY2LnBuZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDMsXHJcblx0XHRcdFx0XHRjb2x1bW46IDEsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnNVx0fFx0MS41eFxcbjRcdHxcdDAuNXhcXG4zXHR8XHQwLjJ4XFxuJyxcclxuXHRcdFx0XHRcdGltYWdlOiAnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvd2lsZC5hYzc4ZmJmNi5wbmcnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAzLFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAyLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJzVcdHxcdDEuNXhcXG40XHR8XHQwLjV4XFxuM1x0fFx0MC4yeFxcbicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3dpbGQuYWM3OGZiZjYucG5nJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogNCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICc1XHR8XHQxeFxcbjRcdHxcdDAuM3hcXG4zXHR8XHQwLjF4XFxuJyxcclxuXHRcdFx0XHRcdGltYWdlOiAnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvd2lsZC5hYzc4ZmJmNi5wbmcnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiA0LFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAxLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJzVcdHxcdDF4XFxuNFx0fFx0MC4zeFxcbjNcdHxcdDAuMXhcXG4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6ICdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy93aWxkLmFjNzhmYmY2LnBuZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDQsXHJcblx0XHRcdFx0XHRjb2x1bW46IDIsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XSxcclxuXHRcdFx0cm93czogNSxcclxuXHRcdFx0Y29sdW1uczogMyxcclxuXHRcdFx0dGl0bGU6ICdTWU1CT0xTJyxcclxuXHRcdH0sXHJcblx0XHR7XHJcblx0XHRcdGNvbnRhaW5lcnM6IFtcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnQWxsIHN5bWJvbHMgcGF5IGZyb20gbGVmdCB0byByaWdodC4gU3RhcnRpbmcgZnJvbSB0aGUgbGVmdCBtb3N0IHJlZWwuIE9ubHkgc3ltYm9scyBvbiBhZGphY2VudCByZWVscyB3aWxsIGJlIGEgdmFsaWQgd2luIHdheS4gVGhpcyBkb2VzIG5vdCBhcHBseSB0byBTY2F0dGVyLiAnLFxyXG5cdFx0XHRcdFx0aW1hZ2U6ICdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy93aW5XYXlzLmJlNDVhOGE0LnBuZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAndG9wJyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRdLFxyXG5cdFx0XHRyb3dzOiAxLFxyXG5cdFx0XHRjb2x1bW5zOiAxLFxyXG5cdFx0XHR0aXRsZTogJ1dJTiBXQVlTJyxcclxuXHRcdH0sXHJcblx0XSxcclxuXHRnYW1lUnVsZXM6IFtcclxuXHRcdHtcclxuXHRcdFx0Y29udGFpbmVyczogW1xyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICdUaGUgbm9ybWFsIG1vZGUgb2YgdGhpcyBnYW1lIGhhcyBhIHRoZW9yZXRpY2FsIGV4cGVjdGVkIHJldHVybiBvZiA5Ny4wJS5cXG5cXG5UaGUgcGxheWVyIGFsc28gaGFzIHRoZSBvcHRpb24gdG8gc2VsZWN0IGFuIEFOVEUgQkVUIG1vZGUuIFRoaXMgY29zdHMgMS4yNXggdGhlIHVuZGVybHlpbmcgYmV0LiBUaGUgQU5URSBCRVQgbW9kZSBoYXMgYSB0aGVvcmV0aWNhbCBleHBlY3RlZCByZXR1cm4gb2YgOTcuMCUuIFRoZSBBTlRFIEJFVCBkb3VibGVzIHRoZSBjaGFuY2Ugb2YgRlJFRSBTUElOUy5cXG5cXG5UaGUgcGxheWVyIGFsc28gaGFzIHRoZSBvcHRpb24gdG8gYnV5IEZSRUUgU1BJTlMuIFRoaXMgY29zdHMgMTAweCB0aGUgdW5kZXJseWluZyBiZXQuIFRoZSBGUkVFIFNQSU5TIGJ1eSBtb2RlIGhhcyBhIHRoZW9yZXRpY2FsIGV4cGVjdGVkIHJldHVybiBvZiA5Ny4wJS4gXFxuXFxuVGhlIHBsYXllciBoYXMgdGhlIG9wdGlvbiB0byBidXkgYSBTVVBFUiBTUElOLiBUaGlzIGNvc3RzIDI1eCB0aGUgdW5kZXJseWluZyBiZXQuIFRoZSBTVVBFUiBTUElOIGJ1eSBtb2RlIGhhcyBhIHRoZW9yZXRpY2FsIGV4cGVjdGVkIHJldHVybiBvZiA5Ny4wJS4gSW4gU1VQRVIgU1BJTiBvbmUgc3BpbiBpcyBpbml0aWFsbHkgYXdhcmRlZC4gT24gZWFjaCBzcGluIHN0YWNrZWQgV2lsZCBTeW1ib2xzIGFyZSBvbiBSZWVsIFN0cmlwc1xcblxcbiBUaGUgbWF4aW11bSB3aW4gaW4gZWFjaCBCZXQgTW9kZSBpcyA1MDAweCB0aGUgdW5kZXJsaW5pbmcgYmV0LicsXHJcblx0XHRcdFx0XHRpbWFnZTogJ2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL3J0cDk3LmQyZmViZDdkLnN2ZycsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAndG9wJyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRdLFxyXG5cdFx0XHRyb3dzOiAxLFxyXG5cdFx0XHRjb2x1bW5zOiAxLFxyXG5cdFx0XHR0aXRsZTogJ0JFVCBNT0RFUycsXHJcblx0XHR9LFxyXG5cdFx0e1xyXG5cdFx0XHRjb250YWluZXJzOiBbXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJ01hbGZ1bmN0aW9uIHZvaWRzIGFsbCBwYXlzIGFuZCBwbGF5cy4gQSBjb25zaXN0ZW50IGludGVybmV0IGNvbm5lY3Rpb24gaXMgcmVxdWlyZWQuIEluIHRoZSBldmVudCBvZiBhIGRpc2Nvbm5lY3Rpb24sIHJlbG9hZCB0aGUgZ2FtZSB0byBmaW5pc2ggYW55IHVuY29tcGxldGVkIGJldHMuIFRoZSB0aGVvcmV0aWNhbCBleHBlY3RlZCByZXR1cm4gaXMgY2FsY3VsYXRlZCBvdmVyIG1hbnkgc3BpbnMuIE1vdmVtZW50IG9mIHJlZWxzIGFyZSBub3QgcmVwcmVzZW50YXRpdmUgb2YgYW55IHBoeXNpY2FsIGRldmljZSwgYW5kIGlzIGZvciBpbGx1c3RyYXRpdmUgcHVycG9zZXMgb25seS4gVE0gYW5kIFxcdTAwYTkgMjAyMyBUd2lzdCBHYW1pbmcuJyxcclxuXHRcdFx0XHRcdGltYWdlOiAnJyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRdLFxyXG5cdFx0XHRyb3dzOiAxLFxyXG5cdFx0XHRjb2x1bW5zOiAxLFxyXG5cdFx0XHR0aXRsZTogJ0xFR0FMIE5PVElDRScsXHJcblx0XHR9LFxyXG5cdFx0e1xyXG5cdFx0XHRjb250YWluZXJzOiBbXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJ1NQSU4gQlVUVE9OIHwgSW5pdGlhdGVzIHRoZSBCZXR0aW5nIFJvdW5kLicsXHJcblx0XHRcdFx0XHRpbWFnZTpcclxuXHRcdFx0XHRcdFx0J2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL2dhbWVSdWxlU3Bpbi5kYWFjYzQzYS53ZWJwJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICdTVE9QIEJVVFRPTiB8IFN0b3BzIHRoZSBjdXJyZW50IFNwaW4uJyxcclxuXHRcdFx0XHRcdGltYWdlOlxyXG5cdFx0XHRcdFx0XHQnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvZ2FtZVJ1bGVTdG9wLjMwZGI3NGM1LndlYnAnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAxLFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAwLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJ0lORk9STUFUSU9OIHwgUHJvdmlkZXMgR2FtZSBJbmZvcm1hdGlvbi4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6XHJcblx0XHRcdFx0XHRcdCdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy9nYW1lUnVsZURvd24uNzE2ZWM0Mjkud2VicCcsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDIsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnU0VUVElOR1MgfCBBZGp1c3QgR2FtZSBTZXR0aW5ncy4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6XHJcblx0XHRcdFx0XHRcdCdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy9nYW1lUnVsZURvd24uNzE2ZWM0Mjkud2VicCcsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDQsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnUEFZIFRBQkxFIHwgVmlldyB0aGUgUGF5dGFibGUgdG8gc2VlIFN5bWJvbCBWYWx1ZXMuJyxcclxuXHRcdFx0XHRcdGltYWdlOlxyXG5cdFx0XHRcdFx0XHQnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvZ2FtZVJ1bGVEb3duLjcxNmVjNDI5LndlYnAnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiA2LFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAwLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJ0FVVE8gU1BJTiB8IE9wZW4gdGhlIEF1dG8gU3BpbiBwb3AtdXAgbWVudS4nLFxyXG5cdFx0XHRcdFx0aW1hZ2U6XHJcblx0XHRcdFx0XHRcdCdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy9nYW1lUnVsZUF1dG9TcGluLmQ1NDJhM2IwLndlYnAnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiA3LFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAwLFxyXG5cdFx0XHRcdH0sXHJcblxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICdUVVJCTyB8IEFjdGl2YXRlIFR1cmJvIE1vZGUuJyxcclxuXHRcdFx0XHRcdGltYWdlOlxyXG5cdFx0XHRcdFx0XHQnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvZ2FtZVJ1bGVUdXJiby5hMGZjZmQwNC53ZWJwJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogOSxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICdNRU5VIHwgRXhwYW5kcyB0aGUgU2lkZWJhciBNZW51IGZvciBtb3JlIE9wdGlvbnMuJyxcclxuXHRcdFx0XHRcdGltYWdlOlxyXG5cdFx0XHRcdFx0XHQnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvZ2FtZVJ1bGVEb3duLjcxNmVjNDI5LndlYnAnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAxMCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRcdHtcclxuXHRcdFx0XHRcdHRpdGxlOiAnJyxcclxuXHRcdFx0XHRcdHRleHQ6ICdDTE9TRSB8IEV4aXQgdGhlIHBvcC11cCBtZW51LicsXHJcblx0XHRcdFx0XHRpbWFnZTpcclxuXHRcdFx0XHRcdFx0J2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL2dhbWVSdWxlRG93bi43MTZlYzQyOS53ZWJwJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMTEsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnU09VTkQgfCBNdXRlIG9yIFVubXV0ZSBHYW1lIEF1ZGlvLicsXHJcblx0XHRcdFx0XHRpbWFnZTpcclxuXHRcdFx0XHRcdFx0J2h0dHBzOi8vc3RhZ2luZy0xLTAudHdpc3QtZ2FtZS5hcHAvX2FwcC9pbW11dGFibGUvYXNzZXRzL2dhbWVSdWxlRG93bi43MTZlYzQyOS53ZWJwJyxcclxuXHRcdFx0XHRcdGltYWdlUG9zaXRpb246ICdsZWZ0JyxcclxuXHRcdFx0XHRcdHJvdzogMTIsXHJcblx0XHRcdFx0XHRjb2x1bW46IDAsXHJcblx0XHRcdFx0fSxcclxuXHRcdFx0XHR7XHJcblx0XHRcdFx0XHR0aXRsZTogJycsXHJcblx0XHRcdFx0XHR0ZXh0OiAnSU5DUkVBU0UgfCBJbmNyZWFzZSB5b3VyIEJldCBBbW91bnQnLFxyXG5cdFx0XHRcdFx0aW1hZ2U6XHJcblx0XHRcdFx0XHRcdCdodHRwczovL3N0YWdpbmctMS0wLnR3aXN0LWdhbWUuYXBwL19hcHAvaW1tdXRhYmxlL2Fzc2V0cy9nYW1lUnVsZURvd24uNzE2ZWM0Mjkud2VicCcsXHJcblx0XHRcdFx0XHRpbWFnZVBvc2l0aW9uOiAnbGVmdCcsXHJcblx0XHRcdFx0XHRyb3c6IDEzLFxyXG5cdFx0XHRcdFx0Y29sdW1uOiAwLFxyXG5cdFx0XHRcdH0sXHJcblx0XHRcdFx0e1xyXG5cdFx0XHRcdFx0dGl0bGU6ICcnLFxyXG5cdFx0XHRcdFx0dGV4dDogJ0RFQ1JFQVNFIHwgRGVjcmVhc2UgeW91ciBCZXQgQW1vdW50JyxcclxuXHRcdFx0XHRcdGltYWdlOlxyXG5cdFx0XHRcdFx0XHQnaHR0cHM6Ly9zdGFnaW5nLTEtMC50d2lzdC1nYW1lLmFwcC9fYXBwL2ltbXV0YWJsZS9hc3NldHMvZ2FtZVJ1bGVEb3duLjcxNmVjNDI5LndlYnAnLFxyXG5cdFx0XHRcdFx0aW1hZ2VQb3NpdGlvbjogJ2xlZnQnLFxyXG5cdFx0XHRcdFx0cm93OiAxNCxcclxuXHRcdFx0XHRcdGNvbHVtbjogMCxcclxuXHRcdFx0XHR9LFxyXG5cdFx0XHRdLFxyXG5cdFx0XHRyb3dzOiAxNixcclxuXHRcdFx0Y29sdW1uczogMSxcclxuXHRcdFx0dGl0bGU6ICdVU0VSIElOVEVSRkFDRSBHVUlERScsXHJcblx0XHR9LFxyXG5cdF0sXHJcblx0c3BsYXNoU2NyZWVuOiBbXSxcclxufTtcclxuXHJcbmV4cG9ydCB7IERFRkFVTFRfQkVUX01PREVfTUVUQSwgREVGQVVMVF9HQU1FX1JVTEVfTUVUQSB9O1xyXG4iXSwibWFwcGluZ3MiOiJBQUFBLE1BQU0sd0JBQXdCO0FBQUEsRUFDN0IsTUFBTTtBQUFBLElBQ0wsTUFBTTtBQUFBLElBQ04sZ0JBQWdCO0FBQUEsSUFDaEIsTUFBTTtBQUFBLElBQ04sUUFBUTtBQUFBLElBQ1IsVUFBVTtBQUFBLElBQ1YsUUFBUTtBQUFBLE1BQ1AsTUFBTTtBQUFBLE1BQ04sYUFBYTtBQUFBLE1BQ2Isa0JBQWtCO0FBQUEsTUFDbEIsWUFBWTtBQUFBLE1BQ1osUUFBUTtBQUFBLElBQ1Q7QUFBQSxJQUNBLE1BQU07QUFBQSxNQUNMLE9BQU87QUFBQSxNQUNQLFFBQVE7QUFBQSxNQUNSLFFBQVE7QUFBQSxNQUNSLGdCQUFnQjtBQUFBLE1BQ2hCLFlBQVk7QUFBQSxNQUNaLFlBQVk7QUFBQSxNQUNa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Q1Q7QUFBQSxRQUNBO0FBQUEsVUFDQyxPQUFPO0FBQUEsVUFDUCxNQUFNO0FBQUEsVUFDTixPQUFPO0FBQUEsVUFDUCxlQUFlO0FBQUEsVUFDZixLQUFLO0FBQUEsVUFDTCxRQUFRO0FBQUEsUUFDVDtBQUFBLFFBQ0E7QUFBQSxVQUNDLE9BQU87QUFBQSxVQUNQLE1BQU07QUFBQSxVQUNOLE9BQU87QUFBQSxVQUNQLGVBQWU7QUFBQSxVQUNmLEtBQUs7QUFBQSxVQUNMLFFBQVE7QUFBQSxRQUNUO0FBQUEsUUFDQTtBQUFBLFVBQ0MsT0FBTztBQUFBLFVBQ1AsTUFBTTtBQUFBLFVBQ04sT0FBTztBQUFBLFVBQ1AsZUFBZTtBQUFBLFVBQ2YsS0FBSztBQUFBLFVBQ0wsUUFBUTtBQUFBLFFBQ1Q7QUFBQSxRQUNBO0FBQUEsVUFDQyxPQUFPO0FBQUEsVUFDUCxNQUFNO0FBQUEsVUFDTixPQUFPO0FBQUEsVUFDUCxlQUFlO0FBQUEsVUFDZixLQUFLO0FBQUEsVUFDTCxRQUFRO0FBQUEsUUFDVDtBQUFBLFFBQ0E7QUFBQSxVQUNDLE9BQU87QUFBQSxVQUNQLE1BQU07QUFBQSxVQUNOLE9BQU87QUFBQSxVQUNQLGVBQWU7QUFBQSxVQUNmLEtBQUs7QUFBQSxVQUNMLFFBQVE7QUFBQSxRQUNUO0FBQUEsUUFDQTtBQUFBLFVBQ0MsT0FBTztBQUFBLFVBQ1AsTUFBTTtBQUFBLFVBQ04sT0FBTztBQUFBLFVBQ1AsZUFBZTtBQUFBLFVBQ2YsS0FBSztBQUFBLFVBQ0wsUUFBUTtBQUFBLFFBQ1Q7QUFBQSxRQUNBO0FBQUEsVUFDQyxPQUFPO0FBQUEsVUFDUCxNQUFNO0FBQUEsVUFDTixPQUFPO0FBQUEsVUFDUCxlQUFlO0FBQUEsVUFDZixLQUFLO0FBQUEsVUFDTCxRQUFRO0FBQUEsUUFDVDtBQUFBLE1BQ0Q7QUFBQSxNQUNBLE1BQU07QUFBQSxNQUNOLFNBQVM7QUFBQSxNQUNULE9BQU87QUFBQSxJQUNSO0FBQUEsSUFDQTtBQUFBLE1BQ0MsWUFBWTtBQUFBLFFBQ1g7QUFBQSxVQUNDLE9BQU87QUFBQSxVQUNQLE1B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
