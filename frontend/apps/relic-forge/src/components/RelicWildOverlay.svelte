@@ -61,7 +61,7 @@
 		clip-path: polygon(9% 0, 91% 0, 100% 9%, 100% 91%, 91% 100%, 9% 100%, 0 91%, 0 9%);
 		background:
 			linear-gradient(rgba(1, 15, 10, 0.42), rgba(1, 8, 7, 0.88)),
-			url('/symbols/wild.png') center / 88% auto no-repeat,
+			url('/assets/symbols/wild.png') center / 88% auto no-repeat,
 			#04100c;
 		box-shadow:
 			inset 0 0 0 3px rgba(7, 10, 8, 0.82),

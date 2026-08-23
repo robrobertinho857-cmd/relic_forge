@@ -1,3 +1,5 @@
+import { assetUrl } from './assets';
+
 export type ModeKind = 'play' | 'bonus';
 export type ModeTheme = 'blue' | 'forge' | 'green' | 'purple' | 'mythic';
 export type ModeId = 'normal' | 'forgeBoost' | 'dragonBoost' | 'standard' | 'super' | 'mythic';
@@ -35,7 +37,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'NORMAL',
 		theme: 'blue',
-		image: './assets/modes/normal.png',
+		image: assetUrl('modes/normal.png'),
 		mockMode: 'BASE',
 		aliases: ['BASE', 'NORMAL'],
 		defaultCostMultiplier: 1,
@@ -46,7 +48,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'FORGE BOOST',
 		theme: 'forge',
-		image: './assets/modes/forge-boost.png',
+		image: assetUrl('modes/forge-boost.png'),
 		mockMode: 'FORGE_BOOST',
 		aliases: ['FORGE_BOOST', 'FORGEBOOST', 'ANTE'],
 		defaultCostMultiplier: 2,
@@ -57,7 +59,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'DRAGON BOOST',
 		theme: 'green',
-		image: './assets/modes/dragon-boost.png',
+		image: assetUrl('modes/dragon-boost.png'),
 		mockMode: 'DRAGON_BOOST',
 		aliases: ['DRAGON_BOOST', 'DRAGONBOOST', 'SUPERANTE'],
 		defaultCostMultiplier: 5,
@@ -76,7 +78,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'STANDARD',
 		theme: 'blue',
-		image: './assets/modes/bonus-standard.png',
+		image: assetUrl('modes/bonus-standard.png'),
 		mockMode: 'STANDARD_BONUS',
 		aliases: ['STANDARD_BONUS', 'STANDARD', 'BONUS'],
 		defaultCostMultiplier: 80,
@@ -88,7 +90,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'SUPER',
 		theme: 'purple',
-		image: './assets/modes/bonus-super.png',
+		image: assetUrl('modes/bonus-super.png'),
 		mockMode: 'SUPER_BONUS',
 		aliases: ['SUPER_BONUS', 'SUPER'],
 		defaultCostMultiplier: 250,
@@ -100,7 +102,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'MYTHIC',
 		theme: 'mythic',
-		image: './assets/modes/bonus-mythic.png',
+		image: assetUrl('modes/bonus-mythic.png'),
 		mockMode: 'MYTHIC_BONUS',
 		aliases: ['MYTHIC_BONUS', 'MYTHIC'],
 		defaultCostMultiplier: 500,

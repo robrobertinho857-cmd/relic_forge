@@ -22,7 +22,9 @@
 body {
 	margin: 0;
 	min-width: 320px;
-	min-height: 100vh;
+	min-height: 100svh;
+	height: 100%;
+	overflow: hidden;
 	background: var(--bg-deep);
 	color: var(--ivory);
 }
@@ -34,16 +36,17 @@ button:focus-visible {
 	outline-offset: 3px;
 }
 .forge-shell {
-	min-height: 100vh;
+	min-height: 100dvh;
+	height: 100dvh;
 	position: relative;
 	overflow: hidden;
 	isolation: isolate;
 	background-image:
-		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('/forge-background.png');
+		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('/assets/backgrounds/forge-background.png');
 	background-position: center;
 	background-size: cover;
 	background-attachment: fixed;
-	padding: 28px clamp(16px, 4vw, 72px) 20px;
+	padding: clamp(8px, 2.6dvh, 28px) clamp(16px, 4vw, 72px) clamp(5px, 1.8dvh, 20px);
 	display: flex;
 	flex-direction: column;
 }
@@ -62,7 +65,7 @@ button:focus-visible {
 .feature-mode {
 	background-image:
 		radial-gradient(circle at 72% 46%, rgba(24, 255, 111, 0.18), rgba(1, 5, 4, 0.48) 55%),
-		url('/forge-background.png');
+		url('/assets/backgrounds/forge-background.png');
 }
 .ambient {
 	position: absolute;
@@ -90,7 +93,7 @@ button:focus-visible {
 	align-items: center;
 	max-width: 1320px;
 	width: 100%;
-	margin: 0 auto 18px;
+	margin: 0 auto clamp(4px, 1.7dvh, 18px);
 }
 .brand-mark {
 	display: flex;
@@ -142,7 +145,7 @@ button:focus-visible {
 	margin-top: 5px;
 	padding: 10px 52px 11px;
 	border: 0;
-	background: url('/panels/active-mode-panel.png') center / 100% auto no-repeat;
+	background: url('/assets/panels/active-mode-panel.png') center / 100% auto no-repeat;
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.8))
 		drop-shadow(0 0 10px color-mix(in srgb, var(--mode-accent) 24%, transparent));
 	color: #f7df9b;
@@ -224,6 +227,8 @@ button:focus-visible {
 }
 .playfield {
 	width: min(100%, 1048px);
+	min-height: 0;
+	flex: 1 1 auto;
 	margin: auto;
 	display: grid;
 	grid-template-columns: clamp(112px, 12vw, 150px) minmax(0, 880px);
@@ -257,7 +262,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	background: url('/panels/bonus-buy-button-v4.png') center / 110% auto no-repeat;
+	background: url('/assets/panels/bonus-buy-button-v4.png') center / 110% auto no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -292,7 +297,7 @@ button:focus-visible {
 }
 .reel-frame {
 	position: relative;
-	margin: 11px auto 17px;
+	margin: clamp(5px, 1.1dvh, 11px) auto clamp(6px, 1.6dvh, 17px);
 	padding: 14px;
 	background: linear-gradient(140deg, #5b3410, #121713 14%, #030706 50%, #4d2b0d);
 	border: 1px solid #e2a23c;
@@ -342,7 +347,7 @@ button:focus-visible {
 	overflow: hidden;
 	background: #050708;
 	padding: 5px;
-	height: clamp(288px, min(39vw, 52vh), 450px);
+	height: clamp(250px, min(39vw, 44dvh), 450px);
 }
 .reel {
 	position: relative;
@@ -420,34 +425,34 @@ button:focus-visible {
 	max-width: 98%;
 }
 .symbol-cell[data-symbol='dragon'] .symbol-glyph {
-	background-image: url('/symbols/dragon.png');
+	background-image: url('/assets/symbols/dragon.png');
 }
 .symbol-cell[data-symbol='crown'] .symbol-glyph {
-	background-image: url('/symbols/crown.png');
+	background-image: url('/assets/symbols/crown.png');
 }
 .symbol-cell[data-symbol='sword'] .symbol-glyph {
-	background-image: url('/symbols/sword.png');
+	background-image: url('/assets/symbols/sword.png');
 }
 .symbol-cell[data-symbol='shield'] .symbol-glyph {
-	background-image: url('/symbols/shield.png');
+	background-image: url('/assets/symbols/shield.png');
 }
 .symbol-cell[data-symbol='ruby'] .symbol-glyph {
-	background-image: url('/symbols/ruby.png');
+	background-image: url('/assets/symbols/ruby.png');
 }
 .symbol-cell[data-symbol='emerald'] .symbol-glyph {
-	background-image: url('/symbols/emerald.png');
+	background-image: url('/assets/symbols/emerald.png');
 }
 .symbol-cell[data-symbol='sapphire'] .symbol-glyph {
-	background-image: url('/symbols/sapphire.png');
+	background-image: url('/assets/symbols/sapphire.png');
 }
 .symbol-cell[data-symbol='amber'] .symbol-glyph {
-	background-image: url('/symbols/amber.png');
+	background-image: url('/assets/symbols/amber.png');
 }
 .symbol-cell[data-symbol='wild'] .symbol-glyph {
-	background-image: url('/symbols/wild.png');
+	background-image: url('/assets/symbols/wild.png');
 }
 .symbol-cell[data-symbol='scatter'] .symbol-glyph {
-	background-image: url('/symbols/scatter.png');
+	background-image: url('/assets/symbols/scatter.png');
 }
 .winning {
 	animation: winning 850ms ease-in-out infinite alternate;
@@ -518,7 +523,7 @@ button:focus-visible {
 .feature-banner {
 	position: relative;
 	width: min(calc(100% - 28px), 820px);
-	min-height: 92px;
+	min-height: clamp(62px, 8.5dvh, 92px);
 	margin: -2px auto 14px;
 	border: 2px solid #d69a30;
 	background: linear-gradient(
@@ -527,7 +532,7 @@ button:focus-visible {
 		rgba(11, 55, 29, 0.96),
 		rgba(4, 18, 11, 0.98)
 	);
-	padding: 12px 94px;
+	padding: clamp(8px, 1.3dvh, 12px) 94px;
 	display: grid;
 	grid-template-columns: 1fr auto;
 	align-items: center;
@@ -614,7 +619,7 @@ button:focus-visible {
 	grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) minmax(0, 1fr);
 	gap: clamp(10px, 2vw, 28px);
 	align-items: center;
-	padding: 14px clamp(12px, 1.8vw, 24px) 12px;
+	padding: clamp(7px, 1.4dvh, 14px) clamp(12px, 1.8vw, 24px) clamp(6px, 1.2dvh, 12px);
 	border: 2px solid rgba(228, 161, 48, 0.72);
 	background:
 		radial-gradient(circle at center, rgba(22, 108, 52, 0.24), transparent 29%),
@@ -724,7 +729,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	background: url('/panels/current-win-panel-v3.png') center / 104% 118% no-repeat;
+	background: url('/assets/panels/current-win-panel-v3.png') center / 104% 118% no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -758,7 +763,7 @@ button:focus-visible {
 	text-align: center;
 }
 .control-left .stat-block {
-	background-image: url('/panels/vault-balance.png');
+	background-image: url('/assets/panels/vault-balance.png');
 }
 .control-left .bet-control {
 	min-height: 66px;
@@ -767,7 +772,7 @@ button:focus-visible {
 	padding-top: 4px;
 	padding-bottom: 4px;
 	background-size: 100% auto;
-	background-image: url('/panels/vault-stake.png');
+	background-image: url('/assets/panels/vault-stake.png');
 }
 .control-left .bet-row {
 	justify-content: space-between;
@@ -856,7 +861,7 @@ button:focus-visible {
 	min-height: 0;
 	aspect-ratio: 3 / 2;
 	border: 0;
-	background: url('/spin-button.png') center / contain no-repeat;
+	background: url('/assets/controls/spin-button.png') center / contain no-repeat;
 	color: var(--ivory);
 	cursor: pointer;
 	filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.75));
@@ -865,7 +870,7 @@ button:focus-visible {
 		filter 160ms ease;
 }
 .spin-button:hover {
-	background: url('/spin-button.png') center / contain no-repeat;
+	background: url('/assets/controls/spin-button.png') center / contain no-repeat;
 	transform: scale(1.045);
 	filter: brightness(1.12) drop-shadow(0 0 18px rgba(42, 255, 126, 0.5));
 }
@@ -947,13 +952,13 @@ button:focus-visible {
 	white-space: nowrap;
 }
 .quick-controls .turbo-control {
-	--control-image: url('/controls/turbo.png');
+	--control-image: url('/assets/controls/turbo.png');
 }
 .quick-controls .sound-control {
-	--control-image: url('/controls/sound.png');
+	--control-image: url('/assets/controls/sound.png');
 }
 .quick-controls .paytable-control {
-	--control-image: url('/controls/paytable.png');
+	--control-image: url('/assets/controls/paytable.png');
 }
 .quick-controls button:hover,
 .quick-controls button.active {
@@ -1158,7 +1163,7 @@ button:focus-visible {
 	overflow: visible;
 	padding: 0;
 	border: 0;
-	background: url('/panels/bonus-buy-panel.png') center / contain no-repeat;
+	background: url('/assets/panels/bonus-buy-panel.png') center / contain no-repeat;
 	clip-path: none;
 	box-shadow: none;
 	filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.82));
@@ -1354,28 +1359,28 @@ button:focus-visible {
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.72));
 }
 .pay-symbol[data-symbol='dragon'] {
-	background-image: url('/symbols/dragon.png');
+	background-image: url('/assets/symbols/dragon.png');
 }
 .pay-symbol[data-symbol='crown'] {
-	background-image: url('/symbols/crown.png');
+	background-image: url('/assets/symbols/crown.png');
 }
 .pay-symbol[data-symbol='sword'] {
-	background-image: url('/symbols/sword.png');
+	background-image: url('/assets/symbols/sword.png');
 }
 .pay-symbol[data-symbol='shield'] {
-	background-image: url('/symbols/shield.png');
+	background-image: url('/assets/symbols/shield.png');
 }
 .pay-symbol[data-symbol='ruby'] {
-	background-image: url('/symbols/ruby.png');
+	background-image: url('/assets/symbols/ruby.png');
 }
 .pay-symbol[data-symbol='emerald'] {
-	background-image: url('/symbols/emerald.png');
+	background-image: url('/assets/symbols/emerald.png');
 }
 .pay-symbol[data-symbol='sapphire'] {
-	background-image: url('/symbols/sapphire.png');
+	background-image: url('/assets/symbols/sapphire.png');
 }
 .pay-symbol[data-symbol='amber'] {
-	background-image: url('/symbols/amber.png');
+	background-image: url('/assets/symbols/amber.png');
 }
 .pay-row b,
 .pay-row small {
@@ -1462,11 +1467,11 @@ button:focus-visible {
 }
 @media (max-width: 700px) {
 	.forge-shell {
-		padding: 17px 12px max(14px, env(safe-area-inset-bottom));
+		padding: clamp(6px, 1.5dvh, 17px) 12px max(4px, env(safe-area-inset-bottom));
 		background-attachment: scroll;
 	}
 	.playfield {
-		grid-template-columns: 72px minmax(0, 1fr);
+		grid-template-columns: clamp(54px, 18vw, 72px) minmax(0, 1fr);
 		gap: 6px;
 	}
 	.game-stage {
@@ -1474,14 +1479,14 @@ button:focus-visible {
 	}
 	.side-action-rail {
 		gap: 3px;
-		padding-top: 24px;
+		padding-top: clamp(10px, 2.8dvh, 24px);
 	}
 	.bonus-buy-control {
-		min-height: 58px;
+		min-height: clamp(46px, 7dvh, 58px);
 		padding: 0;
 	}
 	.topbar {
-		margin-bottom: 12px;
+		margin-bottom: clamp(4px, 1.2dvh, 12px);
 	}
 	.brand-mark {
 		transform: scale(0.82);
@@ -1510,12 +1515,15 @@ button:focus-visible {
 		height: 29px;
 	}
 	.reel-frame {
-		padding: 9px;
+		padding: clamp(6px, 1.2vw, 9px);
 	}
 	.reels {
 		gap: 3px;
 		padding: 3px;
-		height: clamp(234px, 78vw, 375px);
+		height: clamp(210px, min(78vw, 38dvh), 375px);
+	}
+	.feature-mode .reels {
+		height: clamp(190px, min(74vw, 32dvh), 310px);
 	}
 	.symbol-cell {
 		min-height: 0;
@@ -1541,9 +1549,9 @@ button:focus-visible {
 	}
 	.control-deck {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 14px 10px;
-		margin: 12px auto 0;
-		padding-top: 13px;
+		gap: clamp(5px, 1.7dvh, 14px) 10px;
+		margin: clamp(4px, 1.4dvh, 12px) auto 0;
+		padding: clamp(5px, 1.2dvh, 13px) 8px clamp(4px, 1dvh, 10px);
 	}
 	.control-left,
 	.control-right {
@@ -1563,12 +1571,15 @@ button:focus-visible {
 	}
 	.control-left .stat-block,
 	.control-left .bet-control {
-		min-height: 66px;
+		min-height: clamp(48px, 8dvh, 66px);
 		padding: 7px 18px;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 		background-size: auto 100%;
 	}
 	.control-left .bet-control {
-		min-height: 52px;
+		min-height: clamp(42px, 6.5dvh, 52px);
 		padding-right: 7px;
 		padding-left: 7px;
 		padding-top: 4px;
@@ -1593,6 +1604,9 @@ button:focus-visible {
 		margin-top: 3px;
 		font-size: 20px;
 	}
+	.control-left .stat-block .eyebrow {
+		line-height: 1.1;
+	}
 	.bet-row {
 		gap: 5px;
 	}
@@ -1606,7 +1620,7 @@ button:focus-visible {
 		height: 27px;
 	}
 	.control-right .win-readout {
-		min-height: 84px;
+		min-height: clamp(58px, 10dvh, 84px);
 		padding: 17px 20px 13px;
 		align-items: center;
 	}
@@ -1623,7 +1637,7 @@ button:focus-visible {
 	.spin-button {
 		grid-column: 1 / -1;
 		grid-row: 2;
-		width: min(62vw, 190px);
+		width: min(62vw, 24dvh, 190px);
 	}
 	.quick-controls {
 		justify-content: flex-end;
@@ -1639,8 +1653,8 @@ button:focus-visible {
 	}
 	.feature-banner {
 		width: calc(100% - 10px);
-		min-height: 78px;
-		padding: 10px 66px;
+		min-height: clamp(58px, 9dvh, 78px);
+		padding: 8px 66px;
 		gap: 6px;
 	}
 	.feature-orb {
@@ -1680,6 +1694,51 @@ button:focus-visible {
 	}
 	.pays {
 		font-size: 10px;
+	}
+}
+@media (max-height: 820px) and (min-width: 701px) {
+	.forge-shell {
+		padding-top: clamp(6px, 1.8dvh, 16px);
+		padding-bottom: clamp(4px, 1.2dvh, 12px);
+	}
+	.topbar {
+		margin-bottom: clamp(2px, 1dvh, 10px);
+	}
+	.reels {
+		height: clamp(235px, min(39vw, 39dvh), 390px);
+	}
+	.reel-frame {
+		margin-top: 5px;
+		margin-bottom: 7px;
+	}
+	.control-deck {
+		padding-top: 7px;
+		padding-bottom: 6px;
+	}
+	.control-left .stat-block,
+	.control-left .bet-control {
+		min-height: 50px;
+		padding-top: 5px;
+		padding-bottom: 5px;
+	}
+	.control-left .bet-control {
+		min-height: 46px;
+	}
+	.control-left .bet-row button {
+		width: 44px;
+		height: 44px;
+		font-size: 29px;
+	}
+	.control-left .bet-row strong {
+		font-size: 21px;
+	}
+	.control-right .win-readout {
+		min-height: 96px;
+		padding-top: 14px;
+		padding-bottom: 12px;
+	}
+	.spin-button {
+		width: min(20vw, 180px);
 	}
 }
 @media (max-height: 660px) and (orientation: landscape) {

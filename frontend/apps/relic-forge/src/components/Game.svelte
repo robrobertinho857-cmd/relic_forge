@@ -19,6 +19,7 @@
 	} from '../game/modes';
 	import { getSpinTiming, RELIC_WILD_PRESENTATION } from '../game/spinConfig';
 	import { formatCurrency } from '../game/currency';
+	import { assetUrl } from '../game/assets';
 	import type {
 		GamePhase,
 		RelicWildState,
@@ -543,7 +544,7 @@
 	};
 
 	onMount(() => {
-		baseSpinAudio = new Audio('./sounds/spin-base.wav');
+		baseSpinAudio = new Audio(assetUrl('sounds/spin-base.wav'));
 		baseSpinAudio.preload = 'auto';
 		baseSpinAudio.loop = true;
 		baseSpinAudio.volume = 0.62;
