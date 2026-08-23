@@ -1,0 +1,23 @@
+name: Relic Forge math
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: math
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: math/requirements.txt
+      - run: python -m pip install -r requirements.txt
+      - run: python -m pytest tests/ games/relic_forge/test_relic_wild.py -q
+      - run: python games/relic_forge/run.py --command smoke --sims 1000
+

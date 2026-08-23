@@ -8,11 +8,18 @@ const APP_ORIGIN = process.env.APP_ORIGIN ?? 'http://localhost:3006';
 const APP_URL = `${APP_ORIGIN}/?demo=true`;
 const CDP_PORT = 9333;
 const chromeCandidates = [
+	process.env.CHROME_PATH,
 	'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
 	'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
 	'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+	'/usr/bin/google-chrome',
+	'/usr/bin/google-chrome-stable',
+	'/usr/bin/chromium',
+	'/usr/bin/chromium-browser',
+	'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+	'/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
 ];
-const chromePath = chromeCandidates.find(existsSync);
+const chromePath = chromeCandidates.filter(Boolean).find(existsSync);
 if (!chromePath) throw new Error('Chrome or Edge was not found.');
 
 const profilePath = join(tmpdir(), `relic-forge-cdp-${process.pid}`);

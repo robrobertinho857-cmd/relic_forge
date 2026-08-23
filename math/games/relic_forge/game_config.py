@@ -50,9 +50,10 @@ FREE_REEL_EXTRA_WILDS = {
 class GameConfig(Config):
     """Relic Forge 5x3 / 20-line development math configuration."""
 
-    def __init__(self, production=False):
+    def __init__(self, production=False, artifact_root=None):
         super().__init__()
         self.game_id = "relic_forge"
+        self.artifact_root = artifact_root
         provider_name = os.environ.get("RELIC_FORGE_PROVIDER_NAME", "relic_forge_development")
         provider_number = os.environ.get("RELIC_FORGE_PROVIDER_NUMBER", "0")
         if production and (provider_name == "relic_forge_development" or provider_number == "0"):

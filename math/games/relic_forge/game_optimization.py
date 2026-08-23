@@ -76,7 +76,13 @@ class OptimizationSetup:
                 "conditions": conditions,
                 "scaling": ConstructScaling([]).return_dict(),
                 "parameters": ConstructParameters(
-                    num_show=20000,
+                    # Show-pig acceptance is stochastic.  The original
+                    # 20,000 candidates can leave the official optimizer
+                    # with fewer than its fixed ten-result reporting set
+                    # (notably for MYTHIC_BONUS), even when every fence is
+                    # reachable.  Increase the source search budget instead
+                    # of changing the objective or the Stake optimizer core.
+                    num_show=50000,
                     num_per_fence=10000,
                     min_m2m=4,
                     max_m2m=8,

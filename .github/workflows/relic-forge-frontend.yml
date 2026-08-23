@@ -1,0 +1,64 @@
+name: Relic Forge frontend
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.5.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter relic-forge lint
+      - run: pnpm --filter relic-forge exec svelte-check --tsconfig ./tsconfig.json
+      - run: pnpm --filter relic-forge build
+
+      - name: Start Relic Forge dev server
+        shell: bash
+        run: |
+          pnpm --filter relic-forge dev > "$RUNNER_TEMP/relic-forge-vite.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/relic-forge-vite.pid"
+          for attempt in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3006/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/relic-forge-vite.log"
+          exit 1
+
+      - name: Select headless browser
+        shell: bash
+        run: |
+          for browser in google-chrome google-chrome-stable chromium chromium-browser; do
+            if command -v "$browser" >/dev/null 2>&1; then
+              echo "CHROME_PATH=$(command -v "$browser")" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "No supported Chrome/Chromium executable was found" >&2
+          exit 1
+
+      - name: Run browser verification
+        run: pnpm --filter relic-forge verify:browser
+
+      - name: Stop Relic Forge dev server
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/relic-forge-vite.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/relic-forge-vite.pid")" || true
+          fi
+

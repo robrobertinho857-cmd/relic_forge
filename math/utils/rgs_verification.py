@@ -324,7 +324,10 @@ def execute_all_tests(config, excluded_modes=None, strict=False):
             warnings.warn(f"\n\nMode RTP difference exceedes allowed difference for approvals: {max_rtp_diff}\n")
             approval_failures["mode_rtp_difference"] = max_rtp_diff
 
-    fname = f"games/{config.game_id}/library/stats_summary.json"
+    # Keep verification reports beside the artifacts they describe.  In
+    # particular, smoke reports must not write into (or depend on) the
+    # production library when an alternate artifact root is selected.
+    fname = os.path.join(config.library_path, "stats_summary.json")
     write_all_stats(mode_stats, fname)
     if strict and approval_failures:
         raise RuntimeError(

@@ -645,7 +645,7 @@
 		</aside>
 		<section class="game-stage" aria-label="Relic Forge slot game">
 			<div class="stage-heading">
-				<span class="rule"></span><span>TWENTY WAYS TO UNEARTH A RELIC</span><span class="rule"
+				<span class="rule"></span><span>TWENTY FIXED PAYLINES TO UNEARTH A RELIC</span><span class="rule"
 				></span>
 			</div>
 			<div class="reel-frame" class:spinning={phase === 'spinning' || phase === 'revealing'}>

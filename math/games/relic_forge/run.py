@@ -1,6 +1,7 @@
 """Generate, optimize and verify Relic Forge math outputs."""
 
 import argparse
+from pathlib import Path
 
 from game_config import GameConfig
 from gamestate import GameState
@@ -18,9 +19,22 @@ def main():
     parser.add_argument("--sims", type=int, default=None)
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument("--mode", choices=MODES, default=None)
+    parser.add_argument(
+        "--artifact-root",
+        type=Path,
+        default=None,
+        help="Override the library directory; smoke defaults to library/smoke.",
+    )
     args = parser.parse_args()
     production = args.command == "production"
-    config = GameConfig(production=production)
+    default_library = Path(__file__).resolve().parent / "library"
+    artifact_root = args.artifact_root
+    if artifact_root is None and args.command == "smoke":
+        artifact_root = default_library / "smoke"
+    config = GameConfig(
+        production=production,
+        artifact_root=str(artifact_root.resolve()) if artifact_root is not None else None,
+    )
     gamestate = GameState(config)
     OptimizationSetup(config)
     if args.command == "optimize-source":
@@ -43,7 +57,8 @@ def main():
         # base lookup tables. Generate the config here so a fresh checkout
         # cannot accidentally optimize against a stale or empty file.
         generate_configs(gamestate)
-        for mode in [mode.get_name() for mode in config.bet_modes]:
+        modes = [args.mode] if args.mode else [mode.get_name() for mode in config.bet_modes]
+        for mode in modes:
             # Stop at the first invalid mode. This is intentionally
             # sequential: later modes must not appear optimized when BASE
             # (or another earlier mode) has not passed its preflight.

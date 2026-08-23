@@ -142,8 +142,14 @@ class Config:
     def construct_paths(self) -> None:
         """Assign all output file paths"""
         self.reels_path = os.path.join(PATH_TO_GAMES, self.game_id, "reels")
-        self.library_path = os.path.join(PATH_TO_GAMES, self.game_id, "library")
-        self.publish_path = os.path.join(PATH_TO_GAMES, self.game_id, "library", "publish_files")
+        artifact_root = getattr(self, "artifact_root", None)
+        if artifact_root is None:
+            artifact_root = os.environ.get("RELIC_FORGE_LIBRARY_ROOT")
+        if artifact_root is None:
+            artifact_root = os.path.join(PATH_TO_GAMES, self.game_id, "library")
+        self.library_path = os.path.abspath(os.fspath(artifact_root))
+        self.config_path = os.path.join(self.library_path, "configs")
+        self.publish_path = os.path.join(self.library_path, "publish_files")
 
     def check_folder_exists(self, folder_path: str) -> None:
         """Check if target folder exists, and create if it does not."""
