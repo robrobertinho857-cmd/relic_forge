@@ -290,14 +290,11 @@ check(
 	'all six supplied mode images render from project-local paths',
 );
 check(
-	await evaluate(`Promise.all([
-		'./assets/modes/normal.png',
-		'./assets/modes/forge-boost.png',
-		'./assets/modes/dragon-boost.png',
-		'./assets/modes/bonus-standard.png',
-		'./assets/modes/bonus-super.png',
-		'./assets/modes/bonus-mythic.png'
-	].map((asset) => fetch(asset).then((response) => response.ok))).then((results) => results.every(Boolean))`),
+	await evaluate(`Promise.all([...document.querySelectorAll('.mode-card')]
+		.map((card) => getComputedStyle(card).backgroundImage.match(/url\\(["']?([^"')]+)["']?\\)/)?.[1])
+		.filter(Boolean)
+		.map((asset) => fetch(new URL(asset, document.baseURI)).then((response) => response.ok)))
+		.then((results) => results.length === 6 && results.every(Boolean))`),
 	'all six mode assets load without broken paths',
 );
 check(
@@ -409,7 +406,7 @@ check(
 	'supplied Current Win panel artwork renders',
 );
 check(
-	await evaluate("fetch('./sounds/spin-base.wav').then((response) => response.ok)"),
+	await evaluate("(() => { const asset = document.querySelector('.forge-shell')?.dataset.spinAudio; return Boolean(asset) && fetch(asset).then((response) => response.ok); })()"),
 	'the selected reel audio asset loads',
 );
 check(
@@ -703,6 +700,31 @@ check(
 		mobileLayout.controlsLeft >= 0 &&
 		mobileLayout.controlsRight <= mobileLayout.viewport,
 	`mobile reels and controls fit without horizontal overflow (${JSON.stringify(mobileLayout)})`,
+);
+const mobileActionLayout = await evaluate(`(() => {
+	const rail = document.querySelector('.side-action-rail')?.getBoundingClientRect();
+	const stage = document.querySelector('.game-stage')?.getBoundingClientRect();
+	const controls = [...document.querySelectorAll('.side-action-rail .bonus-buy-control, .side-action-rail .quick-controls button')]
+		.map((button) => button.getBoundingClientRect());
+	const spin = document.querySelector('.spin-button')?.getBoundingClientRect();
+	const footer = document.querySelector('.footer-note')?.getBoundingClientRect();
+	return {
+		count: controls.length,
+		trailedByStage: Boolean(rail && stage && rail.top >= stage.bottom - 2),
+		sameRow: controls.length === 4 && controls.every((bounds) => Math.abs(bounds.top - controls[0].top) < 2),
+		withinViewport: controls.every((bounds) => bounds.left >= 0 && bounds.right <= innerWidth),
+		spinVisible: Boolean(spin && spin.top >= 0 && spin.bottom <= innerHeight),
+		footerVisible: Boolean(footer && footer.bottom <= innerHeight),
+	};
+})()`);
+check(
+	mobileActionLayout.count === 4 &&
+	mobileActionLayout.trailedByStage &&
+	mobileActionLayout.sameRow &&
+	mobileActionLayout.withinViewport &&
+	mobileActionLayout.spinVisible &&
+	mobileActionLayout.footerVisible,
+	`portrait mobile action bar and Spin fit in one viewport (${JSON.stringify(mobileActionLayout)})`,
 );
 await captureScreenshot('relic-forge-mobile-controls-final.png');
 await send('Emulation.clearDeviceMetricsOverride');

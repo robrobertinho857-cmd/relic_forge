@@ -42,7 +42,7 @@ button:focus-visible {
 	overflow: hidden;
 	isolation: isolate;
 	background-image:
-		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('/assets/backgrounds/forge-background.png');
+		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('./assets/backgrounds/forge-background.png');
 	background-position: center;
 	background-size: cover;
 	background-attachment: fixed;
@@ -65,7 +65,7 @@ button:focus-visible {
 .feature-mode {
 	background-image:
 		radial-gradient(circle at 72% 46%, rgba(24, 255, 111, 0.18), rgba(1, 5, 4, 0.48) 55%),
-		url('/assets/backgrounds/forge-background.png');
+		url('./assets/backgrounds/forge-background.png');
 }
 .ambient {
 	position: absolute;
@@ -145,7 +145,7 @@ button:focus-visible {
 	margin-top: 5px;
 	padding: 10px 52px 11px;
 	border: 0;
-	background: url('/assets/panels/active-mode-panel.png') center / 100% auto no-repeat;
+	background: url('./assets/panels/active-mode-panel.png') center / 100% auto no-repeat;
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.8))
 		drop-shadow(0 0 10px color-mix(in srgb, var(--mode-accent) 24%, transparent));
 	color: #f7df9b;
@@ -262,7 +262,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	background: url('/assets/panels/bonus-buy-button-v4.png') center / 110% auto no-repeat;
+		background: url('./assets/panels/bonus-buy-button-v4.png') center / 110% auto no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -425,34 +425,34 @@ button:focus-visible {
 	max-width: 98%;
 }
 .symbol-cell[data-symbol='dragon'] .symbol-glyph {
-	background-image: url('/assets/symbols/dragon.png');
+	background-image: url('./assets/symbols/dragon.png');
 }
 .symbol-cell[data-symbol='crown'] .symbol-glyph {
-	background-image: url('/assets/symbols/crown.png');
+	background-image: url('./assets/symbols/crown.png');
 }
 .symbol-cell[data-symbol='sword'] .symbol-glyph {
-	background-image: url('/assets/symbols/sword.png');
+	background-image: url('./assets/symbols/sword.png');
 }
 .symbol-cell[data-symbol='shield'] .symbol-glyph {
-	background-image: url('/assets/symbols/shield.png');
+	background-image: url('./assets/symbols/shield.png');
 }
 .symbol-cell[data-symbol='ruby'] .symbol-glyph {
-	background-image: url('/assets/symbols/ruby.png');
+	background-image: url('./assets/symbols/ruby.png');
 }
 .symbol-cell[data-symbol='emerald'] .symbol-glyph {
-	background-image: url('/assets/symbols/emerald.png');
+	background-image: url('./assets/symbols/emerald.png');
 }
 .symbol-cell[data-symbol='sapphire'] .symbol-glyph {
-	background-image: url('/assets/symbols/sapphire.png');
+	background-image: url('./assets/symbols/sapphire.png');
 }
 .symbol-cell[data-symbol='amber'] .symbol-glyph {
-	background-image: url('/assets/symbols/amber.png');
+	background-image: url('./assets/symbols/amber.png');
 }
 .symbol-cell[data-symbol='wild'] .symbol-glyph {
-	background-image: url('/assets/symbols/wild.png');
+	background-image: url('./assets/symbols/wild.png');
 }
 .symbol-cell[data-symbol='scatter'] .symbol-glyph {
-	background-image: url('/assets/symbols/scatter.png');
+	background-image: url('./assets/symbols/scatter.png');
 }
 .winning {
 	animation: winning 850ms ease-in-out infinite alternate;
@@ -729,7 +729,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-	background: url('/assets/panels/current-win-panel-v3.png') center / 104% 118% no-repeat;
+		background: url('./assets/panels/current-win-panel-v3.png') center / 104% 118% no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -763,7 +763,7 @@ button:focus-visible {
 	text-align: center;
 }
 .control-left .stat-block {
-	background-image: url('/assets/panels/vault-balance.png');
+	background-image: url('./assets/panels/vault-balance.png');
 }
 .control-left .bet-control {
 	min-height: 66px;
@@ -772,7 +772,7 @@ button:focus-visible {
 	padding-top: 4px;
 	padding-bottom: 4px;
 	background-size: 100% auto;
-	background-image: url('/assets/panels/vault-stake.png');
+	background-image: url('./assets/panels/vault-stake.png');
 }
 .control-left .bet-row {
 	justify-content: space-between;
@@ -861,7 +861,7 @@ button:focus-visible {
 	min-height: 0;
 	aspect-ratio: 3 / 2;
 	border: 0;
-	background: url('/assets/controls/spin-button.png') center / contain no-repeat;
+	background: url('./assets/controls/spin-button.png') center / contain no-repeat;
 	color: var(--ivory);
 	cursor: pointer;
 	filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.75));
@@ -870,7 +870,7 @@ button:focus-visible {
 		filter 160ms ease;
 }
 .spin-button:hover {
-	background: url('/assets/controls/spin-button.png') center / contain no-repeat;
+	background: url('./assets/controls/spin-button.png') center / contain no-repeat;
 	transform: scale(1.045);
 	filter: brightness(1.12) drop-shadow(0 0 18px rgba(42, 255, 126, 0.5));
 }
@@ -952,13 +952,13 @@ button:focus-visible {
 	white-space: nowrap;
 }
 .quick-controls .turbo-control {
-	--control-image: url('/assets/controls/turbo.png');
+	--control-image: url('./assets/controls/turbo.png');
 }
 .quick-controls .sound-control {
-	--control-image: url('/assets/controls/sound.png');
+	--control-image: url('./assets/controls/sound.png');
 }
 .quick-controls .paytable-control {
-	--control-image: url('/assets/controls/paytable.png');
+	--control-image: url('./assets/controls/paytable.png');
 }
 .quick-controls button:hover,
 .quick-controls button.active {
@@ -1163,7 +1163,7 @@ button:focus-visible {
 	overflow: visible;
 	padding: 0;
 	border: 0;
-	background: url('/assets/panels/bonus-buy-panel.png') center / contain no-repeat;
+	background: url('./assets/panels/bonus-buy-panel.png') center / contain no-repeat;
 	clip-path: none;
 	box-shadow: none;
 	filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.82));
@@ -1359,28 +1359,28 @@ button:focus-visible {
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.72));
 }
 .pay-symbol[data-symbol='dragon'] {
-	background-image: url('/assets/symbols/dragon.png');
+	background-image: url('./assets/symbols/dragon.png');
 }
 .pay-symbol[data-symbol='crown'] {
-	background-image: url('/assets/symbols/crown.png');
+	background-image: url('./assets/symbols/crown.png');
 }
 .pay-symbol[data-symbol='sword'] {
-	background-image: url('/assets/symbols/sword.png');
+	background-image: url('./assets/symbols/sword.png');
 }
 .pay-symbol[data-symbol='shield'] {
-	background-image: url('/assets/symbols/shield.png');
+	background-image: url('./assets/symbols/shield.png');
 }
 .pay-symbol[data-symbol='ruby'] {
-	background-image: url('/assets/symbols/ruby.png');
+	background-image: url('./assets/symbols/ruby.png');
 }
 .pay-symbol[data-symbol='emerald'] {
-	background-image: url('/assets/symbols/emerald.png');
+	background-image: url('./assets/symbols/emerald.png');
 }
 .pay-symbol[data-symbol='sapphire'] {
-	background-image: url('/assets/symbols/sapphire.png');
+	background-image: url('./assets/symbols/sapphire.png');
 }
 .pay-symbol[data-symbol='amber'] {
-	background-image: url('/assets/symbols/amber.png');
+	background-image: url('./assets/symbols/amber.png');
 }
 .pay-row b,
 .pay-row small {
@@ -1739,6 +1739,224 @@ button:focus-visible {
 	}
 	.spin-button {
 		width: min(20vw, 180px);
+	}
+}
+@media (min-width: 701px) and (max-width: 900px) {
+	/* Keep the Free Spins status below the reels on narrow desktop/tablet viewports. */
+	.playfield {
+		flex: 0 0 auto;
+	}
+	.feature-banner {
+		min-height: clamp(54px, 7dvh, 70px);
+		margin: clamp(6px, 1dvh, 10px) auto clamp(8px, 1dvh, 12px);
+		padding: 6px 72px;
+	}
+	.feature-orb {
+		left: 14px;
+		width: 50px;
+		height: 50px;
+		font-size: 24px;
+	}
+	.feature-copy .eyebrow {
+		font-size: clamp(12px, 2vw, 16px);
+	}
+	.feature-count {
+		width: 50px;
+		height: 50px;
+		font-size: 30px;
+		line-height: 44px;
+	}
+}
+@media (max-width: 700px) and (orientation: portrait) {
+	.forge-shell {
+		padding: max(6px, env(safe-area-inset-top)) 8px max(4px, env(safe-area-inset-bottom));
+	}
+	.topbar {
+		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-areas:
+			'brand actions'
+			'mode mode';
+		align-items: center;
+		margin-bottom: clamp(4px, 1dvh, 9px);
+	}
+	.brand-mark {
+		grid-area: brand;
+		transform: scale(0.72);
+		transform-origin: left center;
+	}
+	.header-center {
+		grid-area: mode;
+	}
+	.header-center .eyebrow,
+	.header-center h1 {
+		display: none;
+	}
+	.active-mode-indicator {
+		min-width: min(82vw, 310px);
+		width: min(82vw, 310px);
+		min-height: 42px;
+		margin-top: 3px;
+		padding: 6px 30px 7px;
+	}
+	.active-mode-indicator strong {
+		font-size: 13px;
+	}
+	.active-mode-indicator small {
+		font-size: 6px;
+	}
+	.header-actions {
+		grid-area: actions;
+		gap: 5px;
+	}
+	.icon-button {
+		width: 32px;
+		height: 32px;
+	}
+	.playfield {
+		width: 100%;
+		min-height: 0;
+		margin: 0 auto;
+		display: flex;
+		flex: 0 0 auto;
+		flex-direction: column;
+		gap: 0;
+	}
+	.game-stage {
+		order: 1;
+		width: 100%;
+	}
+	.stage-heading {
+		font-size: clamp(6px, 1.8vw, 8px);
+		letter-spacing: 0.12em;
+	}
+	.reel-frame {
+		width: min(97vw, 100%);
+		margin: clamp(3px, 0.8dvh, 8px) auto clamp(5px, 1dvh, 9px);
+		padding: clamp(6px, 1.4vw, 9px);
+	}
+	.reels {
+		width: 100%;
+		height: clamp(245px, min(88vw, 40dvh), 365px);
+		gap: 3px;
+		padding: 3px;
+	}
+	.feature-mode .reels {
+		height: clamp(220px, min(84vw, 35dvh), 330px);
+	}
+	.symbol-cell::before {
+		inset: 4px;
+	}
+	.symbol-glyph {
+		width: 96%;
+	}
+	.side-action-rail {
+		order: 2;
+		width: 100%;
+		display: flex;
+		align-items: stretch;
+		gap: 4px;
+		padding-top: 0;
+	}
+	.bonus-buy-control {
+		flex: 1.2 1 0;
+		width: auto;
+		min-width: 0;
+		min-height: clamp(42px, 12vw, 62px);
+	}
+	.side-action-rail .quick-controls {
+		flex: 3 1 0;
+		display: flex;
+		min-width: 0;
+		gap: 4px;
+	}
+	.side-action-rail .quick-controls button {
+		width: auto;
+		min-width: 0;
+		min-height: 0;
+		aspect-ratio: 2 / 1;
+	}
+	.control-deck {
+		width: 100%;
+		margin: clamp(5px, 1dvh, 9px) auto 0;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-areas:
+			'balance win'
+			'bet bet'
+			'spin spin';
+		gap: clamp(4px, 1dvh, 8px) 6px;
+		padding: clamp(5px, 1dvh, 9px) 7px clamp(4px, 0.8dvh, 7px);
+	}
+	.control-left {
+		display: contents;
+	}
+	.control-left .stat-block {
+		grid-area: balance;
+		min-height: clamp(50px, 13vw, 66px);
+		padding: 7px 12px;
+		align-items: center;
+		text-align: center;
+		background-size: 100% 100%;
+	}
+	.control-left .stat-block strong {
+		margin-top: 2px;
+		font-size: clamp(17px, 5vw, 22px);
+		line-height: 1;
+	}
+	.control-left .stat-block small {
+		font-size: 7px;
+	}
+	.control-left .bet-control {
+		grid-area: bet;
+		min-height: clamp(42px, 11vw, 56px);
+		padding: 4px 12px;
+		background-size: 100% 100%;
+	}
+	.control-left .bet-row {
+		justify-content: center;
+		gap: clamp(14px, 5vw, 28px);
+	}
+	.control-left .bet-row button {
+		width: clamp(30px, 9vw, 42px);
+		height: clamp(30px, 9vw, 42px);
+		font-size: clamp(21px, 6vw, 30px);
+	}
+	.control-left .bet-row strong {
+		min-width: clamp(66px, 22vw, 92px);
+		font-size: clamp(17px, 5vw, 24px);
+	}
+	.control-right {
+		grid-area: win;
+		min-width: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		clip-path: none;
+		box-shadow: none;
+	}
+	.control-right::after {
+		display: none;
+	}
+	.control-right .win-readout {
+		min-height: clamp(50px, 13vw, 66px);
+		padding: 8px 10px;
+	}
+	.control-right .win-readout strong {
+		top: 2px;
+		font-size: clamp(17px, 5vw, 22px);
+		line-height: 1;
+	}
+	.control-right .win-readout::before {
+		background-size: 100% 100%;
+	}
+	.spin-button {
+		grid-area: spin;
+		width: clamp(120px, 34vw, 165px);
+		margin: 0 auto;
+	}
+	.footer-note {
+		margin-top: clamp(3px, 0.8dvh, 7px);
+		font-size: 6px;
+		line-height: 1;
 	}
 }
 @media (max-height: 660px) and (orientation: landscape) {

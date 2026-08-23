@@ -1,4 +1,4 @@
-import { assetUrl } from './assets';
+import { GAME_ASSETS } from './assets';
 
 export type ModeKind = 'play' | 'bonus';
 export type ModeTheme = 'blue' | 'forge' | 'green' | 'purple' | 'mythic';
@@ -37,7 +37,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'NORMAL',
 		theme: 'blue',
-		image: assetUrl('modes/normal.png'),
+		image: GAME_ASSETS.modes.normal,
 		mockMode: 'BASE',
 		aliases: ['BASE', 'NORMAL'],
 		defaultCostMultiplier: 1,
@@ -48,7 +48,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'FORGE BOOST',
 		theme: 'forge',
-		image: assetUrl('modes/forge-boost.png'),
+		image: GAME_ASSETS.modes.forgeBoost,
 		mockMode: 'FORGE_BOOST',
 		aliases: ['FORGE_BOOST', 'FORGEBOOST', 'ANTE'],
 		defaultCostMultiplier: 2,
@@ -59,7 +59,7 @@ export const PLAY_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'play',
 		title: 'DRAGON BOOST',
 		theme: 'green',
-		image: assetUrl('modes/dragon-boost.png'),
+		image: GAME_ASSETS.modes.dragonBoost,
 		mockMode: 'DRAGON_BOOST',
 		aliases: ['DRAGON_BOOST', 'DRAGONBOOST', 'SUPERANTE'],
 		defaultCostMultiplier: 5,
@@ -78,7 +78,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'STANDARD',
 		theme: 'blue',
-		image: assetUrl('modes/bonus-standard.png'),
+		image: GAME_ASSETS.modes.bonusStandard,
 		mockMode: 'STANDARD_BONUS',
 		aliases: ['STANDARD_BONUS', 'STANDARD', 'BONUS'],
 		defaultCostMultiplier: 80,
@@ -90,7 +90,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'SUPER',
 		theme: 'purple',
-		image: assetUrl('modes/bonus-super.png'),
+		image: GAME_ASSETS.modes.bonusSuper,
 		mockMode: 'SUPER_BONUS',
 		aliases: ['SUPER_BONUS', 'SUPER'],
 		defaultCostMultiplier: 250,
@@ -102,7 +102,7 @@ export const BONUS_MODE_DEFINITIONS: ModeDefinition[] = [
 		kind: 'bonus',
 		title: 'MYTHIC',
 		theme: 'mythic',
-		image: assetUrl('modes/bonus-mythic.png'),
+		image: GAME_ASSETS.modes.bonusMythic,
 		mockMode: 'MYTHIC_BONUS',
 		aliases: ['MYTHIC_BONUS', 'MYTHIC'],
 		defaultCostMultiplier: 500,

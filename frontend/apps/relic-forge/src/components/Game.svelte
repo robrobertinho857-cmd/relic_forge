@@ -19,7 +19,7 @@
 	} from '../game/modes';
 	import { getSpinTiming, RELIC_WILD_PRESENTATION } from '../game/spinConfig';
 	import { formatCurrency } from '../game/currency';
-	import { assetUrl } from '../game/assets';
+	import { GAME_ASSETS } from '../game/assets';
 	import type {
 		GamePhase,
 		RelicWildState,
@@ -544,7 +544,7 @@
 	};
 
 	onMount(() => {
-		baseSpinAudio = new Audio(assetUrl('sounds/spin-base.wav'));
+		baseSpinAudio = new Audio(GAME_ASSETS.sounds.spinBase);
 		baseSpinAudio.preload = 'auto';
 		baseSpinAudio.loop = true;
 		baseSpinAudio.volume = 0.62;
@@ -582,7 +582,11 @@
 
 <EnableHotkey />
 <OnHotkey hotkey="Space" disabled={!spacebarAllowed || isBusy} onpress={spin} />
-<main class:feature-mode={freeSpins > 0} class="forge-shell">
+<main
+	class:feature-mode={freeSpins > 0}
+	class="forge-shell"
+	data-spin-audio={GAME_ASSETS.sounds.spinBase}
+>
 	<div class="ambient ambient-one"></div>
 	<div class="ambient ambient-two"></div>
 	<header class="topbar">

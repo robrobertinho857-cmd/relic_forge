@@ -8,10 +8,8 @@ export default {
 		...sharedConfig.kit,
 		output: {
 			...sharedConfig.kit?.output,
-			// CSS contains public artwork URLs. Keeping a single stylesheet external
-			// lets Vite rebase those URLs relative to the emitted stylesheet;
-			// inlining that CSS into index.html would make those rebased paths
-			// resolve from the wrong directory on nested Stake hosting.
+			// Keep the Vite-generated stylesheet external so its imported artwork
+			// URLs remain portable on nested Stake hosting paths.
 			bundleStrategy: 'single',
 		},
 		paths: {
