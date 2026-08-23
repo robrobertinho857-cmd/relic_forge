@@ -543,7 +543,7 @@
 	};
 
 	onMount(() => {
-		baseSpinAudio = new Audio('/sounds/spin-base.wav');
+		baseSpinAudio = new Audio('./sounds/spin-base.wav');
 		baseSpinAudio.preload = 'auto';
 		baseSpinAudio.loop = true;
 		baseSpinAudio.volume = 0.62;

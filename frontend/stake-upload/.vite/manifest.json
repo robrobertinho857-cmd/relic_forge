@@ -1,0 +1,11 @@
+{
+  "../../node_modules/.pnpm/@sveltejs+kit@2.17.3_@svelt_67cc8b08917aa0c39f1c3f59fbbcbd5c/node_modules/@sveltejs/kit/src/runtime/client/bundle.js": {
+    "file": "_app/immutable/bundle.CDHqdP7I.js",
+    "name": "bundle",
+    "src": "../../node_modules/.pnpm/@sveltejs+kit@2.17.3_@svelt_67cc8b08917aa0c39f1c3f59fbbcbd5c/node_modules/@sveltejs/kit/src/runtime/client/bundle.js",
+    "isEntry": true,
+    "css": [
+      "_app/immutable/assets/bundle.BtXD0zSg.css"
+    ]
+  }
+}

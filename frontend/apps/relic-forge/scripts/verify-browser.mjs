@@ -291,12 +291,12 @@ check(
 );
 check(
 	await evaluate(`Promise.all([
-		'/assets/modes/normal.png',
-		'/assets/modes/forge-boost.png',
-		'/assets/modes/dragon-boost.png',
-		'/assets/modes/bonus-standard.png',
-		'/assets/modes/bonus-super.png',
-		'/assets/modes/bonus-mythic.png'
+		'./assets/modes/normal.png',
+		'./assets/modes/forge-boost.png',
+		'./assets/modes/dragon-boost.png',
+		'./assets/modes/bonus-standard.png',
+		'./assets/modes/bonus-super.png',
+		'./assets/modes/bonus-mythic.png'
 	].map((asset) => fetch(asset).then((response) => response.ok))).then((results) => results.every(Boolean))`),
 	'all six mode assets load without broken paths',
 );
@@ -409,7 +409,7 @@ check(
 	'supplied Current Win panel artwork renders',
 );
 check(
-	await evaluate("fetch('/sounds/spin-base.wav').then((response) => response.ok)"),
+	await evaluate("fetch('./sounds/spin-base.wav').then((response) => response.ok)"),
 	'the selected reel audio asset loads',
 );
 check(
