@@ -43,6 +43,9 @@ apps/**/src/game/sounds/
 
 #playwright
 test-results
+**/.tmp/
+**/browser-profiles/
+**/relic-forge-cdp-*/
 apps/**/test-videos/
 apps/**/test-report
 apps/**/test-results

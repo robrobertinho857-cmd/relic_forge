@@ -45,32 +45,22 @@
 		return SYMBOL_IDS[fillerIndex];
 	};
 
-	const updateCell = (cell: Element, symbol: SymbolId, row?: number) => {
+	const updateCell = (cell: Element, symbol: SymbolId) => {
 		const definition = SYMBOLS[symbol];
 		cell.className = `symbol-cell symbol-${definition.type}`;
 		cell.setAttribute('data-symbol', symbol);
 		(cell as HTMLElement).style.setProperty('--accent', definition.accent);
 		const glyph = cell.querySelector<HTMLElement>('.symbol-glyph');
 		const name = cell.querySelector<HTMLElement>('.symbol-name');
-		const index = cell.querySelector<HTMLElement>('.cell-index');
 		if (glyph) glyph.textContent = definition.glyph;
 		if (name) name.textContent = definition.shortLabel;
-		if (index)
-			index.textContent =
-				row === undefined ? '' : `${String(reelIndex + 1).padStart(2, '0')} · ${row + 1}`;
 	};
 
 	const stripCells = () => Array.from(strip.children);
 
-	const setStripSymbols = (symbols: SymbolId[], visibleRows = false) => {
-		stripCells().forEach((cell, index) => {
-			const row = visibleRows && index >= 4 && index <= 6 ? index - 4 : undefined;
-			updateCell(cell, symbols[index], row);
-		});
+	const setStripSymbols = (symbols: SymbolId[]) => {
+		stripCells().forEach((cell, index) => updateCell(cell, symbols[index]));
 	};
-
-	const symbolAt = (index: number): SymbolId =>
-		(strip.children[index]?.getAttribute('data-symbol') as SymbolId | null) ?? nextFiller();
 
 	const measure = () => {
 		cellHeight = Math.max(1, viewport.clientHeight / 3);
@@ -92,6 +82,8 @@
 			const recycled = strip.lastElementChild;
 			if (!recycled) return;
 			updateCell(recycled, nextFiller());
+			// The reel strip is intentionally recycled for a constant-size DOM.
+			// eslint-disable-next-line svelte/no-dom-manipulating
 			strip.prepend(recycled);
 		}
 	};
@@ -148,18 +140,15 @@
 	};
 
 	const normalizeResult = (result: SymbolId[]) => {
-		setStripSymbols(
-			[
-				nextFiller(),
-				nextFiller(),
-				nextFiller(),
-				nextFiller(),
-				...result,
-				nextFiller(),
-				nextFiller(),
-			],
-			true,
-		);
+		setStripSymbols([
+			nextFiller(),
+			nextFiller(),
+			nextFiller(),
+			nextFiller(),
+			...result,
+			nextFiller(),
+			nextFiller(),
+		]);
 		offset = 0;
 		render();
 		stripCells()
@@ -252,7 +241,7 @@
 
 <div class="reel reel-viewport" bind:this={viewport} data-state={reelState}>
 	<div class="reel-strip" bind:this={strip}>
-		{#each initialCells as symbol}
+		{#each initialCells as symbol, cellIndex (symbol + cellIndex)}
 			<div
 				class="symbol-cell symbol-{SYMBOLS[symbol].type}"
 				data-symbol={symbol}
@@ -260,7 +249,6 @@
 			>
 				<span class="symbol-glyph">{SYMBOLS[symbol].glyph}</span>
 				<span class="symbol-name">{SYMBOLS[symbol].shortLabel}</span>
-				<span class="cell-index"></span>
 			</div>
 		{/each}
 	</div>

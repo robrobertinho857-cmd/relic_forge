@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { EnableHotkey, OnHotkey } from 'components-shared';
 	import { stateBet, stateConfig, stateUrlDerived } from 'state-shared';
 	import { BET_LEVELS, INITIAL_MATRIX, REEL_COUNT, ROW_COUNT, SYMBOLS } from '../game/config';
 	import {
 		asEvents,
 		completeAuthoritativeRound,
+		isReplayMode,
 		normalizeRoundForPresentation,
 		playAuthoritativeRound,
+		recordAuthoritativeEvent,
 	} from '../game/adapter';
 	import {
 		BONUS_MODE_DEFINITIONS,
@@ -15,6 +18,7 @@
 		type ResolvedMode,
 	} from '../game/modes';
 	import { getSpinTiming, RELIC_WILD_PRESENTATION } from '../game/spinConfig';
+	import { formatCurrency } from '../game/currency';
 	import type {
 		GamePhase,
 		RelicWildState,
@@ -66,7 +70,11 @@
 	let reelGrid = $state<ReelGridController>();
 	let baseSpinAudio: HTMLAudioElement | undefined;
 	let roundInFlight = false;
+	let roundStartedAt = 0;
+	let financialStateUncertain = $state(false);
+	let replayComplete = $state(false);
 	let modalTitle = $derived(freeSpins > 0 ? 'FORGE OF FATE' : 'RELIC FORGE');
+	let isReplay = $derived(isReplayMode());
 	let isBusy = $derived(
 		phase === 'spinning' ||
 			phase === 'revealing' ||
@@ -75,9 +83,17 @@
 			phase === 'freeSpins',
 	);
 	let currency = $derived(stateBet.currency || 'USD');
-	let bet = $derived(stateBet.betAmount || 1);
+	let isMockMode = $derived(!isReplay && import.meta.env.DEV && stateUrlDerived.demo());
+	let betLevels = $derived(
+		isMockMode
+			? BET_LEVELS
+			: stateConfig.betAmountOptions.filter((level) => Number.isFinite(level) && level > 0),
+	);
+	let bet = $derived(stateBet.betAmount || betLevels[0] || 0);
 	let balance = $derived(stateBet.balanceAmount);
-	let isMockMode = $derived(!stateUrlDerived.sessionID());
+	let turboAllowed = $derived(!isReplay && !stateConfig.jurisdiction?.disabledTurbo);
+	let spacebarAllowed = $derived(!isReplay && !stateConfig.jurisdiction?.disabledSpacebar);
+	let socialCasino = $derived(Boolean(stateConfig.jurisdiction?.socialCasino));
 	let playModes = $derived(
 		resolveModes(PLAY_MODE_DEFINITIONS, {
 			mock: isMockMode,
@@ -116,10 +132,12 @@
 	let pendingBonusMode = $derived(
 		pendingBonusModeId ? bonusModes.find((mode) => mode.id === pendingBonusModeId) : undefined,
 	);
-	let firstAvailableBonusMode = $derived(bonusModes.find((mode) => mode.available));
 	let canOpenModeSelection = $derived(
 		Boolean(
-			!isBusy &&
+				!isReplay &&
+				!replayComplete &&
+				!financialStateUncertain &&
+				!isBusy &&
 				phase !== 'error' &&
 				freeSpins <= 0 &&
 				(playModes.some((mode) => mode.available) || bonusModes.some((mode) => mode.available)),
@@ -136,21 +154,26 @@
 
 	const wait = (ms: number) =>
 		new Promise<void>((resolve) => setTimeout(resolve, turbo ? Math.max(80, ms * 0.35) : ms));
-	const formatMoney = (amount: number) =>
-		new Intl.NumberFormat(undefined, {
-			style: 'currency',
-			currency,
-			minimumFractionDigits: 2,
-		}).format(amount);
-	const symbolFor = (value: unknown): SymbolId =>
-		typeof value === 'string' && value in SYMBOLS
-			? (value as SymbolId)
-			: typeof value === 'object' &&
-				  value !== null &&
-				  typeof (value as { name?: unknown }).name === 'string' &&
-				  (value as { name: string }).name in SYMBOLS
-				? ((value as { name: string }).name as SymbolId)
-				: 'amber';
+	const waitForMinimumRoundDuration = async (startedAt: number) => {
+		const minimumDuration = Number(stateConfig.jurisdiction?.minimumRoundDuration) || 0;
+		if (minimumDuration <= 0 || startedAt <= 0) return;
+		const remaining = minimumDuration - (Date.now() - startedAt);
+		if (remaining > 0) await new Promise<void>((resolve) => setTimeout(resolve, remaining));
+	};
+	const formatMoney = (amount: number) => formatCurrency(amount, currency);
+	const symbolFor = (value: unknown): SymbolId => {
+		const name =
+			typeof value === 'string'
+				? value
+				: typeof value === 'object' &&
+					  value !== null &&
+					  typeof (value as { name?: unknown }).name === 'string'
+					? (value as { name: string }).name
+					: '';
+		if (!(name in SYMBOLS))
+			throw new Error(`The server returned an unknown symbol: ${name || 'missing'}.`);
+		return name as SymbolId;
+	};
 	const relicWildFrom = (value: unknown): RelicWildState | null => {
 		if (typeof value !== 'object' || value === null) return null;
 		const candidate = value as Partial<RelicWildState>;
@@ -194,6 +217,8 @@
 			: [];
 	const relicKey = (wild: RelicWildState) => `${wild.reel}:${wild.row}`;
 	const mergeRelicWilds = (current: RelicWildState[], incoming: RelicWildState[]) => {
+		// This Map is a local reduction, not component state.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const merged = new Map(current.map((wild) => [relicKey(wild), wild]));
 		for (const wild of incoming) merged.set(relicKey(wild), wild);
 		return [...merged.values()].sort(
@@ -204,21 +229,31 @@
 		if (!soundEnabled) return;
 		window.dispatchEvent(new CustomEvent('relic-forge:audio', { detail: { name } }));
 	};
-	const matrixFrom = (board: unknown): ReelMatrix | null => {
-		if (!Array.isArray(board)) return null;
-		const next = board
-			.slice(0, REEL_COUNT)
-			.map((reel) =>
-				Array.isArray(reel) ? reel.slice(0, ROW_COUNT).map(symbolFor) : ['amber', 'amber', 'amber'],
-			);
-		while (next.length < REEL_COUNT) next.push(['amber', 'amber', 'amber']);
-		return next;
+	const matrixFrom = (board: unknown): ReelMatrix => {
+		if (!Array.isArray(board) || board.length !== REEL_COUNT)
+			throw new Error(`The server returned an invalid reel matrix: expected ${REEL_COUNT} reels.`);
+		return board.map((reel, reelIndex) => {
+			if (!Array.isArray(reel) || reel.length !== ROW_COUNT)
+				throw new Error(`The server returned an invalid reel matrix at reel ${reelIndex}.`);
+			return reel.map(symbolFor) as [SymbolId, SymbolId, SymbolId];
+		}) as ReelMatrix;
+	};
+	const clearRelicWildPresentation = () => {
+		stickyRelicWilds = [];
+		activatingRelicWildKeys = [];
+		relicWildWinLine = null;
+		multiplier = 1;
+	};
+	const applyAuthoritativeWin = (value: unknown, updateFeatureTotal = false) => {
+		if (typeof value !== 'number' || !Number.isFinite(value)) return;
+		lastWin = value;
+		displayedWin = value;
+		if (updateFeatureTotal) freeSpinWin = value;
 	};
 
 	const applyEvent = (event: RoundEvent) => {
 		if (event.type === 'freeSpinTrigger') {
-			stickyRelicWilds = [];
-			activatingRelicWildKeys = [];
+			clearRelicWildPresentation();
 			totalFreeSpins = Number(event.totalFs) || 8;
 			freeSpins = totalFreeSpins;
 			phase = 'featureTrigger';
@@ -229,9 +264,9 @@
 		}
 		if (event.type === 'freeSpinEnd') {
 			freeSpins = 0;
-			stickyRelicWilds = [];
-			activatingRelicWildKeys = [];
-			if (typeof event.amount === 'number') freeSpinWin = event.amount;
+			totalFreeSpins = 0;
+			clearRelicWildPresentation();
+			applyAuthoritativeWin(event.amount, true);
 		}
 		if (event.type === 'newRelicWilds') {
 			const newWilds = relicWildsFrom(event.wilds);
@@ -244,10 +279,12 @@
 			if (event.variant) relicWildVariant = event.variant;
 			if (typeof event.remainingFreeSpins === 'number')
 				freeSpins = Math.max(0, event.remainingFreeSpins);
-			if (typeof event.featureWin === 'number') freeSpinWin = event.featureWin;
+			if (typeof event.featureWin === 'number') {
+				freeSpinWin = event.featureWin;
+				if (freeSpins > 0) displayedWin = event.featureWin;
+			}
 			if (event.cleared) {
-				stickyRelicWilds = [];
-				activatingRelicWildKeys = [];
+				clearRelicWildPresentation();
 			}
 		}
 		if (event.type === 'relicWildWin') {
@@ -257,15 +294,20 @@
 		}
 		if (event.type === 'updateGlobalMult' || event.type === 'multiplier')
 			multiplier = Math.max(1, Number(event.multiplier) || 1);
-		if (event.type === 'winInfo' || event.type === 'setWin' || event.type === 'setTotalWin')
-			lastWin = Number(event.totalWin ?? event.amount) || 0;
-		if (event.type === 'finalWin') lastWin = Number(event.amount) || lastWin;
+		if (event.type === 'winInfo' || event.type === 'setWin')
+			applyAuthoritativeWin(event.totalWin ?? event.amount);
+		if (event.type === 'setTotalWin')
+			applyAuthoritativeWin(event.amount, totalFreeSpins > 0 || freeSpins > 0);
+		if (event.type === 'finalWin')
+			applyAuthoritativeWin(event.amount, totalFreeSpins > 0 || freeSpins > 0);
 	};
 
 	const countUpWin = async (target: number) => {
+		const startingValue = displayedWin;
+		if (startingValue === target) return;
 		const steps = turbo ? 6 : 18;
 		for (let index = 1; index <= steps; index += 1) {
-			displayedWin = target * (index / steps);
+			displayedWin = startingValue + (target - startingValue) * (index / steps);
 			await wait(35);
 		}
 		displayedWin = target;
@@ -280,6 +322,11 @@
 		soundEnabled = !soundEnabled;
 		if (!soundEnabled) stopSpinAudio();
 	};
+	const toggleTurbo = () => {
+		if (!turboAllowed) return;
+		turbo = !turbo;
+		localStorage.setItem('relic-forge-turbo', String(turbo));
+	};
 	const playSpinSound = () => {
 		if (!soundEnabled) return;
 		stopSpinAudio();
@@ -287,7 +334,25 @@
 	};
 
 	const processRound = async (round: RoundState, spinAlreadyStarted = false) => {
-		const events = asEvents(round.state);
+		const allEvents = asEvents(round.state);
+		const savedEvent = round.event === undefined || round.event === null ? -1 : Number(round.event);
+		if (!Number.isInteger(savedEvent) || savedEvent < -1 || savedEvent >= allEvents.length)
+			throw new Error('The server returned an invalid round progress index.');
+		const priorEvents =
+			savedEvent >= 0 ? allEvents.filter((event) => (event.index ?? -1) <= savedEvent) : [];
+		const events =
+			savedEvent >= 0 ? allEvents.filter((event) => (event.index ?? -1) > savedEvent) : allEvents;
+		for (const prior of priorEvents) {
+			if (prior.type === 'reveal') {
+				matrix = matrixFrom(prior.board);
+				reelGrid?.reset(matrix);
+			} else applyEvent(prior);
+		}
+		if (savedEvent >= 0 && events.length === 0) {
+			replayComplete = isReplay;
+			phase = 'ready';
+			return;
+		}
 		let revealCount = 0;
 		let activeReelTurbo = turbo;
 		if (!spinAlreadyStarted) {
@@ -299,7 +364,6 @@
 		for (const event of events) {
 			if (event.type === 'reveal') {
 				const authoritativeMatrix = matrixFrom(event.board);
-				if (!authoritativeMatrix) throw new Error('The round did not contain a valid reel matrix.');
 				if (revealCount > 0) {
 					if (freeSpins > 0)
 						await new Promise<void>((resolve) =>
@@ -318,6 +382,7 @@
 				stopSpinAudio();
 				matrix = authoritativeMatrix;
 				revealCount += 1;
+				await recordAuthoritativeEvent(round.roundID ?? 'unknown', event.index ?? revealCount - 1);
 				continue;
 			}
 			applyEvent(event);
@@ -340,6 +405,7 @@
 			}
 			if (event.type === 'winInfo' || event.type === 'setWin' || event.type === 'setTotalWin')
 				await wait(200);
+			await recordAuthoritativeEvent(round.roundID ?? 'unknown', event.index ?? 0);
 		}
 		if (revealCount === 0) throw new Error('The round did not contain a reveal event.');
 		const payout = Number(round.payout ?? lastWin) || lastWin;
@@ -348,25 +414,41 @@
 		winTier = nextWinTier;
 		phase = payout > 0 ? 'presentingWin' : 'revealing';
 		await countUpWin(payout);
-		if (payout > 0 && freeSpins > 0) freeSpinWin += payout;
 		if (freeSpins > 0 && payout > 0) phase = 'freeSpins';
 		await wait(payout > bet * 25 ? 1200 : 500);
-		const authoritativeBalance = await completeAuthoritativeRound(
-			round.roundID ?? `local-${spinCount}`,
-		);
+		if (isReplay) {
+			replayComplete = true;
+			phase = 'ready';
+			return;
+		}
+		const isFeatureRound =
+			freeSpins > 0 ||
+			totalFreeSpins > 0 ||
+			allEvents.some((event) => event.type === 'freeSpinTrigger');
+		const authoritativeBalance =
+			payout > 0 || isFeatureRound
+				? await completeAuthoritativeRound(round.roundID ?? `local-${spinCount}`)
+				: undefined;
 		if (authoritativeBalance !== undefined) stateBet.balanceAmount = authoritativeBalance;
-		if (freeSpins <= 0) phase = 'ready';
+		if (freeSpins <= 0) {
+			if (isFeatureRound) clearRelicWildPresentation();
+			phase = 'ready';
+		}
 	};
 
 	const playRound = async (mode: string, costMultiplier: number) => {
 		const wagerCost = bet * costMultiplier;
 		if (
 			roundInFlight ||
+			isReplay ||
+			replayComplete ||
+			financialStateUncertain ||
 			isBusy ||
 			phase === 'error' ||
 			bet <= 0 ||
 			wagerCost <= 0 ||
-			(balance > 0 && wagerCost > balance)
+			wagerCost > balance ||
+			(!isMockMode && !betLevels.some((level) => level === bet))
 		)
 			return;
 		roundInFlight = true;
@@ -378,18 +460,19 @@
 		multiplier = 1;
 		spinCount += 1;
 		freeSpinWin = 0;
-		stickyRelicWilds = [];
-		activatingRelicWildKeys = [];
-		relicWildWinLine = null;
+		totalFreeSpins = 0;
+		clearRelicWildPresentation();
 		reelGrid?.startSpin(turbo);
 		playSpinSound();
 		try {
+			roundStartedAt = Date.now();
 			const result = await playAuthoritativeRound(bet, spinCount, mode);
+			await waitForMinimumRoundDuration(roundStartedAt);
 			const round = normalizeRoundForPresentation(result.round, bet);
 			if (result.balance) {
 				stateBet.currency = result.balance.currency;
 				stateBet.balanceAmount = result.balance.amount;
-			} else if (!stateUrlDerived.sessionID()) {
+			} else if (isMockMode) {
 				stateBet.balanceAmount = Math.max(0, balance - wagerCost + Number(round.payout ?? 0));
 			}
 			await processRound(round, true);
@@ -398,6 +481,11 @@
 			reelGrid?.reset(matrix);
 			console.error('[RGS]', error);
 			phase = 'error';
+			if (
+				!isMockMode &&
+				/complete this round|recorded|recover/i.test(error instanceof Error ? error.message : '')
+			)
+				financialStateUncertain = true;
 			errorMessage =
 				error instanceof Error ? error.message : 'The forge is temporarily unavailable.';
 		} finally {
@@ -405,7 +493,7 @@
 		}
 	};
 	const spin = () => {
-		if (!activePlayMode?.available) return;
+		if (isReplay || replayComplete || financialStateUncertain || !activePlayMode?.available) return;
 		void playRound(activePlayMode.mode, activePlayMode.costMultiplier);
 	};
 	const openModeSelection = () => {
@@ -435,6 +523,7 @@
 		pendingBonusModeId = null;
 	};
 	const buyBonus = () => {
+		if (isReplay || replayComplete || financialStateUncertain) return;
 		const selectedMode = pendingBonusMode;
 		if (!selectedMode || !canBuyPendingBonus) return;
 		pendingBonusModeId = null;
@@ -443,13 +532,14 @@
 	};
 
 	const changeBet = (direction: number) => {
-		if (isBusy || freeSpins > 0) return;
-		const current = BET_LEVELS.findIndex((level) => level >= bet);
+		if (isBusy || freeSpins > 0 || isReplay || financialStateUncertain || betLevels.length === 0)
+			return;
+		const current = betLevels.findIndex((level) => level >= bet);
 		const next = Math.max(
 			0,
-			Math.min(BET_LEVELS.length - 1, (current < 0 ? BET_LEVELS.length - 1 : current) + direction),
+			Math.min(betLevels.length - 1, (current < 0 ? betLevels.length - 1 : current) + direction),
 		);
-		stateBet.betAmount = BET_LEVELS[next];
+		stateBet.betAmount = betLevels[next];
 	};
 
 	onMount(() => {
@@ -458,10 +548,9 @@
 		baseSpinAudio.loop = true;
 		baseSpinAudio.volume = 0.62;
 		const storedTurbo = localStorage.getItem('relic-forge-turbo');
-		turbo = storedTurbo === 'true';
-		if (!stateUrlDerived.sessionID() && stateBet.balanceAmount === 0)
-			stateBet.balanceAmount = 845.22;
-		if (!stateBet.betAmount) stateBet.betAmount = 1;
+		turbo = !stateConfig.jurisdiction?.disabledTurbo && storedTurbo === 'true';
+		if (isMockMode && stateBet.balanceAmount === 0) stateBet.balanceAmount = 845.22;
+		if (!betLevels.includes(stateBet.betAmount)) stateBet.betAmount = betLevels[0] || 0;
 		const resumedMode = playModes.find(
 			(mode) =>
 				mode.available && mode.mode.toUpperCase() === stateBet.activeBetModeKey.toUpperCase(),
@@ -490,6 +579,8 @@
 	});
 </script>
 
+<EnableHotkey />
+<OnHotkey hotkey="Space" disabled={!spacebarAllowed || isBusy} onpress={spin} />
 <main class:feature-mode={freeSpins > 0} class="forge-shell">
 	<div class="ambient ambient-one"></div>
 	<div class="ambient ambient-two"></div>
@@ -527,18 +618,18 @@
 		<aside class="side-action-rail" aria-label="Game options">
 			<button
 				class="bonus-buy-control"
-				disabled={!canOpenModeSelection}
+				disabled={!canOpenModeSelection || Boolean(stateConfig.jurisdiction?.disabledBuyFeature)}
 				aria-label="Choose play mode or buy Free Spins"
 				onclick={openModeSelection}
 			></button>
 			<div class="quick-controls">
 				<button
 					class="turbo-control"
+					disabled={!turboAllowed}
 					aria-label="Toggle turbo"
 					class:active={turbo}
 					onclick={() => {
-						turbo = !turbo;
-						localStorage.setItem('relic-forge-turbo', String(turbo));
+						toggleTurbo();
 					}}><span>ϟ</span><small>TURBO</small></button
 				><button
 					class="sound-control"
@@ -598,11 +689,11 @@
 				<div class="bet-row">
 					<button
 						aria-label="Decrease bet"
-						disabled={isBusy || freeSpins > 0}
+						disabled={isBusy || freeSpins > 0 || isReplay || replayComplete}
 						onclick={() => changeBet(-1)}>−</button
 					><strong>{formatMoney(bet)}</strong><button
 						aria-label="Increase bet"
-						disabled={isBusy || freeSpins > 0}
+						disabled={isBusy || freeSpins > 0 || isReplay || replayComplete}
 						onclick={() => changeBet(1)}>+</button
 					>
 				</div>
@@ -611,7 +702,14 @@
 		<button
 			class="spin-button"
 			class:pressed={isBusy}
-			disabled={isBusy || phase === 'error' || !activePlayMode?.available}
+			disabled={
+				isBusy ||
+				isReplay ||
+				replayComplete ||
+				financialStateUncertain ||
+				phase === 'error' ||
+				!activePlayMode?.available
+			}
 			onclick={spin}
 			><span class="spin-ring"></span><strong>{isBusy ? 'FORGING' : 'SPIN'}</strong><small
 				>{isBusy
@@ -628,7 +726,13 @@
 	</section>
 	<footer class="footer-note">
 		<span>5 REELS · 3 ROWS · 20 PAYLINES</span><span class="status-dot"></span><span
-			>{stateUrlDerived.sessionID() ? 'STAKE ENGINE SESSION' : 'DEVELOPMENT MOCK MODE'}</span
+			>{isReplay
+				? 'REPLAY'
+				: socialCasino
+					? 'SOCIAL CASINO'
+					: stateUrlDerived.sessionID()
+						? 'STAKE ENGINE SESSION'
+						: 'DEVELOPMENT MOCK MODE'}</span
 		>
 	</footer>
 </main>
@@ -714,7 +818,9 @@
 					substitutes for paying symbols; three Portals awaken the free-spin vault.
 				</p>
 				<div class="paytable-grid">
-					{#each Object.values(SYMBOLS) as symbol}{#if symbol.payouts}<div class="pay-row">
+					{#each Object.values(SYMBOLS) as symbol (symbol.id)}{#if symbol.payouts}<div
+								class="pay-row"
+							>
 								<span
 									class="pay-symbol"
 									data-symbol={symbol.id}
@@ -740,12 +846,8 @@
 						><b>Turbo presentation</b><small
 							>Shortens visual sequences only. It never changes the outcome.</small
 						></span
-					><button
-						class:active={turbo}
-						onclick={() => {
-							turbo = !turbo;
-							localStorage.setItem('relic-forge-turbo', String(turbo));
-						}}>{turbo ? 'ON' : 'OFF'}</button
+					><button disabled={!turboAllowed} class:active={turbo} onclick={toggleTurbo}
+						>{turbo ? 'ON' : 'OFF'}</button
 					>
 				</div>
 				<div class="setting-row">

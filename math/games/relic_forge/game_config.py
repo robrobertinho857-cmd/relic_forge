@@ -15,34 +15,55 @@ from src.config.distributions import Distribution
 
 RELIC_WILD_FEATURES = {
     "standard": {
-        "multiplier_weights": {2: 70, 3: 30},
+        "multiplier_weights": {2: 85, 3: 15},
         "guaranteed_starting_wild": False,
-        "free_reel_weights": {"FR0": 1},
+        "free_reel_weights": {"FR_STANDARD": 1},
         "theme": "standard",
     },
     "super": {
-        "multiplier_weights": {2: 45, 3: 35, 5: 20},
+        "multiplier_weights": {2: 30, 3: 30, 5: 40},
         "guaranteed_starting_wild": True,
-        "free_reel_weights": {"FR0": 1},
+        "free_reel_weights": {"FR_SUPER": 1},
         "theme": "super",
     },
     "mythic": {
-        "multiplier_weights": {5: 60, 10: 30, 20: 10},
+        "multiplier_weights": {5: 45, 10: 30, 20: 25},
         "guaranteed_starting_wild": True,
-        "free_reel_weights": {"FR0": 1},
+        "free_reel_weights": {"FR_MYTHIC": 1},
         "theme": "mythic",
     },
+}
+
+
+# A small, explicit strip adjustment for each bought feature. The mechanic,
+# symbol set and multiplier caps stay unchanged; only the free-spin reel
+# composition is tuned so the three advertised Bonus Buy prices can be
+# analysed against the same 96% target. Replacing Amber stops keeps reel
+# lengths and all other symbol ordering deterministic.
+FREE_REEL_EXTRA_WILDS = {
+    "standard": 0,
+    "super": 8,
+    "mythic": 6,
 }
 
 
 class GameConfig(Config):
     """Relic Forge 5x3 / 20-line development math configuration."""
 
-    def __init__(self):
+    def __init__(self, production=False):
         super().__init__()
         self.game_id = "relic_forge"
-        self.provider_number = 0
+        provider_name = os.environ.get("RELIC_FORGE_PROVIDER_NAME", "relic_forge_development")
+        provider_number = os.environ.get("RELIC_FORGE_PROVIDER_NUMBER", "0")
+        if production and (provider_name == "relic_forge_development" or provider_number == "0"):
+            raise RuntimeError(
+                "Production math requires RELIC_FORGE_PROVIDER_NAME and RELIC_FORGE_PROVIDER_NUMBER "
+                "from Stake; development placeholders are not accepted."
+            )
+        self.provider_name = provider_name
+        self.provider_number = int(provider_number)
         self.working_name = "Relic Forge"
+        self.game_name = "Relic Forge"
         self.win_type = "lines"
         self.rtp = 0.96
         self.wincap = 5000.0
@@ -124,6 +145,23 @@ class GameConfig(Config):
             for reel_id, filename in reel_files.items()
         }
 
+        free_reels = self.reels["FR0"]
+        for variant, extra_wilds in FREE_REEL_EXTRA_WILDS.items():
+            tuned_reels = deepcopy(free_reels)
+            cursors = [0] * len(tuned_reels)
+            for extra_index in range(extra_wilds):
+                reel_index = extra_index % len(tuned_reels)
+                for stop_index in range(cursors[reel_index], len(tuned_reels[reel_index])):
+                    if tuned_reels[reel_index][stop_index] == "amber":
+                        tuned_reels[reel_index][stop_index] = "wild"
+                        cursors[reel_index] = stop_index + 1
+                        break
+                else:
+                    raise RuntimeError(
+                        f"Could not place tuned Relic Wild stop on free reel {reel_index}."
+                    )
+            self.reels[f"FR_{variant.upper()}"] = tuned_reels
+
         self.relic_wild_features = deepcopy(RELIC_WILD_FEATURES)
         self.bet_modes = self._build_bet_modes()
 
@@ -147,11 +185,12 @@ class GameConfig(Config):
             "force_freegame": force_freegame,
         }
 
-    def _base_distributions(self, feature_quota):
+    def _base_distributions(self, feature_quota, basegame_quota):
+        wincap_quota = 0.0001
         return [
             Distribution(
                 criteria="wincap",
-                quota=0.001,
+                quota=wincap_quota,
                 win_criteria=self.wincap,
                 conditions=self._conditions(force_freegame=True, force_wincap=True),
             ),
@@ -162,13 +201,13 @@ class GameConfig(Config):
             ),
             Distribution(
                 criteria="0",
-                quota=0.35,
+                quota=1.0 - wincap_quota - feature_quota - basegame_quota,
                 win_criteria=0.0,
                 conditions=self._conditions(),
             ),
             Distribution(
                 criteria="basegame",
-                quota=max(0.001, 0.999 - feature_quota - 0.35),
+                quota=basegame_quota,
                 conditions=self._conditions(),
             ),
         ]
@@ -177,13 +216,13 @@ class GameConfig(Config):
         return [
             Distribution(
                 criteria="wincap",
-                quota=0.001,
+                quota=0.0001,
                 win_criteria=self.wincap,
                 conditions=self._conditions(variant, force_freegame=True, force_wincap=True),
             ),
             Distribution(
                 criteria="freegame",
-                quota=0.999,
+                quota=0.9999,
                 conditions=self._conditions(variant, force_freegame=True),
             ),
         ]
@@ -202,12 +241,12 @@ class GameConfig(Config):
 
     def _build_bet_modes(self):
         return [
-            self._mode("BASE", 1.0, self._base_distributions(0.08), feature=True, buy_bonus=False),
+            self._mode("BASE", 1.0, self._base_distributions(0.005, 0.083), feature=True, buy_bonus=False),
             self._mode(
-                "FORGE_BOOST", 2.0, self._base_distributions(0.15), feature=True, buy_bonus=False
+                "FORGE_BOOST", 2.0, self._base_distributions(0.01, 0.472), feature=True, buy_bonus=False
             ),
             self._mode(
-                "DRAGON_BOOST", 5.0, self._base_distributions(0.25), feature=True, buy_bonus=False
+                "DRAGON_BOOST", 5.0, self._base_distributions(0.04, 0.847), feature=True, buy_bonus=False
             ),
             self._mode(
                 "STANDARD_BONUS",

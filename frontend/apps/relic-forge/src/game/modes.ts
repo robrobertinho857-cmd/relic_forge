@@ -19,6 +19,7 @@ export type AuthenticatedMode = {
 	mode?: string;
 	costMultiplier?: number;
 	feature?: boolean;
+	buyBonus?: boolean;
 };
 
 export type ResolvedMode = ModeDefinition & {
@@ -144,20 +145,11 @@ export const resolveModes = (
 		}
 
 		const authenticated = findAuthenticatedMode(definition, options.authenticatedModes);
-		if (!authenticated && definition.id === 'normal') {
-			return {
-				...definition,
-				mode: 'BASE',
-				costMultiplier: 1,
-				available: true,
-				source: 'rgs' as const,
-			};
-		}
-
 		const [key, config] = authenticated ?? ['', {}];
 		const configuredCost = Number(config.costMultiplier);
 		const validCost = Number.isFinite(configuredCost) && configuredCost > 0;
-		const featureAllowed = definition.kind !== 'bonus' || config.feature === true;
+		const featureAllowed =
+			definition.kind !== 'bonus' || config.feature === true || config.buyBonus === true;
 		const available = Boolean(
 			authenticated &&
 				validCost &&

@@ -193,7 +193,15 @@ def verify_mode_volatility(name: str, MathStats: object) -> dict:
 
 
 def get_lut_statistics(
-    name, win_distribution, bet_cost, unique_payouts, weight_range, min_win, max_win, num_events
+    name,
+    win_distribution,
+    bet_cost,
+    unique_payouts,
+    weight_range,
+    min_win,
+    max_win,
+    num_events,
+    verify_volatility=True,
 ) -> object:
     """Run RGS statistic tests for upload verification."""
 
@@ -234,14 +242,17 @@ def get_lut_statistics(
     else:
         MathStats.m2m = 0
 
-    verify_mode_volatility(name, MathStats)
+    if verify_volatility:
+        verify_mode_volatility(name, MathStats)
     return MathStats
 
 
-def execute_all_tests(config, excluded_modes=[]):
+def execute_all_tests(config, excluded_modes=None, strict=False):
     """Run all tests for a given game"""
+    excluded_modes = excluded_modes or []
     mode_stats = []
     mode_rtps = []
+    approval_failures = {}
     for bet_mode in config.bet_modes:
         name = bet_mode.get_name()
         cost = bet_mode.get_cost()
@@ -286,7 +297,22 @@ def execute_all_tests(config, excluded_modes=[]):
                 compare_payout_values(book_payouts, lut_payouts)
 
             StatsObject = get_lut_statistics(
-                name, win_dist, cost, lut_payouts, weights_range, min_win, max_win, num_events
+                name,
+                win_dist,
+                cost,
+                lut_payouts,
+                weights_range,
+                min_win,
+                max_win,
+                num_events,
+                verify_volatility=False,
+            )
+            volatility_failures = verify_mode_volatility(name, StatsObject)
+            if volatility_failures:
+                approval_failures[name] = volatility_failures
+            assert max_win <= int(round(bet_mode.get_wincap() * 100)), (
+                f"Wincap exceeded for {name}: {max_win} > "
+                f"{int(round(bet_mode.get_wincap() * 100))}"
             )
             mode_rtps.append(StatsObject.rtp)
             setattr(StatsObject, "name", name)
@@ -296,9 +322,15 @@ def execute_all_tests(config, excluded_modes=[]):
         max_rtp_diff = max(abs(a - b) for a, b in combinations(mode_rtps, 2))
         if max_rtp_diff > 0.05:
             warnings.warn(f"\n\nMode RTP difference exceedes allowed difference for approvals: {max_rtp_diff}\n")
+            approval_failures["mode_rtp_difference"] = max_rtp_diff
 
     fname = f"games/{config.game_id}/library/stats_summary.json"
     write_all_stats(mode_stats, fname)
+    if strict and approval_failures:
+        raise RuntimeError(
+            "Strict RGS verification failed approval checks: "
+            + json.dumps(approval_failures, sort_keys=True)
+        )
 
 
 def write_all_stats(StatsList: object, filename: str) -> None:

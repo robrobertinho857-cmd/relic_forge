@@ -38,7 +38,7 @@
 			{#if mode.kind === 'bonus'}{mode.freeSpins} FREE SPINS{:else}{mode.costMultiplier}× BET{/if}
 		</span>
 		<ul class:boost-list={mode.kind === 'play' && mode.id !== 'normal'}>
-			{#each mode.descriptions as description}
+			{#each mode.descriptions as description (description)}
 				<li>{description}</li>
 			{/each}
 		</ul>

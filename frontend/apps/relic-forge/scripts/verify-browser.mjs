@@ -2,8 +2,10 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import WebSocket from 'ws';
 
-const APP_URL = 'http://localhost:3006/';
+const APP_ORIGIN = process.env.APP_ORIGIN ?? 'http://localhost:3006';
+const APP_URL = `${APP_ORIGIN}/?demo=true`;
 const CDP_PORT = 9333;
 const chromeCandidates = [
 	'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -62,6 +64,8 @@ const networkFailures = [];
 const requestCounts = { authenticate: 0, play: 0, endRound: 0 };
 const playModes = [];
 let serveRecoveryRound = false;
+let serveRestrictedSession = false;
+let replayRequests = 0;
 
 socket.addEventListener('message', (message) => {
 	const payload = JSON.parse(message.data);
@@ -191,6 +195,10 @@ check((await evaluate("document.querySelectorAll('.reel').length")) === 5, '5 re
 check(
 	(await evaluate("document.querySelectorAll('.reel .symbol-cell').length")) === 45,
 	'each reel keeps a reusable nine-symbol strip',
+);
+check(
+	await evaluate("document.querySelector('.cell-index') === null"),
+	'reel cells do not display development row and column indexes',
 );
 await waitFor(
 	`${visibleSymbolsExpression}.every((reel) => reel.length === 3)`,
@@ -425,6 +433,26 @@ check(
 );
 
 const initialBet = await text('.bet-row strong');
+const demoBetLevels = [0.2, 0.5, 1, 2, 5, 10, 20, 50];
+for (let index = 0; index < demoBetLevels.length + 2; index += 1)
+	await click("button[aria-label='Decrease bet']");
+check(moneyValue(await text('.bet-row strong')) === 0.2, 'demo bet stops at the 0.20 minimum');
+for (const expected of demoBetLevels.slice(1)) {
+	await click("button[aria-label='Increase bet']");
+	check(
+		moneyValue(await text('.bet-row strong')) === expected,
+		`demo bet advances to the exact ${expected} level`,
+	);
+}
+await click("button[aria-label='Increase bet']");
+check(moneyValue(await text('.bet-row strong')) === 50, 'demo bet stops at the 50.00 maximum');
+for (
+	let index = 0;
+	index < demoBetLevels.length + 2 && (await text('.bet-row strong')) !== initialBet;
+	index += 1
+)
+	await click("button[aria-label='Decrease bet']");
+check((await text('.bet-row strong')) === initialBet, 'demo bet restores the starting level');
 await click("button[aria-label='Increase bet']");
 check((await text('.bet-row strong')) !== initialBet, 'bet increase works');
 const increasedBet = moneyValue(await text('.bet-row strong'));
@@ -598,6 +626,9 @@ await waitFor(
 	`document.querySelector(".relic-wild-cell[data-multiplier='2']") !== null`,
 	'Standard x2 Relic Wild',
 );
+const firstStandardWildPosition = await evaluate(
+	"document.querySelector(\".variant-standard .relic-wild-cell[data-multiplier='2']\")?.dataset.relicWild ?? ''",
+);
 check(true, 'Standard x2 Relic Wild lands from its authoritative event');
 await waitFor(
 	`document.querySelector(".relic-wild-cell[data-multiplier='3']") !== null`,
@@ -727,13 +758,68 @@ check(
 );
 await captureScreenshot('relic-forge-bonus-buy-final.png');
 await click('.bonus-confirm-actions .buy');
+check(
+	moneyValue(await text('.win-readout strong')) === 0,
+	'Bonus Buy clears the previous Current Win immediately',
+);
 await waitFor("Boolean(document.querySelector('.feature-banner'))", 'purchased Free Spins entry');
 check(true, 'mock Bonus Buy enters Free Spins through the event contract');
+check(
+	moneyValue(await text('.win-readout strong')) === 0 && (await text('.feature-count')) === '8',
+	'Bonus Buy starts with an authoritative zero Current Win and eight Free Spins',
+);
+await waitFor(
+	"document.querySelector('.feature-count')?.textContent?.trim() === '7'",
+	'first purchased Free Spin resolves',
+);
+check(
+	moneyValue(await text('.win-readout strong')) === 0,
+	'the first purchased Free Spin applies its authoritative zero win immediately',
+);
+await waitFor(
+	`document.querySelector(".variant-standard .relic-wild-cell[data-multiplier='2']") !== null`,
+	'purchased Standard receives its first Relic Wild',
+);
+const purchasedStandardWildPosition = await evaluate(
+	"document.querySelector(\".variant-standard .relic-wild-cell[data-multiplier='2']\")?.dataset.relicWild ?? ''",
+);
+check(
+	Boolean(firstStandardWildPosition) &&
+		Boolean(purchasedStandardWildPosition) &&
+		firstStandardWildPosition !== purchasedStandardWildPosition,
+	'mock bonuses generate a fresh Relic Wild position for each new bonus round',
+);
+await waitFor(
+	"document.querySelector('.feature-count')?.textContent?.trim() === '5' && Number(document.querySelector('.win-readout strong')?.textContent?.replace(/[^0-9.-]/g, '')) === 3",
+	'first nonzero purchased Free Spin win presentation',
+);
+check(
+	moneyValue(await text('.win-readout strong')) === 3,
+	'the first nonzero purchased Free Spin updates Current Win immediately',
+);
 await waitForIdle();
 check(
 	moneyValue(await text('.stat-block strong')) === preBonusBalance - 80 + 33,
 	'mock Bonus Buy applies fixture cost and authoritative fixture payout',
 );
+
+await click('.bonus-buy-control');
+await waitFor("Boolean(document.querySelector('.mode-selection-screen'))", 'second Standard mode selection');
+await click(".mode-card[data-mode-id='standard']");
+await waitFor("Boolean(document.querySelector('.bonus-confirm-modal'))", 'second Standard confirmation');
+await click('.bonus-confirm-actions .buy');
+await waitFor(
+	"document.querySelector('.feature-count')?.textContent?.trim() === '7' && document.querySelector('.variant-standard .relic-wild-cell') !== null",
+	'second Standard Free Spins entry',
+);
+const secondPurchasedStandardWildPosition = await evaluate(
+	"document.querySelector(\".variant-standard .relic-wild-cell[data-multiplier='2']\")?.dataset.relicWild ?? ''",
+);
+check(
+	Boolean(secondPurchasedStandardWildPosition) && secondPurchasedStandardWildPosition !== purchasedStandardWildPosition,
+	'separate purchased bonuses receive a fresh Standard Relic Wild position',
+);
+await waitForIdle();
 
 await evaluate(`(() => {
 	Object.assign(window.__relicWildAudit, {
@@ -830,6 +916,43 @@ check(
 	'Mythic final-spin cleanup removes all sticky overlays',
 );
 
+await navigate(APP_URL);
+await evaluate("localStorage.setItem('relic-forge-turbo', 'false'); location.reload(); true");
+await waitFor("Boolean(document.querySelector('.spin-button'))", 'base mode audit reload');
+for (const modeId of ['normal', 'forgeBoost', 'dragonBoost']) {
+	if (modeId !== 'normal') {
+		await click('.active-mode-indicator');
+		await waitFor("Boolean(document.querySelector('.mode-selection-screen'))", `${modeId} mode audit selection`);
+		await click(`.mode-card[data-mode-id='${modeId}']`);
+		await click('.mode-start');
+	}
+	check(
+		await evaluate(`document.querySelector('.active-mode-indicator')?.dataset.activeMode === ${JSON.stringify(modeId)}`),
+		`${modeId} is visibly active before a base spin`,
+	);
+	await click('.spin-button');
+	await waitForIdle();
+	check(!(await evaluate("Boolean(document.querySelector('.error-panel'))")), `${modeId} demo spin completes without an error`);
+}
+await evaluate("document.querySelector('.spin-button')?.focus(); true");
+await send('Input.dispatchKeyEvent', {
+	type: 'keyDown',
+	key: ' ',
+	code: 'Space',
+	windowsVirtualKeyCode: 32,
+	nativeVirtualKeyCode: 32,
+});
+await send('Input.dispatchKeyEvent', {
+	type: 'keyUp',
+	key: ' ',
+	code: 'Space',
+	windowsVirtualKeyCode: 32,
+	nativeVirtualKeyCode: 32,
+});
+await waitFor("document.querySelector('.spin-button')?.disabled === true", 'Spacebar spin start');
+await waitForIdle();
+check(true, 'Spacebar starts one demo spin through the shared hotkey helper');
+
 const jurisdiction = {
 	socialCasino: false,
 	disabledFullscreen: false,
@@ -853,7 +976,7 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 			requestId,
 			responseCode: 204,
 			responseHeaders: [
-				{ name: 'Access-Control-Allow-Origin', value: APP_URL.slice(0, -1) },
+				{ name: 'Access-Control-Allow-Origin', value: APP_ORIGIN },
 				{ name: 'Access-Control-Allow-Headers', value: 'Content-Type' },
 				{ name: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' },
 			],
@@ -867,9 +990,18 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 				betLevels: [1_000_000],
 				betModes: {
 					BASE: { mode: 'BASE', costMultiplier: 1, feature: false },
-					BONUS: { mode: 'BONUS', costMultiplier: 100, feature: true },
+					BONUS: { mode: 'BONUS', costMultiplier: 100, feature: false, buyBonus: true },
 				},
-				jurisdiction,
+				jurisdiction: serveRestrictedSession
+					? {
+							...jurisdiction,
+							socialCasino: true,
+							disabledTurbo: true,
+							disabledSpacebar: true,
+							disabledBuyFeature: true,
+							minimumRoundDuration: 3000,
+						}
+					: jurisdiction,
 			},
 			...(serveRecoveryRound
 				? {
@@ -1017,6 +1149,25 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 							],
 						},
 					};
+	} else if (request.url.includes('/bet/replay/')) {
+		replayRequests += 1;
+		payload = {
+			roundID: 991,
+			amount: 1_000_000,
+			payout: 0,
+			payoutMultiplier: 0,
+			active: false,
+			state: [
+				{ index: 0, type: 'reveal', board: [
+					['dragon', 'ruby', 'sapphire'],
+					['crown', 'emerald', 'amber'],
+					['sword', 'ruby', 'shield'],
+					['emerald', 'dragon', 'crown'],
+					['sapphire', 'amber', 'amber'],
+				] },
+				{ index: 1, type: 'finalWin', amount: 0 },
+			],
+		};
 	} else if (request.url.endsWith('/wallet/end-round')) {
 		requestCounts.endRound += 1;
 		payload = { balance: { amount: 999_000_000, currency: 'USD' } };
@@ -1031,7 +1182,7 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 			responseCode: 200,
 			responseHeaders: [
 				{ name: 'Content-Type', value: 'application/json' },
-				{ name: 'Access-Control-Allow-Origin', value: APP_URL.slice(0, -1) },
+				{ name: 'Access-Control-Allow-Origin', value: APP_ORIGIN },
 			],
 			body: Buffer.from(JSON.stringify(payload)).toString('base64'),
 		});
@@ -1039,7 +1190,7 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 	else fulfill();
 });
 
-await navigate(`${APP_URL}?sessionID=browser-test&rgs_url=mock.local`);
+await navigate(`${APP_ORIGIN}/?sessionID=browser-test&rgs_url=mock.local`);
 await waitFor(
 	"document.querySelector('.footer-note')?.textContent?.includes('STAKE ENGINE SESSION')",
 	'RGS session render',
@@ -1055,17 +1206,18 @@ await waitFor(
 check(true, 'reels keep moving while an authoritative RGS result is delayed');
 await waitForIdle();
 check(requestCounts.play === 1, 'rapid clicks create one RGS play request');
-check(requestCounts.endRound === 1, 'one RGS end-round request executes');
+check(requestCounts.endRound === 0, 'zero-win base rounds close without end-round');
+check(moneyValue(await text('.stat-block strong')) === 999, 'RGS play response updates the authenticated balance');
 
 await click('.spin-button');
 await waitFor("document.querySelector('.spin-button')?.disabled === true", 'second RGS spin start');
 await waitForIdle();
 check(requestCounts.play === 2, 'a later round can start normally');
-check(requestCounts.endRound === 1, 'the same round ID cannot execute end-round twice');
+check(requestCounts.endRound === 0, 'zero-win base rounds remain closed exactly once');
 
 check(
 	await evaluate("document.querySelector('.bonus-buy-control:not([disabled])') !== null"),
-	'RGS Bonus Buy is enabled only from authenticated feature-mode configuration',
+	'RGS Bonus Buy is enabled from authenticated buyBonus configuration',
 );
 await click('.bonus-buy-control');
 await waitFor("Boolean(document.querySelector('.mode-selection-screen'))", 'RGS mode selection');
@@ -1093,10 +1245,11 @@ await waitFor(
 await waitForIdle();
 check(requestCounts.play === 3, 'Bonus Buy creates one RGS play request');
 check(playModes.at(-1) === 'BONUS', 'Bonus Buy sends the authenticated BONUS mode');
-check(requestCounts.endRound === 2, 'purchased feature completes its RGS round once');
+check(requestCounts.endRound === 1, 'purchased feature completes its RGS round once');
+check(moneyValue(await text('.stat-block strong')) === 999, 'RGS end-round response updates the final balance');
 
 serveRecoveryRound = true;
-await navigate(`${APP_URL}?sessionID=recovery-test&rgs_url=mock.local`);
+await navigate(`${APP_ORIGIN}/?sessionID=recovery-test&rgs_url=mock.local`);
 await waitFor(
 	`document.querySelector(".variant-super .relic-wild-cell[data-multiplier='5']") !== null`,
 	'recovered sticky Relic Wild',
@@ -1120,10 +1273,82 @@ check(
 	'refresh recovery authenticates and receives active round state',
 );
 check(requestCounts.play === 3, 'recovery does not place a replacement wager');
-check(requestCounts.endRound === 3, 'recovered round is completed exactly once');
+check(requestCounts.endRound === 2, 'recovered round is completed exactly once');
 check(
 	!(await evaluate("Boolean(document.querySelector('.relic-wild-cell'))")),
 	'recovered feature cleanup removes sticky state',
+);
+
+serveRecoveryRound = false;
+serveRestrictedSession = true;
+await navigate(`${APP_ORIGIN}/?sessionID=restricted-test&rgs_url=mock.local`);
+await waitFor(
+	"document.querySelector('.footer-note')?.textContent?.includes('SOCIAL CASINO')",
+	'restricted social-casino session render',
+);
+check(
+	await evaluate("document.querySelector('.turbo-control')?.disabled === true"),
+	'restricted jurisdiction disables Turbo',
+);
+check(
+	await evaluate("document.querySelector('.bonus-buy-control')?.disabled === true"),
+	'restricted jurisdiction disables Bonus Buy',
+);
+const restrictedPlayCount = requestCounts.play;
+await evaluate(`(() => {
+	window.__restrictedRoundStartedAt = performance.now();
+	window.__restrictedRoundStoppedAt = 0;
+	const markStopped = () => {
+		if (!window.__restrictedRoundStoppedAt && [...document.querySelectorAll('.reel')].every((reel) => reel.dataset.state === 'stopped'))
+			window.__restrictedRoundStoppedAt = performance.now();
+	};
+	window.__restrictedRoundObserver = new MutationObserver(markStopped);
+	window.__restrictedRoundObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['data-state'] });
+	document.querySelector('.spin-button')?.click();
+	return true;
+})()`);
+await waitFor("window.__restrictedRoundStoppedAt > 0", 'minimum round duration result presentation', 20_000);
+const restrictedRoundDuration = await evaluate('window.__restrictedRoundStoppedAt - window.__restrictedRoundStartedAt');
+check(
+		restrictedRoundDuration >= 2900,
+	`minimumRoundDuration delays result presentation (${Math.round(restrictedRoundDuration)}ms)`,
+);
+await waitForIdle();
+await evaluate("document.querySelector('.spin-button')?.focus(); true");
+await send('Input.dispatchKeyEvent', {
+	type: 'keyDown',
+	key: ' ',
+	code: 'Space',
+	windowsVirtualKeyCode: 32,
+	nativeVirtualKeyCode: 32,
+});
+await send('Input.dispatchKeyEvent', {
+	type: 'keyUp',
+	key: ' ',
+	code: 'Space',
+	windowsVirtualKeyCode: 32,
+	nativeVirtualKeyCode: 32,
+});
+await delay(250);
+check(requestCounts.play === restrictedPlayCount + 1, 'restricted jurisdiction blocks Spacebar wagering');
+
+serveRestrictedSession = false;
+const beforeReplayRequests = { ...requestCounts };
+await navigate(
+	`${APP_ORIGIN}/?replay=true&rgs_url=mock.local&game=relic-forge&version=1&mode=BASE&event=0&amount=1000000`,
+);
+await waitFor("document.querySelector('.footer-note')?.textContent?.includes('REPLAY')", 'replay render');
+await waitFor("document.querySelector('.spin-button')?.disabled === true", 'replay completion lock');
+check(replayRequests === 1, 'replay loads one authoritative replay response');
+check(
+	await evaluate("document.querySelector('.bonus-buy-control')?.disabled === true && document.querySelector('.active-mode-indicator')?.disabled === true"),
+	'replay disables Bonus Buy and mode changes',
+);
+await click('.spin-button');
+await delay(100);
+check(
+	requestCounts.play === beforeReplayRequests.play && requestCounts.endRound === beforeReplayRequests.endRound,
+	'replay does not wager or complete a wallet round',
 );
 
 check(

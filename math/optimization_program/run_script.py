@@ -2,6 +2,7 @@ import json
 import toml
 import subprocess
 import os
+import shutil
 from src.config.paths import PATH_TO_GAMES, SETUP_PATH, OPTIMIZATION_PATH, PROJECT_PATH
 
 
@@ -27,14 +28,14 @@ class OptimizationExecution:
         for idx, obj in opt_config.items():
             if idx == mode:
                 params = obj["parameters"]
+        if params is None:
+            raise ValueError(f"Could not load optimization parameters for mode: {mode}")
         params["game_name"] = game_config.game_id
         params["path_to_games"] = "../games/"
         params["run_1000_batch"] = False
         params["bet_type"] = mode
         params["threads_for_fence_construction"] = threads
         params["threads_for_show_construction"] = threads
-
-        assert params is not None, "Could not load optimization parameters."
 
         with open(SETUP_PATH, "w", encoding="UTF-8") as f:
             toml.dump(params, f)
@@ -52,17 +53,29 @@ class OptimizationExecution:
         """Run compiled binary and pip results to terminal."""
         cargo_bin_path = os.path.join(os.path.expanduser("~"), ".cargo", "bin")
         updated_path = cargo_bin_path + os.pathsep + os.environ.get("PATH", "")
+        cargo_name = "cargo.exe" if os.name == "nt" else "cargo"
+        cargo_executable = os.path.join(cargo_bin_path, cargo_name)
+        if not os.path.isfile(cargo_executable):
+            cargo_executable = shutil.which("cargo", path=updated_path)
+        if not cargo_executable:
+            raise RuntimeError(
+                "The official Rust optimizer requires Cargo. Install Rustup/Rust and ensure cargo is available."
+            )
         result = subprocess.run(
-            ["cargo", "run", "--release"],
+            [cargo_executable, "run", "--release"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             cwd=OPTIMIZATION_PATH,
-            check=True,
+            check=False,
             env={**os.environ, "PATH": updated_path},
         )
         if result.returncode == 0:
             print(result.stdout)
-        else:
-            print("Error in optimization program.")
-            print(result.stderr)
+            return
+
+        details = (result.stderr or result.stdout).strip()
+        raise RuntimeError(
+            "The official Rust optimizer failed with exit code "
+            f"{result.returncode}.\n{details}"
+        )

@@ -9,6 +9,7 @@
 		stateModal,
 		stateUi,
 		type AuthenticatedBetMode,
+		type BetToResume,
 	} from 'state-shared';
 	import { API_AMOUNT_MULTIPLIER, MOST_USED_BET_INDEXES } from 'constants-shared/bet';
 
@@ -17,6 +18,26 @@
 	const props: Props = $props();
 
 	let authenticated = $state(false);
+	let authenticationError = $state('');
+
+	const isRecord = (value: unknown): value is Record<string, unknown> =>
+		typeof value === 'object' && value !== null && !Array.isArray(value);
+
+	const toBetToResume = (value: unknown): BetToResume | null => {
+		if (!isRecord(value) || !Array.isArray(value.state) || !value.state.every(isRecord)) return null;
+
+		const round: BetToResume = { state: value.state };
+		if (typeof value.roundID === 'number') round.roundID = value.roundID;
+		if (typeof value.amount === 'number') round.amount = value.amount;
+		if (typeof value.payout === 'number') round.payout = value.payout;
+		if (typeof value.payoutMultiplier === 'number') round.payoutMultiplier = value.payoutMultiplier;
+		if (typeof value.active === 'boolean') round.active = value.active;
+		if (typeof value.mode === 'string') round.mode = value.mode;
+		if (typeof value.event === 'string' || typeof value.event === 'number') {
+			round.event = String(value.event);
+		}
+		return round;
+	};
 
 	const authenticate = async () => {
 		try {
@@ -94,8 +115,9 @@
 				// }
 
 				if (authenticateData.round?.state) {
-					// @ts-ignore
-					stateBet.betToResume = authenticateData.round;
+					const resumableRound = toBetToResume(authenticateData.round);
+					if (!resumableRound) throw new Error('The authenticated round state is invalid.');
+					stateBet.betToResume = resumableRound;
 				}
 
 				if (authenticateData.round?.amount) {
@@ -113,6 +135,7 @@
 			}
 		} catch (error) {
 			console.error(error);
+			authenticationError = 'The Stake session could not be authenticated.';
 			stateModal.modal = { name: 'error', error };
 		}
 	};
@@ -130,30 +153,36 @@
 			event: stateUrlDerived.event(),
 		});
 
-		if (data) {
-			// @ts-ignore
-			stateBet.betToResume = {
-				...data,
-				event: '0',
-				active: true,
-				mode: stateUrlDerived.mode(),
-			};
+		if (data && typeof data === 'object') {
+			const replayData = data as Record<string, unknown>;
+			if (replayData.error) throw replayData.error;
+			const resumableRound = toBetToResume({ ...replayData, mode: stateUrlDerived.mode() });
+			if (!resumableRound) throw new Error('The replay response contained invalid round state.');
+			stateBet.betToResume = resumableRound;
 		}
 	};
 
 	onMount(async () => {
 		if (stateUrlDerived.replay()) {
 			stateUi.config.mode = 'replay';
-			await handleReplay();
+			try {
+				await handleReplay();
+			} catch (error) {
+				console.error(error);
+				authenticationError = 'The replay could not be loaded.';
+			}
 		} else {
 			stateUi.config.mode = 'default';
 			await authenticate();
 		}
 
-		authenticated = true;
+		 authenticated = !authenticationError;
 	});
 </script>
 
-{#if authenticated}
+
+{#if authenticationError}
+	<main class="session-error" role="alert"><h1>Relic Forge</h1><p>{authenticationError}</p></main>
+{:else if authenticated}
 	{@render props.children()}
 {/if}

@@ -28,6 +28,7 @@ const lang = () =>
 const sessionID = () => getUrlSearchParam('sessionID') || '';
 const rgsUrl = () => getUrlSearchParam('rgs_url') || '';
 const social = () => getUrlSearchParam('social') === 'true';
+const demo = () => getUrlSearchParam('demo') === 'true';
 
 // params for replay
 const replay = () => getUrlSearchParam('replay') === 'true';
@@ -43,6 +44,7 @@ export const stateUrlDerived = {
 	sessionID,
 	rgsUrl,
 	social,
+	demo,
 	// states for replay
 	replay,
 	amount,

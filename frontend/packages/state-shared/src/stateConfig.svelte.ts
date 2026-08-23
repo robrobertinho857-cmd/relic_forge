@@ -2,6 +2,7 @@ export type AuthenticatedBetMode = {
 	mode?: string;
 	costMultiplier?: number;
 	feature?: boolean;
+	buyBonus?: boolean;
 };
 
 export const stateConfig = $state({

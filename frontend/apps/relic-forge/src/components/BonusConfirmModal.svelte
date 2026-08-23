@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ResolvedMode } from '../game/modes';
+	import { formatCurrency } from '../game/currency';
 
 	type Props = {
 		mode: ResolvedMode;
@@ -12,12 +13,7 @@
 	};
 
 	const { mode, bet, balance, currency, canBuy, oncancel, onconfirm }: Props = $props();
-	const formatMoney = (amount: number) =>
-		new Intl.NumberFormat(undefined, {
-			style: 'currency',
-			currency,
-			minimumFractionDigits: 2,
-		}).format(amount);
+	const formatMoney = (amount: number) => formatCurrency(amount, currency);
 	const totalCost = $derived(bet * mode.costMultiplier);
 </script>
 

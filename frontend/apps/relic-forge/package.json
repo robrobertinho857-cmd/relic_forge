@@ -13,21 +13,23 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"eslint": "9.21.0",
-		"eslint-config-custom": "workspace:*",
+		"@sveltejs/vite-plugin-svelte": "5.0.3",
+		"config-svelte": "workspace:*",
 		"config-ts": "workspace:*",
 		"config-vite": "workspace:*",
-		"config-svelte": "workspace:*",
-		"@sveltejs/vite-plugin-svelte": "5.0.3"
+		"eslint": "9.21.0",
+		"eslint-config-custom": "workspace:*",
+		"svelte-check": "4.1.4",
+		"ws": "8.18.3"
 	},
 	"dependencies": {
-		"svelte": "5.20.5",
-		"vite": "6.2.0",
 		"@sveltejs/kit": "2.17.3",
 		"components-shared": "workspace:*",
 		"components-ui-html": "workspace:*",
 		"constants-shared": "workspace:*",
 		"rgs-requests": "workspace:*",
-		"state-shared": "workspace:*"
+		"state-shared": "workspace:*",
+		"svelte": "5.20.5",
+		"vite": "6.2.0"
 	}
 }

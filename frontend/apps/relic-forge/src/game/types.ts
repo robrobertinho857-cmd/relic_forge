@@ -64,5 +64,22 @@ export type RoundState = {
 	presentationNormalized?: boolean;
 };
 
+export const ROUND_EVENT_TYPES = new Set([
+	'reveal',
+	'winInfo',
+	'setWin',
+	'setTotalWin',
+	'freeSpinTrigger',
+	'updateFreeSpin',
+	'freeSpinEnd',
+	'finalWin',
+	'newRelicWilds',
+	'relicWildState',
+	'relicWildWin',
+	'updateGlobalMult',
+	'multiplier',
+	'wincap',
+]);
+
 export type Balance = { amount: number; currency: string };
 export type SpinResult = { round: RoundState; balance?: Balance };

@@ -47,6 +47,6 @@
 	};
 </script>
 
-{#each matrix as reel, reelIndex}
+{#each matrix as reel, reelIndex (reelIndex)}
 	<Reel bind:this={reels[reelIndex]} {reelIndex} initialSymbols={reel} />
 {/each}

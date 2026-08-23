@@ -248,11 +248,12 @@ def output_lookup_and_force_files(
                 outfile.write(infile.read())
 
     # Write _0 file if it does not exist
-    if not (os.path.exists(gamestate.output_files.get_optimized_lookup_name(betmode))):
-        shutil.copy(
-            gamestate.output_files.get_final_lookup_name(betmode),
-            gamestate.output_files.get_optimized_lookup_name(betmode),
-        )
+    final_lookup = gamestate.output_files.get_final_lookup_name(betmode)
+    optimized_lookup = gamestate.output_files.get_optimized_lookup_name(betmode)
+    # A newly generated base lookup invalidates an older optimized copy. Keep
+    # an optimizer result only when it is newer than the source lookup.
+    if not os.path.exists(optimized_lookup) or os.path.getmtime(optimized_lookup) <= os.path.getmtime(final_lookup):
+        shutil.copy(final_lookup, optimized_lookup)
     with open(
         gamestate.output_files.get_final_segmented_name(betmode),
         "w",

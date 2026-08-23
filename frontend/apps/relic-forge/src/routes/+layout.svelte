@@ -3,9 +3,11 @@
 	import { GlobalStyle } from 'components-ui-html';
 	import Game from '../components/Game.svelte';
 	import SessionGate from '../components/SessionGate.svelte';
+	import { setContext } from '../game/context';
 
 	type Props = { children: Snippet };
 	const props: Props = $props();
+	setContext();
 </script>
 
 <GlobalStyle>

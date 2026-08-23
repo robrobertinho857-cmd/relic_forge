@@ -407,13 +407,6 @@ button:focus-visible {
 .symbol-name {
 	display: none;
 }
-.cell-index {
-	position: absolute;
-	bottom: 7px;
-	color: #747b76;
-	font-size: 7px;
-	letter-spacing: 0.1em;
-}
 .symbol-wild {
 	background: radial-gradient(circle, rgba(98, 189, 137, 0.28), #111d19 70%);
 	border-color: rgba(98, 189, 137, 0.55);
@@ -1538,10 +1531,6 @@ button:focus-visible {
 	.symbol-name {
 		font-size: 6px;
 		margin-top: 4px;
-	}
-	.cell-index {
-		bottom: 4px;
-		font-size: 6px;
 	}
 	.stage-heading {
 		font-size: 7px;

@@ -128,11 +128,11 @@ export const PAYLINES: number[][] = [
 
 export const REEL_COUNT = 5;
 export const ROW_COUNT = 3;
-export const BET_LEVELS = [0.2, 0.5, 1, 2, 5, 10];
+export const BET_LEVELS = [0.2, 0.5, 1, 2, 5, 10, 20, 50];
 export const INITIAL_MATRIX: SymbolId[][] = [
 	['dragon', 'ruby', 'sapphire'],
 	['crown', 'emerald', 'amber'],
 	['sword', 'ruby', 'shield'],
 	['emerald', 'dragon', 'crown'],
-	['sapphire', 'amber', 'wild'],
+	['sapphire', 'amber', 'amber'],
 ];
