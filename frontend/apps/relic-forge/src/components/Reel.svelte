@@ -13,8 +13,13 @@
 		| 'settling'
 		| 'stopped';
 
-	type Props = { reelIndex: number; initialSymbols: SymbolId[] };
-	const { reelIndex, initialSymbols }: Props = $props();
+	type Props = {
+		reelIndex: number;
+		initialSymbols: SymbolId[];
+		highlightedRows: number[];
+		presentationActive: boolean;
+	};
+	const { reelIndex, initialSymbols, highlightedRows, presentationActive }: Props = $props();
 
 	let viewport: HTMLDivElement;
 	let strip: HTMLDivElement;
@@ -57,6 +62,17 @@
 	};
 
 	const stripCells = () => Array.from(strip.children);
+	const applyLinePresentation = () => {
+		if (!strip) return;
+		const cells = stripCells();
+		for (const cell of cells) {
+			cell.classList.remove('line-winning-symbol', 'line-dimmed-symbol');
+		}
+		if (!presentationActive) return;
+		cells.slice(4, 7).forEach((cell, row) => {
+			cell.classList.add(highlightedRows.includes(row) ? 'line-winning-symbol' : 'line-dimmed-symbol');
+		});
+	};
 
 	const setStripSymbols = (symbols: SymbolId[]) => {
 		stripCells().forEach((cell, index) => updateCell(cell, symbols[index]));
@@ -151,6 +167,7 @@
 		]);
 		offset = 0;
 		render();
+		applyLinePresentation();
 		stripCells()
 			.slice(4, 7)
 			.forEach((cell) => {
@@ -158,6 +175,12 @@
 				if (symbol === 'wild' || symbol === 'scatter') cell.classList.add('special-landed');
 			});
 	};
+
+	$effect(() => {
+		highlightedRows;
+		presentationActive;
+		applyLinePresentation();
+	});
 
 	export const start = (profile: SpinTimingProfile) => {
 		cancelAnimationFrame(animationFrame);

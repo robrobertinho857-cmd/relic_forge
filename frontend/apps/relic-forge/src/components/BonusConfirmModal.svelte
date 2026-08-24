@@ -5,16 +5,35 @@
 	type Props = {
 		mode: ResolvedMode;
 		bet: number;
+		betLevels: number[];
 		balance: number;
 		currency: string;
 		canBuy: boolean;
+		canChangeBet: boolean;
 		oncancel: () => void;
 		onconfirm: () => void;
+		onchangebet: (direction: -1 | 1) => void;
 	};
 
-	const { mode, bet, balance, currency, canBuy, oncancel, onconfirm }: Props = $props();
+	const {
+		mode,
+		bet,
+		betLevels,
+		balance,
+		currency,
+		canBuy,
+		canChangeBet,
+		oncancel,
+		onconfirm,
+		onchangebet,
+	}: Props = $props();
 	const formatMoney = (amount: number) => formatCurrency(amount, currency);
 	const totalCost = $derived(bet * mode.costMultiplier);
+	const betIndex = $derived(betLevels.findIndex((level) => level === bet));
+	const canDecreaseBet = $derived(canChangeBet && betIndex > 0);
+	const canIncreaseBet = $derived(
+		canChangeBet && betIndex >= 0 && betIndex < betLevels.length - 1,
+	);
 </script>
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && oncancel()} />
@@ -46,15 +65,29 @@
 					<dt>COST</dt>
 					<dd>{mode.costMultiplier}× CURRENT BET</dd>
 				</div>
-				<div>
-					<dt>CURRENT BET</dt>
-					<dd>{formatMoney(bet)}</dd>
-				</div>
 				<div class="total">
 					<dt>TOTAL COST</dt>
 					<dd>{formatMoney(totalCost)}</dd>
 				</div>
 			</dl>
+			<div class="bonus-confirm-bet" aria-label="Bonus Buy bet controls">
+				<span>BET</span>
+				<div>
+					<button
+						type="button"
+						aria-label="Decrease Bonus Buy bet"
+						disabled={!canDecreaseBet}
+						onclick={() => onchangebet(-1)}>−</button
+					>
+					<strong>{formatMoney(bet)}</strong>
+					<button
+						type="button"
+						aria-label="Increase Bonus Buy bet"
+						disabled={!canIncreaseBet}
+						onclick={() => onchangebet(1)}>+</button
+					>
+				</div>
+			</div>
 			{#if totalCost > balance}<p class="insufficient">INSUFFICIENT BALANCE</p>{/if}
 			<div class="bonus-confirm-actions">
 				<button type="button" class="cancel" onclick={oncancel}>CANCEL</button>
@@ -181,6 +214,51 @@
 		color: color-mix(in srgb, var(--bonus-accent) 55%, #fff1ad);
 		font-family: var(--display-font, Georgia, serif);
 		font-size: clamp(14px, 2vw, 24px);
+	}
+	.bonus-confirm-bet {
+		display: grid;
+		width: 92%;
+		gap: 5px;
+		margin-top: 2.5%;
+		color: #a99b78;
+		font-size: clamp(7px, 0.9vw, 10px);
+		font-weight: 800;
+		letter-spacing: 0.12em;
+	}
+	.bonus-confirm-bet > div {
+		display: grid;
+		grid-template-columns: 38px minmax(0, 1fr) 38px;
+		align-items: center;
+		gap: 8px;
+		min-height: 42px;
+		padding: 3px 8px;
+		border: 1px solid rgba(205, 165, 74, 0.35);
+		background: rgba(1, 8, 10, 0.7);
+	}
+	.bonus-confirm-bet button {
+		display: grid;
+		width: 34px;
+		height: 34px;
+		place-items: center;
+		border: 1px solid color-mix(in srgb, var(--bonus-accent) 45%, #b88932);
+		border-radius: 50%;
+		background: radial-gradient(circle, rgba(13, 83, 46, 0.96), rgba(2, 20, 11, 0.98));
+		color: #ffe28a;
+		font-size: 22px;
+		font-weight: 900;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.bonus-confirm-bet button:disabled {
+		opacity: 0.35;
+		cursor: not-allowed;
+	}
+	.bonus-confirm-bet strong {
+		color: #fff0be;
+		font-family: var(--display-font, Georgia, serif);
+		font-size: clamp(15px, 2vw, 22px);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: 0.03em;
 	}
 	.insufficient {
 		margin: 2% 0 0;

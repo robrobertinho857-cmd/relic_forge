@@ -24,6 +24,11 @@ export type GamePhase =
 	| 'error';
 
 export type Position = { reel: number; row: number };
+export type PaylineWin = {
+	lineIndex: number;
+	win: number;
+	positions: Position[];
+};
 export type RelicWildVariant = 'standard' | 'super' | 'mythic';
 export type RelicWildState = Position & { multiplier: number };
 export type RelicWildWinLine = {

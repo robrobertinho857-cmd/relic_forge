@@ -4,6 +4,7 @@ import { stateBet, stateUrlDerived } from 'state-shared';
 import type {
 	RelicWildState,
 	RelicWildVariant,
+	Position,
 	ReelMatrix,
 	RoundEvent,
 	RoundState,
@@ -57,14 +58,15 @@ type FeatureSpin = {
 		baseWin: number;
 		multiplier: number;
 		win: number;
+		positions: Position[];
 		participants: RelicWildState[];
 	}>;
 };
 
-const featureBoard = (wilds: RelicWildState[], winningLine = false): unknown[][] => {
+const featureBoard = (wilds: RelicWildState[], wins: FeatureSpin['wins'] = []): unknown[][] => {
 	const board: unknown[][] = INITIAL_MATRIX.map((reel) => [...reel]);
-	if (winningLine) {
-		for (let reel = 0; reel < board.length; reel += 1) board[reel][1] = 'amber';
+	for (const win of wins) {
+		for (const position of win.positions) board[position.reel][position.row] = 'amber';
 	}
 	for (const wild of wilds) {
 		board[wild.reel][wild.row] = {
@@ -92,6 +94,7 @@ const FEATURE_SCENARIOS: Record<RelicWildVariant, FeatureSpin[]> = {
 					baseWin: 75,
 					multiplier: 2,
 					win: 150,
+					positions: [0, 1, 2, 3, 4].map((reel) => ({ reel, row: 1 })),
 					participants: [{ reel: 1, row: 1, multiplier: 2 }],
 				},
 				{
@@ -99,6 +102,10 @@ const FEATURE_SCENARIOS: Record<RelicWildVariant, FeatureSpin[]> = {
 					baseWin: 75,
 					multiplier: 2,
 					win: 150,
+					positions: [0, 1, 2, 3, 4].map((reel, index) => ({
+						reel,
+						row: [0, 1, 1, 1, 2][index],
+					})),
 					participants: [{ reel: 1, row: 1, multiplier: 2 }],
 				},
 			],
@@ -122,6 +129,7 @@ const FEATURE_SCENARIOS: Record<RelicWildVariant, FeatureSpin[]> = {
 					baseWin: 600,
 					multiplier: 5,
 					win: 3000,
+					positions: [0, 1, 2, 3, 4].map((reel) => ({ reel, row: 1 })),
 					participants: [
 						{ reel: 1, row: 1, multiplier: 2 },
 						{ reel: 3, row: 1, multiplier: 3 },
@@ -163,6 +171,7 @@ const FEATURE_SCENARIOS: Record<RelicWildVariant, FeatureSpin[]> = {
 					baseWin: 600,
 					multiplier: 8,
 					win: 4800,
+					positions: [0, 1, 2, 3, 4].map((reel) => ({ reel, row: 1 })),
 					participants: [
 						{ reel: 2, row: 1, multiplier: 3 },
 						{ reel: 4, row: 1, multiplier: 5 },
@@ -210,6 +219,7 @@ const FEATURE_SCENARIOS: Record<RelicWildVariant, FeatureSpin[]> = {
 					baseWin: 600,
 					multiplier: 35,
 					win: 21_000,
+					positions: [0, 1, 2, 3, 4].map((reel) => ({ reel, row: 1 })),
 					participants: [
 						{ reel: 1, row: 1, multiplier: 10 },
 						{ reel: 3, row: 1, multiplier: 20 },
@@ -293,7 +303,7 @@ const createFeatureEvents = (
 		.map((spin) => remapFeatureSpin(spin, positions))
 		.forEach((spin, spinIndex) => {
 			events.push({ type: 'updateFreeSpin', amount: spinIndex, total: 8 });
-			events.push({ type: 'reveal', board: featureBoard(spin.wilds, Boolean(spin.wins?.length)) });
+			events.push({ type: 'reveal', board: featureBoard(spin.wilds, spin.wins) });
 			if (spin.newWilds?.length) {
 				events.push({ type: 'newRelicWilds', variant, wilds: spin.newWilds });
 			}
@@ -306,7 +316,23 @@ const createFeatureEvents = (
 				cleared: false,
 			});
 			if (spin.totalWin && spin.wins?.length) {
-				events.push({ type: 'winInfo', totalWin: spin.totalWin });
+				events.push({
+					type: 'winInfo',
+					totalWin: spin.totalWin,
+					wins: spin.wins.map((win) => ({
+						symbol: 'amber',
+						kind: win.positions.length,
+						win: win.win,
+						positions: win.positions,
+						meta: {
+							lineIndex: win.lineIndex,
+							multiplier: win.multiplier,
+							winWithoutMult: win.baseWin,
+							globalMult: 1,
+							lineMultiplier: win.multiplier,
+						},
+					})),
+				});
 				events.push({
 					type: 'relicWildWin',
 					totalWin: spin.totalWin,
@@ -358,6 +384,26 @@ const mockLossRound = (roundID: number): MockRoundFixture => ({
 	],
 });
 
+const mockPaylineWinEvent = (totalWin: number): RoundEvent => ({
+	type: 'winInfo',
+	totalWin,
+	wins: [
+		{
+			symbol: 'crown',
+			kind: 5,
+			win: totalWin,
+			positions: [0, 1, 2, 3, 4].map((reel) => ({ reel, row: 0 })),
+			meta: {
+				lineIndex: 1,
+				multiplier: 1,
+				winWithoutMult: totalWin,
+				globalMult: 1,
+				lineMultiplier: 1,
+			},
+		},
+	],
+});
+
 const MOCK_ROUNDS: MockRoundFixture[] = [
 	mockLossRound(1),
 	{
@@ -365,7 +411,7 @@ const MOCK_ROUNDS: MockRoundFixture[] = [
 		payoutMultiplier: 8,
 		state: [
 			{ index: 0, type: 'reveal', board: WILD_WIN_MATRIX },
-			{ index: 1, type: 'winInfo', totalWin: 800 },
+			{ ...mockPaylineWinEvent(800), index: 1 },
 			{ index: 2, type: 'finalWin', amount: 800 },
 		],
 	},
@@ -381,7 +427,7 @@ const MOCK_ROUNDS: MockRoundFixture[] = [
 		payoutMultiplier: 30,
 		state: [
 			{ index: 0, type: 'reveal', board: WILD_WIN_MATRIX },
-			{ index: 1, type: 'winInfo', totalWin: 3000 },
+			{ ...mockPaylineWinEvent(3000), index: 1 },
 			{ index: 2, type: 'finalWin', amount: 3000 },
 		],
 	},
@@ -391,7 +437,7 @@ const MOCK_ROUNDS: MockRoundFixture[] = [
 		payoutMultiplier: 80,
 		state: [
 			{ index: 0, type: 'reveal', board: WILD_WIN_MATRIX },
-			{ index: 1, type: 'winInfo', totalWin: 8000 },
+			{ ...mockPaylineWinEvent(8000), index: 1 },
 			{ index: 2, type: 'finalWin', amount: 8000 },
 		],
 	},
@@ -458,14 +504,26 @@ const normalizeBookEvent = (event: RoundEvent, bet: number): RoundEvent => {
 	if (event.type === 'relicWildState') {
 		normalized.featureWin = bookAmountToDisplay(event.featureWin, bet) as number | undefined;
 	}
-	if (event.type === 'relicWildWin' && Array.isArray(event.wins)) {
+	if ((event.type === 'winInfo' || event.type === 'relicWildWin') && Array.isArray(event.wins)) {
 		normalized.wins = event.wins.map((entry) => {
 			if (typeof entry !== 'object' || entry === null) return entry;
 			const win = entry as Record<string, unknown>;
+			const meta =
+				typeof win.meta === 'object' && win.meta !== null
+					? (win.meta as Record<string, unknown>)
+					: undefined;
 			return {
 				...win,
 				baseWin: bookAmountToDisplay(win.baseWin, bet),
 				win: bookAmountToDisplay(win.win, bet),
+				...(meta
+					? {
+							meta: {
+								...meta,
+								winWithoutMult: bookAmountToDisplay(meta.winWithoutMult, bet),
+							},
+						}
+					: {}),
 			};
 		});
 	}

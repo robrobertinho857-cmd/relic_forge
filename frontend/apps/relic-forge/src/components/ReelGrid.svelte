@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Reel from './Reel.svelte';
 	import { getSpinTiming } from '../game/spinConfig';
-	import type { ReelMatrix } from '../game/types';
+	import type { Position, ReelMatrix } from '../game/types';
 
 	type ReelController = {
 		start: (profile: ReturnType<typeof getSpinTiming>) => void;
@@ -14,8 +14,12 @@
 		reset: (result: ReelMatrix[number]) => void;
 	};
 
-	type Props = { matrix: ReelMatrix };
-	const { matrix }: Props = $props();
+	type Props = {
+		matrix: ReelMatrix;
+		highlightedPositions: Position[];
+		presentationActive: boolean;
+	};
+	const { matrix, highlightedPositions, presentationActive }: Props = $props();
 	let reels: ReelController[] = [];
 	let activeTurbo = false;
 
@@ -48,5 +52,13 @@
 </script>
 
 {#each matrix as reel, reelIndex (reelIndex)}
-	<Reel bind:this={reels[reelIndex]} {reelIndex} initialSymbols={reel} />
+	<Reel
+		bind:this={reels[reelIndex]}
+		{reelIndex}
+		initialSymbols={reel}
+		highlightedRows={highlightedPositions
+			.filter((position) => position.reel === reelIndex)
+			.map((position) => position.row)}
+		{presentationActive}
+	/>
 {/each}

@@ -5,10 +5,11 @@
 		wilds: RelicWildState[];
 		variant: RelicWildVariant;
 		activatingKeys: string[];
+		winningKeys: string[];
 		spinning: boolean;
 	};
 
-	const { wilds, variant, activatingKeys, spinning }: Props = $props();
+	const { wilds, variant, activatingKeys, winningKeys, spinning }: Props = $props();
 	const keyFor = (wild: RelicWildState) => `${wild.reel}:${wild.row}`;
 </script>
 
@@ -17,6 +18,7 @@
 		<div
 			class="relic-wild-cell"
 			class:activating={activatingKeys.includes(keyFor(wild))}
+			class:winning={winningKeys.includes(keyFor(wild))}
 			data-relic-wild={keyFor(wild)}
 			data-multiplier={wild.multiplier}
 			style={`grid-column: ${wild.reel + 1}; grid-row: ${wild.row + 1}`}
@@ -121,6 +123,16 @@
 	.activating {
 		animation: relic-forge-in 720ms cubic-bezier(0.16, 0.84, 0.25, 1);
 	}
+	.winning {
+		z-index: 2;
+		filter: brightness(1.3) saturate(1.18);
+		box-shadow:
+			inset 0 0 0 3px rgba(7, 10, 8, 0.82),
+			inset 0 0 30px color-mix(in srgb, var(--relic-accent) 46%, transparent),
+			0 0 15px var(--relic-accent),
+			0 0 25px rgba(255, 206, 77, 0.65);
+		animation: relic-winning-line 520ms ease-in-out infinite alternate;
+	}
 	.spinning .relic-wild-cell {
 		filter: brightness(1.08);
 	}
@@ -148,6 +160,12 @@
 		to {
 			opacity: 0.75;
 			transform: scale(1.12);
+		}
+	}
+	@keyframes relic-winning-line {
+		to {
+			filter: brightness(1.58) saturate(1.28);
+			transform: scale(1.035);
 		}
 	}
 

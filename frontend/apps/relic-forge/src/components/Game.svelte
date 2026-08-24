@@ -22,6 +22,7 @@
 	import { GAME_ASSETS } from '../game/assets';
 	import type {
 		GamePhase,
+		PaylineWin,
 		RelicWildState,
 		RelicWildVariant,
 		RelicWildWinLine,
@@ -33,6 +34,7 @@
 	import BonusConfirmModal from './BonusConfirmModal.svelte';
 	import ModeSelection from './ModeSelection.svelte';
 	import MultiplierCombine from './MultiplierCombine.svelte';
+	import PaylineOverlay from './PaylineOverlay.svelte';
 	import RelicWildOverlay from './RelicWildOverlay.svelte';
 	import ReelGrid from './ReelGrid.svelte';
 
@@ -58,6 +60,7 @@
 	let activatingRelicWildKeys = $state<string[]>([]);
 	let relicWildVariant = $state<RelicWildVariant>('standard');
 	let relicWildWinLine = $state<RelicWildWinLine | null>(null);
+	let activePayline = $state<PaylineWin | null>(null);
 	let winTier = $state<'normal' | 'big' | 'mega'>('normal');
 	let errorMessage = $state('');
 	let showPaytable = $state(false);
@@ -69,7 +72,10 @@
 	let soundEnabled = $state(true);
 	let turbo = $state(false);
 	let reelGrid = $state<ReelGridController>();
-	let baseSpinAudio: HTMLAudioElement | undefined;
+	let audioContext: AudioContext | undefined;
+	let spinBuffer: AudioBuffer | undefined;
+	let spinSource: AudioBufferSourceNode | undefined;
+	let spinGain: GainNode | undefined;
 	let roundInFlight = false;
 	let roundStartedAt = 0;
 	let financialStateUncertain = $state(false);
@@ -135,7 +141,7 @@
 	);
 	let canOpenModeSelection = $derived(
 		Boolean(
-				!isReplay &&
+			!isReplay &&
 				!replayComplete &&
 				!financialStateUncertain &&
 				!isBusy &&
@@ -151,6 +157,18 @@
 				bet * pendingBonusMode.costMultiplier > 0 &&
 				bet * pendingBonusMode.costMultiplier <= balance,
 		),
+	);
+	let canChangeBet = $derived(
+		!isBusy &&
+			freeSpins <= 0 &&
+			!isReplay &&
+			!replayComplete &&
+			!financialStateUncertain &&
+			betLevels.length > 0,
+	);
+	let activePaylinePositions = $derived(activePayline?.positions ?? []);
+	let activePaylineKeys = $derived(
+		activePaylinePositions.map((position) => `${position.reel}:${position.row}`),
 	);
 
 	const wait = (ms: number) =>
@@ -216,6 +234,50 @@
 					];
 				})
 			: [];
+	const paylineWinsFrom = (value: unknown): PaylineWin[] => {
+		if (value === undefined) return [];
+		if (!Array.isArray(value)) throw new Error('The win event contained an invalid wins list.');
+		return value.map((entry, winIndex) => {
+			if (typeof entry !== 'object' || entry === null)
+				throw new Error(`The win event contained an invalid line at position ${winIndex}.`);
+			const win = entry as Record<string, unknown>;
+			const meta =
+				typeof win.meta === 'object' && win.meta !== null
+					? (win.meta as Record<string, unknown>)
+					: undefined;
+			const lineIndex = Number(meta?.lineIndex);
+			const lineWin = Number(win.win);
+			if (!Number.isInteger(lineIndex) || lineIndex < 1 || lineIndex > 20)
+				throw new Error(`The win event contained an invalid payline index: ${lineIndex}.`);
+			if (!Number.isFinite(lineWin) || lineWin < 0)
+				throw new Error(`The win event contained an invalid amount for line ${lineIndex}.`);
+			if (!Array.isArray(win.positions) || win.positions.length === 0)
+				throw new Error(`The win event did not provide positions for line ${lineIndex}.`);
+			const positions = win.positions.map((position, positionIndex) => {
+				if (typeof position !== 'object' || position === null)
+					throw new Error(
+						`The win event contained an invalid position ${positionIndex} for line ${lineIndex}.`,
+					);
+				const candidate = position as { reel?: unknown; row?: unknown };
+				const reel = Number(candidate.reel);
+				const row = Number(candidate.row);
+				if (
+					!Number.isInteger(reel) ||
+					!Number.isInteger(row) ||
+					reel < 0 ||
+					reel >= REEL_COUNT ||
+					row < 0 ||
+					row >= ROW_COUNT
+				)
+					throw new Error(`The win event contained an out-of-range position for line ${lineIndex}.`);
+				return { reel, row };
+			});
+			const uniquePositions = new Set(positions.map(({ reel, row }) => `${reel}:${row}`));
+			if (uniquePositions.size !== positions.length)
+				throw new Error(`The win event contained duplicate positions for line ${lineIndex}.`);
+			return { lineIndex, win: lineWin, positions };
+		});
+	};
 	const relicKey = (wild: RelicWildState) => `${wild.reel}:${wild.row}`;
 	const mergeRelicWilds = (current: RelicWildState[], incoming: RelicWildState[]) => {
 		// This Map is a local reduction, not component state.
@@ -302,6 +364,17 @@
 		if (event.type === 'finalWin')
 			applyAuthoritativeWin(event.amount, totalFreeSpins > 0 || freeSpins > 0);
 	};
+	const presentPaylines = async (wins: unknown) => {
+		const paylines = paylineWinsFrom(wins);
+		if (!paylines.length) return;
+		for (const payline of paylines) {
+			activePayline = payline;
+			phase = 'presentingWin';
+			await wait(650);
+		}
+		activePayline = null;
+		phase = freeSpins > 0 ? 'freeSpins' : 'revealing';
+	};
 
 	const countUpWin = async (target: number) => {
 		const startingValue = displayedWin;
@@ -313,11 +386,30 @@
 		}
 		displayedWin = target;
 	};
-	const stopSpinAudio = () => {
-		for (const audio of [baseSpinAudio]) {
-			audio?.pause();
-			if (audio) audio.currentTime = 0;
+	const decodeDataUrl = (url: string) => {
+		const base64 = url.split(',')[1];
+		const binary = atob(base64);
+		const bytes = new Uint8Array(binary.length);
+
+		for (let i = 0; i < binary.length; i += 1) {
+			bytes[i] = binary.charCodeAt(i);
 		}
+
+		return bytes.buffer;
+	};
+
+	const stopSpinAudio = () => {
+		try {
+			spinSource?.stop();
+		} catch {
+			// already stopped
+		}
+
+		spinSource?.disconnect();
+		spinGain?.disconnect();
+
+		spinSource = undefined;
+		spinGain = undefined;
 	};
 	const toggleSound = () => {
 		soundEnabled = !soundEnabled;
@@ -331,7 +423,34 @@
 	const playSpinSound = () => {
 		if (!soundEnabled) return;
 		stopSpinAudio();
-		void baseSpinAudio?.play().catch(() => undefined);
+
+		void (async () => {
+			audioContext ??= new AudioContext();
+
+			if (audioContext.state === 'suspended') {
+				await audioContext.resume();
+			}
+
+			spinBuffer ??= await audioContext.decodeAudioData(
+				decodeDataUrl(GAME_ASSETS.sounds.spinBase),
+			);
+
+			const source = audioContext.createBufferSource();
+			const gain = audioContext.createGain();
+
+			source.buffer = spinBuffer;
+			source.loop = true;
+
+			gain.gain.value = 0.62;
+
+			source.connect(gain);
+			gain.connect(audioContext.destination);
+
+			source.start();
+
+			spinSource = source;
+			spinGain = gain;
+		})().catch(() => undefined);
 	};
 
 	const processRound = async (round: RoundState, spinAlreadyStarted = false) => {
@@ -364,6 +483,7 @@
 		}
 		for (const event of events) {
 			if (event.type === 'reveal') {
+				activePayline = null;
 				const authoritativeMatrix = matrixFrom(event.board);
 				if (revealCount > 0) {
 					if (freeSpins > 0)
@@ -387,6 +507,7 @@
 				continue;
 			}
 			applyEvent(event);
+			if (event.type === 'winInfo') await presentPaylines(event.wins);
 			if (event.type === 'freeSpinTrigger') await wait(700);
 			if (event.type === 'newRelicWilds') {
 				emitRelicAudioHook('relicWildLand');
@@ -408,6 +529,7 @@
 				await wait(200);
 			await recordAuthoritativeEvent(round.roundID ?? 'unknown', event.index ?? 0);
 		}
+		activePayline = null;
 		if (revealCount === 0) throw new Error('The round did not contain a reveal event.');
 		const payout = Number(round.payout ?? lastWin) || lastWin;
 		lastWin = payout;
@@ -462,6 +584,7 @@
 		spinCount += 1;
 		freeSpinWin = 0;
 		totalFreeSpins = 0;
+		activePayline = null;
 		clearRelicWildPresentation();
 		reelGrid?.startSpin(turbo);
 		playSpinSound();
@@ -479,6 +602,7 @@
 			await processRound(round, true);
 		} catch (error) {
 			stopSpinAudio();
+			activePayline = null;
 			reelGrid?.reset(matrix);
 			console.error('[RGS]', error);
 			phase = 'error';
@@ -533,8 +657,7 @@
 	};
 
 	const changeBet = (direction: number) => {
-		if (isBusy || freeSpins > 0 || isReplay || financialStateUncertain || betLevels.length === 0)
-			return;
+		if (!canChangeBet) return;
 		const current = betLevels.findIndex((level) => level >= bet);
 		const next = Math.max(
 			0,
@@ -544,10 +667,6 @@
 	};
 
 	onMount(() => {
-		baseSpinAudio = new Audio(GAME_ASSETS.sounds.spinBase);
-		baseSpinAudio.preload = 'auto';
-		baseSpinAudio.loop = true;
-		baseSpinAudio.volume = 0.62;
 		const storedTurbo = localStorage.getItem('relic-forge-turbo');
 		turbo = !stateConfig.jurisdiction?.disabledTurbo && storedTurbo === 'true';
 		if (isMockMode && stateBet.balanceAmount === 0) stateBet.balanceAmount = 845.22;
@@ -585,7 +704,6 @@
 <main
 	class:feature-mode={freeSpins > 0}
 	class="forge-shell"
-	data-spin-audio={GAME_ASSETS.sounds.spinBase}
 >
 	<div class="ambient ambient-one"></div>
 	<div class="ambient ambient-two"></div>
@@ -650,7 +768,8 @@
 		</aside>
 		<section class="game-stage" aria-label="Relic Forge slot game">
 			<div class="stage-heading">
-				<span class="rule"></span><span>TWENTY FIXED PAYLINES TO UNEARTH A RELIC</span><span class="rule"
+				<span class="rule"></span><span>TWENTY FIXED PAYLINES TO UNEARTH A RELIC</span><span
+					class="rule"
 				></span>
 			</div>
 			<div class="reel-frame" class:spinning={phase === 'spinning' || phase === 'revealing'}>
@@ -659,13 +778,26 @@
 				<div class="frame-corner corner-bl">⌞</div>
 				<div class="frame-corner corner-br">⌟</div>
 				<div class="reels" aria-live="polite">
-					<ReelGrid bind:this={reelGrid} {matrix} />
+					<ReelGrid
+						bind:this={reelGrid}
+						{matrix}
+						highlightedPositions={activePaylinePositions}
+						presentationActive={Boolean(activePayline)}
+					/>
 					<RelicWildOverlay
 						wilds={stickyRelicWilds}
 						variant={relicWildVariant}
 						activatingKeys={activatingRelicWildKeys}
+						winningKeys={activePaylineKeys}
 						spinning={phase === 'spinning' || phase === 'freeSpins'}
 					/>
+					{#if activePayline}
+						<PaylineOverlay
+							line={activePayline}
+							{currency}
+							relicWildKeys={stickyRelicWilds.map(relicKey)}
+						/>
+					{/if}
 				</div>
 			</div>
 		</section>
@@ -707,14 +839,12 @@
 		<button
 			class="spin-button"
 			class:pressed={isBusy}
-			disabled={
-				isBusy ||
+			disabled={isBusy ||
 				isReplay ||
 				replayComplete ||
 				financialStateUncertain ||
 				phase === 'error' ||
-				!activePlayMode?.available
-			}
+				!activePlayMode?.available}
 			onclick={spin}
 			><span class="spin-ring"></span><strong>{isBusy ? 'FORGING' : 'SPIN'}</strong><small
 				>{isBusy
@@ -765,11 +895,14 @@
 	<BonusConfirmModal
 		mode={pendingBonusMode}
 		{bet}
+		{betLevels}
 		{balance}
 		{currency}
 		canBuy={canBuyPendingBonus}
+		{canChangeBet}
 		oncancel={closeBonusConfirmation}
 		onconfirm={buyBonus}
+		onchangebet={(direction) => changeBet(direction)}
 	/>
 {/if}
 
