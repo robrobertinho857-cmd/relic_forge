@@ -305,8 +305,12 @@
 	}
 
 	@media (max-width: 600px) {
+		.bonus-confirm-backdrop {
+			padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+		}
 		.bonus-confirm-modal {
-			width: min(96vw, 460px);
+			width: min(460px, calc(100% - 16px));
+			max-height: calc(100% - 16px);
 			aspect-ratio: 4 / 5;
 			background-position: 32% center;
 		}
@@ -328,6 +332,34 @@
 		}
 		.bonus-confirm-actions button {
 			min-height: 42px;
+		}
+	}
+	@media (max-width: 420px) {
+		.bonus-confirm-copy {
+			top: 37%;
+			right: 5%;
+			bottom: 4%;
+			left: 5%;
+		}
+		.bonus-confirm-bet {
+			margin-top: 1.5%;
+		}
+		.bonus-confirm-bet > div {
+			min-height: 38px;
+		}
+		.bonus-confirm-bet button {
+			width: 31px;
+			height: 31px;
+			font-size: 20px;
+		}
+		.bonus-confirm-actions {
+			gap: 6px;
+		}
+		.bonus-confirm-actions button {
+			min-height: 38px;
+		}
+		.authority-note {
+			margin-top: 1.5%;
 		}
 	}
 </style>

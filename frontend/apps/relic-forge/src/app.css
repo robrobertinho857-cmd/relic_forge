@@ -67,6 +67,20 @@ button:focus-visible {
 		radial-gradient(circle at 72% 46%, rgba(24, 255, 111, 0.18), rgba(1, 5, 4, 0.48) 55%),
 		url('./assets/backgrounds/forge-background.png');
 }
+.feature-mode .playfield {
+	flex: 0 1 auto;
+	margin: auto auto 0;
+}
+.feature-mode .game-stage {
+	margin: 0 auto;
+}
+.feature-mode .reels {
+	height: clamp(240px, min(39vw, 38dvh), 420px);
+}
+.feature-mode .feature-banner {
+	flex: 0 0 auto;
+	margin: clamp(5px, 1dvh, 10px) auto clamp(7px, 1.2dvh, 13px);
+}
 .ambient {
 	position: absolute;
 	width: 28vw;
@@ -242,10 +256,11 @@ button:focus-visible {
 	text-align: center;
 }
 .side-action-rail {
+	align-self: center;
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: 8px;
-	padding-top: 31px;
+	padding-top: 0;
 }
 .bonus-buy-control {
 	position: relative;
@@ -1863,6 +1878,34 @@ button:focus-visible {
 	.feature-mode .reels {
 		height: clamp(220px, min(84vw, 35dvh), 330px);
 	}
+	.feature-banner {
+		width: 100%;
+		min-height: clamp(48px, 7dvh, 58px);
+		margin: 2px auto 3px;
+		padding: 4px 50px;
+		gap: 4px;
+	}
+	.feature-orb {
+		left: 4px;
+		width: 42px;
+		height: 42px;
+		border-width: 2px;
+		font-size: 20px;
+	}
+	.feature-count {
+		width: 42px;
+		height: 42px;
+		border-width: 2px;
+		font-size: 25px;
+		line-height: 38px;
+	}
+	.feature-copy .eyebrow {
+		font-size: 10px;
+	}
+	.feature-copy strong {
+		margin-top: 3px;
+		font-size: 7px;
+	}
 	.symbol-cell::before {
 		inset: 4px;
 	}
@@ -1979,57 +2022,276 @@ button:focus-visible {
 		line-height: 1;
 	}
 }
-@media (max-height: 660px) and (orientation: landscape) {
-	.forge-shell {
-		padding-top: 10px;
-	}
-	.topbar {
+@media (max-width: 700px) and (max-height: 740px) and (orientation: portrait) {
+	.feature-mode .topbar {
 		margin-bottom: 2px;
 	}
+	.feature-mode .active-mode-indicator {
+		min-height: 38px;
+		padding-top: 4px;
+		padding-bottom: 5px;
+	}
+	.feature-mode .reel-frame {
+		margin-top: 2px;
+		margin-bottom: 3px;
+	}
+	.feature-mode .reels {
+		height: clamp(190px, min(80vw, 31dvh), 250px);
+	}
+	.feature-mode .feature-banner {
+		min-height: 46px;
+		margin-top: 1px;
+		margin-bottom: 2px;
+	}
+	.feature-mode .control-deck {
+		gap: 3px 6px;
+		margin-top: 2px;
+		padding-top: 3px;
+		padding-bottom: 3px;
+	}
+	.feature-mode .control-left .stat-block,
+	.feature-mode .control-right .win-readout {
+		min-height: 45px;
+	}
+	.feature-mode .control-left .bet-control {
+		min-height: 39px;
+	}
+	.feature-mode .spin-button {
+		width: clamp(108px, 29vw, 126px);
+	}
+}
+@media (max-height: 700px) and (orientation: landscape) {
+	.forge-shell {
+		padding: 6px clamp(8px, 2vw, 24px) 3px;
+	}
+	.topbar {
+		margin-bottom: 1px;
+	}
+	.brand-mark {
+		transform: scale(0.72);
+		transform-origin: left center;
+	}
+	.header-center .eyebrow {
+		font-size: 7px;
+	}
 	.header-center h1 {
-		font-size: 19px;
+		margin-top: 1px;
+		font-size: clamp(16px, 2.2vw, 20px);
+	}
+	.active-mode-indicator {
+		min-width: clamp(230px, 29vw, 290px);
+		min-height: 44px;
+		margin-top: 1px;
+		padding: 7px 42px 8px;
+	}
+	.active-mode-indicator strong {
+		font-size: 12px;
+	}
+	.icon-button {
+		width: 28px;
+		height: 28px;
+	}
+	.playfield {
+		width: min(100%, 1010px);
+		grid-template-columns: clamp(84px, 10.5vw, 122px) minmax(0, 880px);
+		gap: clamp(6px, 1vw, 10px);
+	}
+	.stage-heading {
+		gap: 8px;
+		font-size: 7px;
+		line-height: 1;
 	}
 	.reel-frame {
-		margin: 5px auto 5px;
+		margin: 3px auto 4px;
+		padding: 8px;
 	}
 	.reels {
-		height: min(195px, 48vh);
+		height: clamp(168px, 34dvh, 228px);
+		gap: 4px;
+		padding: 4px;
 	}
 	.symbol-cell {
 		min-height: 0;
 	}
 	.symbol-glyph {
-		width: min(94%, calc(var(--reel-cell-height) - 8px));
-		height: calc(var(--reel-cell-height) - 8px);
+		width: auto;
+		height: calc(var(--reel-cell-height) - 5px);
+		max-width: 96%;
 		font-size: 0;
+	}
+	.symbol-cell::before {
+		inset: 4px;
 	}
 	.symbol-name {
 		margin-top: 2px;
 	}
 	.side-action-rail {
-		gap: 3px;
-		padding-top: 22px;
+		align-self: center;
+		gap: 2px;
+		padding-top: 0;
 	}
 	.bonus-buy-control {
-		min-height: clamp(72px, 14dvh, 86px);
+		min-height: clamp(40px, 9dvh, 58px);
 	}
 	.side-action-rail .quick-controls {
 		gap: 2px;
 	}
 	.side-action-rail .quick-controls button {
-		aspect-ratio: 2.7 / 1;
-	}
-	.win-readout {
-		min-height: 34px;
+		aspect-ratio: 3.1 / 1;
 	}
 	.control-deck {
-		padding-top: 6px;
+		width: min(100%, 1080px);
+		grid-template-columns: minmax(0, 1fr) minmax(105px, 145px) minmax(0, 1fr);
+		gap: clamp(6px, 1.2vw, 13px);
+		padding: 4px clamp(7px, 1.2vw, 13px) 3px;
+	}
+	.control-left {
+		gap: 2px;
+	}
+	.control-left .stat-block,
+	.control-left .bet-control {
+		min-height: 38px;
+		padding-top: 3px;
+		padding-bottom: 3px;
+	}
+	.control-left .bet-control {
+		min-height: 34px;
+	}
+	.control-left .stat-block strong,
+	.control-left .bet-row strong {
+		font-size: 18px;
+	}
+	.control-left .bet-row button {
+		width: 30px;
+		height: 30px;
+		font-size: 22px;
+	}
+	.control-right .win-readout {
+		min-height: 74px;
+		padding-top: 10px;
+		padding-bottom: 8px;
+	}
+	.control-right .win-readout strong {
+		font-size: clamp(21px, 3vw, 30px);
 	}
 	.spin-button {
-		width: min(22vw, 150px);
+		width: min(15vw, 128px);
 	}
 	.footer-note {
 		display: none;
+	}
+}
+@media (max-height: 500px) and (orientation: landscape) {
+	.forge-shell {
+		padding: 3px 6px 2px;
+	}
+	.topbar {
+		min-height: 34px;
+	}
+	.brand-mark {
+		transform: scale(0.55);
+	}
+	.header-center .eyebrow,
+	.header-center h1 {
+		display: none;
+	}
+	.active-mode-indicator {
+		min-width: clamp(150px, 31vw, 230px);
+		min-height: 34px;
+		margin: 0;
+		padding: 4px 28px 5px;
+	}
+	.active-mode-indicator > span,
+	.active-mode-indicator small {
+		font-size: 5px;
+	}
+	.active-mode-indicator strong {
+		font-size: 9px;
+	}
+	.icon-button {
+		width: 22px;
+		height: 22px;
+		font-size: 10px;
+	}
+	.playfield {
+		grid-template-columns: clamp(54px, 11vw, 84px) minmax(0, 1fr);
+		gap: 4px;
+	}
+	.stage-heading {
+		font-size: 5px;
+		letter-spacing: 0.12em;
+	}
+	.reel-frame {
+		margin: 2px auto;
+		padding: 5px;
+	}
+	.reels {
+		height: clamp(92px, 38dvh, 170px);
+		gap: 2px;
+		padding: 2px;
+	}
+	.symbol-glyph {
+		height: calc(var(--reel-cell-height) - 5px);
+		max-width: 96%;
+	}
+	.symbol-cell::before {
+		inset: 2px;
+	}
+	.side-action-rail {
+		gap: 1px;
+		padding-top: 0;
+	}
+	.bonus-buy-control {
+		min-height: clamp(24px, 9dvh, 42px);
+	}
+	.side-action-rail .quick-controls {
+		gap: 1px;
+	}
+	.side-action-rail .quick-controls button {
+		aspect-ratio: 3.1 / 1;
+	}
+	.control-deck {
+		grid-template-columns: minmax(0, 1fr) minmax(58px, 90px) minmax(0, 1fr);
+		gap: 4px;
+		padding: 2px 4px;
+	}
+	.control-left {
+		gap: 1px;
+	}
+	.control-left .stat-block,
+	.control-left .bet-control {
+		min-height: 24px;
+		padding: 1px 7px;
+	}
+	.control-left .bet-control {
+		min-height: 22px;
+	}
+	.control-left .stat-block .eyebrow,
+	.control-right .eyebrow {
+		font-size: 5px;
+	}
+	.control-left .stat-block strong,
+	.control-left .bet-row strong,
+	.control-right .win-readout strong {
+		font-size: clamp(10px, 2.5vw, 15px);
+	}
+	.control-left .stat-block small,
+	.control-right .win-readout em {
+		display: none;
+	}
+	.control-left .bet-row button {
+		width: 19px;
+		height: 19px;
+		font-size: 14px;
+	}
+	.control-right .win-readout {
+		min-height: 47px;
+		padding: 5px 8px;
+	}
+	.spin-button {
+		grid-column: auto;
+		grid-row: auto;
+		width: min(12vw, 76px);
 	}
 }
 @media (prefers-reduced-motion: reduce) {
