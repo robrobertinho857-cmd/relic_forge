@@ -653,6 +653,8 @@
 	};
 	const stopAutoplay = () => {
 		autoplay = false;
+		autoplayTotal = 0;
+		autoplayRemaining = 0;
 		autoplayRunId += 1;
 	};
 	const openAutoplayPanel = () => {
@@ -697,7 +699,11 @@
 				await new Promise<void>((resolve) => setTimeout(resolve, turbo ? 120 : 420));
 			}
 		} finally {
-			if (runId === autoplayRunId) autoplay = false;
+			if (runId === autoplayRunId) {
+				autoplay = false;
+				autoplayTotal = 0;
+				autoplayRemaining = 0;
+			}
 		}
 	};
 	const toggleAutoplay = () => {
