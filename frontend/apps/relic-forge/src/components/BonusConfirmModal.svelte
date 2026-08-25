@@ -62,16 +62,16 @@
 			<h2>{mode.title}</h2>
 			<dl>
 				<div>
-					<dt>COST</dt>
-					<dd>{mode.costMultiplier}× CURRENT BET</dd>
+					<dt>CURRENT BET</dt>
+					<dd>{formatMoney(bet)}</dd>
 				</div>
-				<div class="total">
-					<dt>TOTAL COST</dt>
-					<dd>{formatMoney(totalCost)}</dd>
+				<div class="total" aria-live="polite">
+					<dt>BONUS BUY PRICE</dt>
+					<dd><span>{mode.costMultiplier}×</span> {formatMoney(totalCost)}</dd>
 				</div>
 			</dl>
 			<div class="bonus-confirm-bet" aria-label="Bonus Buy bet controls">
-				<span>BET</span>
+				<span>CHANGE CURRENT BET</span>
 				<div>
 					<button
 						type="button"
@@ -214,6 +214,12 @@
 		color: color-mix(in srgb, var(--bonus-accent) 55%, #fff1ad);
 		font-family: var(--display-font, Georgia, serif);
 		font-size: clamp(14px, 2vw, 24px);
+	}
+	.total dd span {
+		margin-right: 0.32em;
+		color: #b8a779;
+		font-size: 0.62em;
+		letter-spacing: 0.04em;
 	}
 	.bonus-confirm-bet {
 		display: grid;
