@@ -71,12 +71,14 @@
 	let pendingBonusModeId = $state<string | null>(null);
 	let soundEnabled = $state(true);
 	let turbo = $state(false);
+	let autoplay = $state(false);
 	let reelGrid = $state<ReelGridController>();
 	let audioContext: AudioContext | undefined;
 	let spinBuffer: AudioBuffer | undefined;
 	let spinSource: AudioBufferSourceNode | undefined;
 	let spinGain: GainNode | undefined;
 	let roundInFlight = false;
+	let autoplayRunId = 0;
 	let roundStartedAt = 0;
 	let financialStateUncertain = $state(false);
 	let replayComplete = $state(false);
@@ -99,6 +101,7 @@
 	let bet = $derived(stateBet.betAmount || betLevels[0] || 0);
 	let balance = $derived(stateBet.balanceAmount);
 	let turboAllowed = $derived(!isReplay && !stateConfig.jurisdiction?.disabledTurbo);
+	let autoplayAllowed = $derived(!isReplay && !stateConfig.jurisdiction?.disabledAutoplay);
 	let spacebarAllowed = $derived(!isReplay && !stateConfig.jurisdiction?.disabledSpacebar);
 	let socialCasino = $derived(Boolean(stateConfig.jurisdiction?.socialCasino));
 	let playModes = $derived(
@@ -144,6 +147,7 @@
 			!isReplay &&
 				!replayComplete &&
 				!financialStateUncertain &&
+				!autoplay &&
 				!isBusy &&
 				phase !== 'error' &&
 				freeSpins <= 0 &&
@@ -160,11 +164,29 @@
 	);
 	let canChangeBet = $derived(
 		!isBusy &&
+			!autoplay &&
 			freeSpins <= 0 &&
 			!isReplay &&
 			!replayComplete &&
 			!financialStateUncertain &&
 			betLevels.length > 0,
+	);
+	let canStartAutoplay = $derived(
+		Boolean(
+			autoplayAllowed &&
+				!autoplay &&
+				!isReplay &&
+				!replayComplete &&
+				!financialStateUncertain &&
+				!isBusy &&
+				phase === 'ready' &&
+				freeSpins <= 0 &&
+				!showModeSelection &&
+				!pendingBonusMode &&
+				activePlayMode?.available &&
+				bet > 0 &&
+				bet * activePlayMode.costMultiplier <= balance,
+		),
 	);
 	let activePaylinePositions = $derived(activePayline?.positions ?? []);
 	let activePaylineKeys = $derived(
@@ -573,7 +595,7 @@
 			wagerCost > balance ||
 			(!isMockMode && !betLevels.some((level) => level === bet))
 		)
-			return;
+			return false;
 		roundInFlight = true;
 		phase = 'spinning';
 		errorMessage = '';
@@ -600,6 +622,7 @@
 				stateBet.balanceAmount = Math.max(0, balance - wagerCost + Number(round.payout ?? 0));
 			}
 			await processRound(round, true);
+			return true;
 		} catch (error) {
 			stopSpinAudio();
 			activePayline = null;
@@ -613,6 +636,7 @@
 				financialStateUncertain = true;
 			errorMessage =
 				error instanceof Error ? error.message : 'The forge is temporarily unavailable.';
+			return false;
 		} finally {
 			roundInFlight = false;
 		}
@@ -620,6 +644,46 @@
 	const spin = () => {
 		if (isReplay || replayComplete || financialStateUncertain || !activePlayMode?.available) return;
 		void playRound(activePlayMode.mode, activePlayMode.costMultiplier);
+	};
+	const stopAutoplay = () => {
+		autoplay = false;
+		autoplayRunId += 1;
+	};
+	const runAutoplay = async () => {
+		if (!canStartAutoplay || !activePlayMode) return;
+		autoplay = true;
+		const runId = ++autoplayRunId;
+		try {
+			while (autoplay && runId === autoplayRunId) {
+				const mode = activePlayMode;
+				if (
+					!autoplayAllowed ||
+					!mode?.available ||
+					isReplay ||
+					replayComplete ||
+					financialStateUncertain ||
+					phase === 'error' ||
+					bet <= 0 ||
+					bet * mode.costMultiplier > balance
+				)
+					break;
+				const completed = await playRound(mode.mode, mode.costMultiplier);
+				if (
+					!completed ||
+					!autoplay ||
+					runId !== autoplayRunId ||
+					financialStateUncertain
+				)
+					break;
+				await new Promise<void>((resolve) => setTimeout(resolve, turbo ? 120 : 420));
+			}
+		} finally {
+			if (runId === autoplayRunId) autoplay = false;
+		}
+	};
+	const toggleAutoplay = () => {
+		if (autoplay) stopAutoplay();
+		else void runAutoplay();
 	};
 	const openModeSelection = () => {
 		if (!canOpenModeSelection) return;
@@ -695,12 +759,19 @@
 				}
 			});
 		}
-		return stopSpinAudio;
+		return () => {
+			stopAutoplay();
+			stopSpinAudio();
+		};
+	});
+
+	$effect(() => {
+		if (!autoplayAllowed && autoplay) stopAutoplay();
 	});
 </script>
 
 <EnableHotkey />
-<OnHotkey hotkey="Space" disabled={!spacebarAllowed || isBusy} onpress={spin} />
+<OnHotkey hotkey="Space" disabled={!spacebarAllowed || isBusy || autoplay} onpress={spin} />
 <main
 	class:feature-mode={freeSpins > 0}
 	class="forge-shell"
@@ -763,6 +834,13 @@
 					class="paytable-control"
 					aria-label="Open paytable from controls"
 					onclick={() => (showPaytable = true)}><span>♧</span><small>PAYTABLE</small></button
+				><button
+					class="auto-control"
+					class:active={autoplay}
+					disabled={!autoplay && !canStartAutoplay}
+					aria-label={autoplay ? 'Stop autoplay' : 'Start autoplay'}
+					aria-pressed={autoplay}
+					onclick={toggleAutoplay}><span>↻</span><small>{autoplay ? 'STOP' : 'AUTO'}</small></button
 				>
 			</div>
 		</aside>
@@ -838,17 +916,21 @@
 		</div>
 		<button
 			class="spin-button"
-			class:pressed={isBusy}
-			disabled={isBusy ||
-				isReplay ||
-				replayComplete ||
-				financialStateUncertain ||
-				phase === 'error' ||
-				!activePlayMode?.available}
-			onclick={spin}
-			><span class="spin-ring"></span><strong>{isBusy ? 'FORGING' : 'SPIN'}</strong><small
-				>{isBusy
-					? 'OUTCOME SEALED'
+			class:pressed={isBusy && !autoplay}
+			class:autoplay-active={autoplay}
+			disabled={!autoplay &&
+				(isBusy ||
+					isReplay ||
+					replayComplete ||
+					financialStateUncertain ||
+					phase === 'error' ||
+					!activePlayMode?.available)}
+			onclick={autoplay ? stopAutoplay : spin}
+			><span class="spin-ring"></span><strong>{autoplay ? 'STOP' : isBusy ? 'FORGING' : 'SPIN'}</strong><small
+				>{autoplay
+					? 'AUTOPLAY ACTIVE'
+					: isBusy
+						? 'OUTCOME SEALED'
 					: `${activePlayMode?.title ?? 'NORMAL'} · ${activePlayMode?.costMultiplier ?? 1}×`}</small
 			></button
 		>
