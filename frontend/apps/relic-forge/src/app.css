@@ -42,7 +42,7 @@ button:focus-visible {
 	overflow: hidden;
 	isolation: isolate;
 	background-image:
-		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('./assets/backgrounds/forge-background.png');
+		linear-gradient(180deg, rgba(1, 4, 3, 0.2), rgba(1, 5, 4, 0.48)), url('./assets/backgrounds/forge-background.webp');
 	background-position: center;
 	background-size: cover;
 	background-attachment: fixed;
@@ -65,7 +65,7 @@ button:focus-visible {
 .feature-mode {
 	background-image:
 		radial-gradient(circle at 72% 46%, rgba(24, 255, 111, 0.18), rgba(1, 5, 4, 0.48) 55%),
-		url('./assets/backgrounds/forge-background.png');
+		url('./assets/backgrounds/forge-background.webp');
 }
 .feature-mode .playfield {
 	flex: 0 1 auto;
@@ -159,7 +159,7 @@ button:focus-visible {
 	margin-top: 5px;
 	padding: 10px 52px 11px;
 	border: 0;
-	background: url('./assets/panels/active-mode-panel.png') center / 100% auto no-repeat;
+	background: url('./assets/panels/active-mode-panel.webp') center / 100% auto no-repeat;
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.8))
 		drop-shadow(0 0 10px color-mix(in srgb, var(--mode-accent) 24%, transparent));
 	color: #f7df9b;
@@ -277,7 +277,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-		background: url('./assets/panels/bonus-buy-button-v4.png') center / 110% auto no-repeat;
+		background: url('./assets/panels/bonus-buy-button-v4.webp') center / 110% auto no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -440,34 +440,34 @@ button:focus-visible {
 	max-width: 98%;
 }
 .symbol-cell[data-symbol='dragon'] .symbol-glyph {
-	background-image: url('./assets/symbols/dragon.png');
+	background-image: url('./assets/symbols/dragon.webp');
 }
 .symbol-cell[data-symbol='crown'] .symbol-glyph {
-	background-image: url('./assets/symbols/crown.png');
+	background-image: url('./assets/symbols/crown.webp');
 }
 .symbol-cell[data-symbol='sword'] .symbol-glyph {
-	background-image: url('./assets/symbols/sword.png');
+	background-image: url('./assets/symbols/sword.webp');
 }
 .symbol-cell[data-symbol='shield'] .symbol-glyph {
-	background-image: url('./assets/symbols/shield.png');
+	background-image: url('./assets/symbols/shield.webp');
 }
 .symbol-cell[data-symbol='ruby'] .symbol-glyph {
-	background-image: url('./assets/symbols/ruby.png');
+	background-image: url('./assets/symbols/ruby.webp');
 }
 .symbol-cell[data-symbol='emerald'] .symbol-glyph {
-	background-image: url('./assets/symbols/emerald.png');
+	background-image: url('./assets/symbols/emerald.webp');
 }
 .symbol-cell[data-symbol='sapphire'] .symbol-glyph {
-	background-image: url('./assets/symbols/sapphire.png');
+	background-image: url('./assets/symbols/sapphire.webp');
 }
 .symbol-cell[data-symbol='amber'] .symbol-glyph {
-	background-image: url('./assets/symbols/amber.png');
+	background-image: url('./assets/symbols/amber.webp');
 }
 .symbol-cell[data-symbol='wild'] .symbol-glyph {
-	background-image: url('./assets/symbols/wild.png');
+	background-image: url('./assets/symbols/wild.webp');
 }
 .symbol-cell[data-symbol='scatter'] .symbol-glyph {
-	background-image: url('./assets/symbols/scatter.png');
+	background-image: url('./assets/symbols/scatter.webp');
 }
 .winning {
 	animation: winning 850ms ease-in-out infinite alternate;
@@ -764,7 +764,7 @@ button:focus-visible {
 	position: absolute;
 	inset: 0;
 	z-index: 0;
-		background: url('./assets/panels/current-win-panel-v3.png') center / 104% 118% no-repeat;
+		background: url('./assets/panels/current-win-panel-v3.webp') center / 104% 118% no-repeat;
 	content: '';
 	filter: brightness(1.04) saturate(1.06);
 	pointer-events: none;
@@ -798,7 +798,7 @@ button:focus-visible {
 	text-align: center;
 }
 .control-left .stat-block {
-	background-image: url('./assets/panels/vault-balance.png');
+	background-image: url('./assets/panels/vault-balance.webp');
 }
 .control-left .bet-control {
 	min-height: 66px;
@@ -807,7 +807,7 @@ button:focus-visible {
 	padding-top: 4px;
 	padding-bottom: 4px;
 	background-size: 100% auto;
-	background-image: url('./assets/panels/vault-stake.png');
+	background-image: url('./assets/panels/vault-stake.webp');
 }
 .control-left .bet-row {
 	justify-content: space-between;
@@ -896,7 +896,7 @@ button:focus-visible {
 	min-height: 0;
 	aspect-ratio: 3 / 2;
 	border: 0;
-	background: url('./assets/controls/spin-button.png') center / contain no-repeat;
+	background: url('./assets/controls/spin-button.webp') center / contain no-repeat;
 	color: var(--ivory);
 	cursor: pointer;
 	filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.75));
@@ -905,7 +905,7 @@ button:focus-visible {
 		filter 160ms ease;
 }
 .spin-button:hover {
-	background: url('./assets/controls/spin-button.png') center / contain no-repeat;
+	background: url('./assets/controls/spin-button.webp') center / contain no-repeat;
 	transform: scale(1.045);
 	filter: brightness(1.12) drop-shadow(0 0 18px rgba(42, 255, 126, 0.5));
 }
@@ -987,13 +987,13 @@ button:focus-visible {
 	white-space: nowrap;
 }
 .quick-controls .turbo-control {
-	--control-image: url('./assets/controls/turbo.png');
+	--control-image: url('./assets/controls/turbo.webp');
 }
 .quick-controls .sound-control {
-	--control-image: url('./assets/controls/sound.png');
+	--control-image: url('./assets/controls/sound.webp');
 }
 .quick-controls .paytable-control {
-	--control-image: url('./assets/controls/paytable.png');
+	--control-image: url('./assets/controls/paytable.webp');
 }
 .quick-controls .auto-control {
 	display: grid;
@@ -1074,6 +1074,106 @@ button:focus-visible {
 }
 .spin-button.autoplay-active {
 	filter: brightness(1.18) saturate(1.15) drop-shadow(0 0 18px rgba(45, 255, 120, 0.75));
+}
+.autoplay-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 45;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+	background: rgba(0, 4, 3, 0.76);
+	backdrop-filter: blur(7px);
+}
+.autoplay-panel {
+	position: relative;
+	display: grid;
+	width: min(390px, calc(100vw - 24px));
+	gap: 13px;
+	padding: 24px 22px 20px;
+	border: 1px solid rgba(221, 168, 59, 0.82);
+	background:
+		radial-gradient(circle at 50% 0, rgba(35, 189, 91, 0.2), transparent 55%),
+		linear-gradient(180deg, rgba(5, 35, 21, 0.98), rgba(1, 15, 9, 0.99));
+	box-shadow:
+		inset 0 0 0 3px rgba(0, 14, 8, 0.88),
+		inset 0 0 26px rgba(32, 255, 116, 0.08),
+		0 20px 55px rgba(0, 0, 0, 0.72);
+	clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+	color: #f5e5b5;
+	text-align: center;
+}
+.autoplay-panel .eyebrow {
+	color: #50f397;
+	font-size: 9px;
+	letter-spacing: 0.24em;
+}
+.autoplay-panel h2 {
+	margin: -4px 0 0;
+	color: #ffe19a;
+	font-family: var(--display-font);
+	font-size: clamp(21px, 6vw, 29px);
+	letter-spacing: 0.08em;
+	text-shadow: 0 2px 2px #000, 0 0 12px rgba(62, 255, 132, 0.24);
+}
+.autoplay-close {
+	position: absolute;
+	top: 7px;
+	right: 8px;
+	width: 32px;
+	height: 32px;
+	border: 1px solid rgba(221, 168, 59, 0.58);
+	background: rgba(0, 12, 7, 0.9);
+	color: #f3d586;
+	font-size: 21px;
+	cursor: pointer;
+}
+.autoplay-options {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 8px;
+}
+.autoplay-options button {
+	min-height: 48px;
+	border: 1px solid rgba(202, 152, 51, 0.58);
+	background: linear-gradient(180deg, rgba(6, 50, 29, 0.95), rgba(1, 21, 12, 0.98));
+	color: #e8d29a;
+	font-family: var(--display-font);
+	font-size: 17px;
+	font-weight: 900;
+	cursor: pointer;
+}
+.autoplay-options button:hover,
+.autoplay-options button.selected {
+	border-color: #65ffab;
+	background: linear-gradient(180deg, rgba(13, 105, 54, 0.98), rgba(3, 43, 23, 0.98));
+	color: #fff0b8;
+	box-shadow: inset 0 0 14px rgba(58, 255, 137, 0.2), 0 0 10px rgba(47, 255, 127, 0.24);
+}
+.autoplay-panel > small {
+	color: #a99d79;
+	font-size: 8px;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+}
+.autoplay-start {
+	min-height: 48px;
+	border: 1px solid #d4a944;
+	background: linear-gradient(180deg, #167443, #06351e);
+	color: #ffe7a3;
+	font-family: var(--display-font);
+	font-size: 17px;
+	font-weight: 900;
+	letter-spacing: 0.12em;
+	cursor: pointer;
+	box-shadow: inset 0 0 16px rgba(59, 255, 138, 0.2);
+}
+.autoplay-start:hover:not(:disabled) {
+	filter: brightness(1.18);
+}
+.autoplay-start:disabled {
+	opacity: 0.42;
+	cursor: not-allowed;
 }
 @keyframes turbo-energized {
 	from {
@@ -1251,7 +1351,7 @@ button:focus-visible {
 	overflow: visible;
 	padding: 0;
 	border: 0;
-	background: url('./assets/panels/bonus-buy-panel.png') center / contain no-repeat;
+	background: url('./assets/panels/bonus-buy-panel.webp') center / contain no-repeat;
 	clip-path: none;
 	box-shadow: none;
 	filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.82));
@@ -1447,28 +1547,28 @@ button:focus-visible {
 	filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.72));
 }
 .pay-symbol[data-symbol='dragon'] {
-	background-image: url('./assets/symbols/dragon.png');
+	background-image: url('./assets/symbols/dragon.webp');
 }
 .pay-symbol[data-symbol='crown'] {
-	background-image: url('./assets/symbols/crown.png');
+	background-image: url('./assets/symbols/crown.webp');
 }
 .pay-symbol[data-symbol='sword'] {
-	background-image: url('./assets/symbols/sword.png');
+	background-image: url('./assets/symbols/sword.webp');
 }
 .pay-symbol[data-symbol='shield'] {
-	background-image: url('./assets/symbols/shield.png');
+	background-image: url('./assets/symbols/shield.webp');
 }
 .pay-symbol[data-symbol='ruby'] {
-	background-image: url('./assets/symbols/ruby.png');
+	background-image: url('./assets/symbols/ruby.webp');
 }
 .pay-symbol[data-symbol='emerald'] {
-	background-image: url('./assets/symbols/emerald.png');
+	background-image: url('./assets/symbols/emerald.webp');
 }
 .pay-symbol[data-symbol='sapphire'] {
-	background-image: url('./assets/symbols/sapphire.png');
+	background-image: url('./assets/symbols/sapphire.webp');
 }
 .pay-symbol[data-symbol='amber'] {
-	background-image: url('./assets/symbols/amber.png');
+	background-image: url('./assets/symbols/amber.webp');
 }
 .pay-row b,
 .pay-row small {
@@ -1988,8 +2088,8 @@ button:focus-visible {
 	.side-action-rail .quick-controls button {
 		width: auto;
 		min-width: 0;
-		min-height: 0;
-		aspect-ratio: 2 / 1;
+		min-height: clamp(40px, 11vw, 52px);
+		aspect-ratio: auto;
 	}
 	.side-action-rail .auto-control {
 		padding: 0 3px;
@@ -1998,7 +2098,7 @@ button:focus-visible {
 		font-size: clamp(10px, 3vw, 16px);
 	}
 	.side-action-rail .auto-control small {
-		font-size: clamp(5px, 1.5vw, 7px);
+		font-size: clamp(7px, 1.9vw, 9px);
 	}
 	.control-deck {
 		width: 100%;
@@ -2082,6 +2182,46 @@ button:focus-visible {
 		margin-top: clamp(3px, 0.8dvh, 7px);
 		font-size: 6px;
 		line-height: 1;
+	}
+}
+@media (max-width: 340px) and (orientation: portrait) {
+	.side-action-rail {
+		display: grid;
+		grid-template-columns: minmax(82px, 0.85fr) minmax(0, 2.15fr);
+		align-items: stretch;
+		gap: 4px;
+	}
+	.bonus-buy-control {
+		width: 100%;
+		min-height: 82px;
+	}
+	.side-action-rail .quick-controls {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-rows: repeat(2, minmax(40px, 1fr));
+		gap: 3px;
+	}
+	.side-action-rail .quick-controls button {
+		width: 100%;
+		min-height: 40px;
+		aspect-ratio: auto;
+	}
+	.side-action-rail .auto-control {
+		padding: 0 7px;
+	}
+	.side-action-rail .auto-control small {
+		font-size: 8px;
+	}
+	.autoplay-panel {
+		gap: 10px;
+		padding: 21px 14px 16px;
+	}
+	.autoplay-options {
+		gap: 5px;
+	}
+	.autoplay-options button {
+		min-height: 44px;
+		font-size: 15px;
 	}
 }
 @media (max-width: 700px) and (max-height: 740px) and (orientation: portrait) {

@@ -46,6 +46,7 @@
 		) => Promise<void>;
 		reset: (result: ReelMatrix) => void;
 	};
+	const AUTOPLAY_SPIN_OPTIONS = [10, 25, 50, 100] as const;
 
 	let phase = $state<GamePhase>('boot');
 	let matrix = $state<ReelMatrix>(INITIAL_MATRIX);
@@ -72,6 +73,10 @@
 	let soundEnabled = $state(true);
 	let turbo = $state(false);
 	let autoplay = $state(false);
+	let showAutoplayPanel = $state(false);
+	let autoplaySelection = $state<number>(25);
+	let autoplayTotal = $state(0);
+	let autoplayRemaining = $state(0);
 	let reelGrid = $state<ReelGridController>();
 	let audioContext: AudioContext | undefined;
 	let spinBuffer: AudioBuffer | undefined;
@@ -148,6 +153,7 @@
 				!replayComplete &&
 				!financialStateUncertain &&
 				!autoplay &&
+				!showAutoplayPanel &&
 				!isBusy &&
 				phase !== 'error' &&
 				freeSpins <= 0 &&
@@ -649,12 +655,23 @@
 		autoplay = false;
 		autoplayRunId += 1;
 	};
-	const runAutoplay = async () => {
+	const openAutoplayPanel = () => {
+		if (!canStartAutoplay) return;
+		showAutoplayPanel = true;
+	};
+	const closeAutoplayPanel = () => {
+		showAutoplayPanel = false;
+	};
+	const runAutoplay = async (spinTotal: number) => {
 		if (!canStartAutoplay || !activePlayMode) return;
+		if (!AUTOPLAY_SPIN_OPTIONS.some((option) => option === spinTotal)) return;
+		showAutoplayPanel = false;
+		autoplayTotal = spinTotal;
+		autoplayRemaining = spinTotal;
 		autoplay = true;
 		const runId = ++autoplayRunId;
 		try {
-			while (autoplay && runId === autoplayRunId) {
+			while (autoplay && autoplayRemaining > 0 && runId === autoplayRunId) {
 				const mode = activePlayMode;
 				if (
 					!autoplayAllowed ||
@@ -675,6 +692,8 @@
 					financialStateUncertain
 				)
 					break;
+				autoplayRemaining = Math.max(0, autoplayRemaining - 1);
+				if (autoplayRemaining === 0) break;
 				await new Promise<void>((resolve) => setTimeout(resolve, turbo ? 120 : 420));
 			}
 		} finally {
@@ -683,7 +702,8 @@
 	};
 	const toggleAutoplay = () => {
 		if (autoplay) stopAutoplay();
-		else void runAutoplay();
+		else if (showAutoplayPanel) closeAutoplayPanel();
+		else openAutoplayPanel();
 	};
 	const openModeSelection = () => {
 		if (!canOpenModeSelection) return;
@@ -766,7 +786,10 @@
 	});
 
 	$effect(() => {
-		if (!autoplayAllowed && autoplay) stopAutoplay();
+		if (!autoplayAllowed) {
+			if (autoplay) stopAutoplay();
+			showAutoplayPanel = false;
+		}
 	});
 </script>
 
@@ -838,9 +861,15 @@
 					class="auto-control"
 					class:active={autoplay}
 					disabled={!autoplay && !canStartAutoplay}
-					aria-label={autoplay ? 'Stop autoplay' : 'Start autoplay'}
+					aria-label={autoplay
+						? `Stop autoplay with ${autoplayRemaining} spins remaining`
+						: 'Choose autoplay spin count'}
 					aria-pressed={autoplay}
-					onclick={toggleAutoplay}><span>↻</span><small>{autoplay ? 'STOP' : 'AUTO'}</small></button
+					aria-expanded={showAutoplayPanel}
+					onclick={toggleAutoplay}
+					><span>{autoplay ? autoplayRemaining : '↻'}</span><small
+						>{autoplay ? 'STOP' : 'AUTO'}</small
+					></button
 				>
 			</div>
 		</aside>
@@ -904,11 +933,11 @@
 				<div class="bet-row">
 					<button
 						aria-label="Decrease bet"
-						disabled={isBusy || freeSpins > 0 || isReplay || replayComplete}
+						disabled={!canChangeBet}
 						onclick={() => changeBet(-1)}>−</button
 					><strong>{formatMoney(bet)}</strong><button
 						aria-label="Increase bet"
-						disabled={isBusy || freeSpins > 0 || isReplay || replayComplete}
+						disabled={!canChangeBet}
 						onclick={() => changeBet(1)}>+</button
 					>
 				</div>
@@ -928,7 +957,7 @@
 			onclick={autoplay ? stopAutoplay : spin}
 			><span class="spin-ring"></span><strong>{autoplay ? 'STOP' : isBusy ? 'FORGING' : 'SPIN'}</strong><small
 				>{autoplay
-					? 'AUTOPLAY ACTIVE'
+					? `AUTO ${autoplayRemaining} LEFT · ${autoplayTotal - autoplayRemaining}/${autoplayTotal}`
 					: isBusy
 						? 'OUTCOME SEALED'
 					: `${activePlayMode?.title ?? 'NORMAL'} · ${activePlayMode?.costMultiplier ?? 1}×`}</small
@@ -953,6 +982,42 @@
 		>
 	</footer>
 </main>
+
+{#if showAutoplayPanel}
+	<div
+		class="autoplay-backdrop"
+		role="presentation"
+		onclick={(event) => event.target === event.currentTarget && closeAutoplayPanel()}
+	>
+		<section class="autoplay-panel" role="dialog" aria-modal="true" aria-label="Autoplay options">
+			<button
+				type="button"
+				class="autoplay-close"
+				aria-label="Close autoplay options"
+				onclick={closeAutoplayPanel}>×</button
+			>
+			<span class="eyebrow">AUTOPLAY</span>
+			<h2>SELECT SPINS</h2>
+			<div class="autoplay-options" aria-label="Number of autoplay spins">
+				{#each AUTOPLAY_SPIN_OPTIONS as option (option)}
+					<button
+						type="button"
+						class:selected={autoplaySelection === option}
+						aria-pressed={autoplaySelection === option}
+						onclick={() => (autoplaySelection = option)}>{option}</button
+					>
+				{/each}
+			</div>
+			<small>{activePlayMode?.title ?? 'NORMAL'} · {formatMoney(bet)} PER ROUND</small>
+			<button
+				type="button"
+				class="autoplay-start"
+				disabled={!canStartAutoplay}
+				onclick={() => void runAutoplay(autoplaySelection)}>START</button
+			>
+		</section>
+	</div>
+{/if}
 
 {#if relicWildWinLine}
 	<MultiplierCombine line={relicWildWinLine} {currency} />

@@ -230,19 +230,19 @@ check(
 );
 check(
 	await evaluate(
-		"getComputedStyle(document.querySelector('.spin-button')).backgroundImage.includes('spin-button.png')",
+		"getComputedStyle(document.querySelector('.spin-button')).backgroundImage.includes('spin-button.webp')",
 	),
 	'supplied circular Spin button artwork renders',
 );
 check(
 	await evaluate(`['turbo', 'sound', 'paytable'].every((name) =>
-		getComputedStyle(document.querySelector('.' + name + '-control')).backgroundImage.includes('/controls/' + name + '.png')
+		getComputedStyle(document.querySelector('.' + name + '-control')).backgroundImage.includes('/controls/' + name + '.webp')
 	)`),
 	'supplied Turbo, Sound, and Paytable button artwork renders',
 );
 check(
-	(await evaluate("document.querySelectorAll('.side-action-rail button').length")) === 4,
-	'Bonus Buy and the three option buttons render in the left rail',
+	(await evaluate("document.querySelectorAll('.side-action-rail button').length")) === 5,
+	'Bonus Buy and the four option buttons render in the left rail',
 );
 check(
 	await evaluate(`(() => {
@@ -262,7 +262,7 @@ check(
 );
 check(
 	await evaluate(
-		"getComputedStyle(document.querySelector('.bonus-buy-control'), '::before').backgroundImage.includes('bonus-buy-button-v4.png')",
+		"getComputedStyle(document.querySelector('.bonus-buy-control'), '::before').backgroundImage.includes('bonus-buy-button-v4.webp')",
 	),
 	'supplied Bonus Buy plaque artwork renders',
 );
@@ -275,12 +275,12 @@ check(
 check(
 	await evaluate(`(() => {
 		const expected = {
-			normal: 'normal.png',
-			forgeBoost: 'forge-boost.png',
-			dragonBoost: 'dragon-boost.png',
-			standard: 'bonus-standard.png',
-			super: 'bonus-super.png',
-			mythic: 'bonus-mythic.png'
+			normal: 'normal.webp',
+			forgeBoost: 'forge-boost.webp',
+			dragonBoost: 'dragon-boost.webp',
+			standard: 'bonus-standard.webp',
+			super: 'bonus-super.webp',
+			mythic: 'bonus-mythic.webp'
 		};
 		return Object.entries(expected).every(([id, asset]) => {
 			const card = document.querySelector('.mode-card[data-mode-id="' + id + '"]');
@@ -349,7 +349,7 @@ for (const [id, multiplier] of [
 		`${id} confirmation open`,
 	);
 	check(
-		moneyValue(await text('.bonus-confirm-modal .total dd')) === multiplier,
+		moneyValue(await text('.bonus-confirm-modal .total dd b')) === multiplier,
 		`${id} Bonus Buy confirmation calculates its configured total`,
 	);
 	await click('.bonus-confirm-actions .cancel');
@@ -389,25 +389,25 @@ check(
 );
 check(
 	await evaluate(
-		"getComputedStyle(document.querySelector('.active-mode-indicator')).backgroundImage.includes('active-mode-panel.png')",
+		"getComputedStyle(document.querySelector('.active-mode-indicator')).backgroundImage.includes('active-mode-panel.webp')",
 	),
 	'the active mode uses the supplied blue-gold panel artwork',
 );
 check(
-	await evaluate(`['vault-balance.png', 'vault-stake.png'].every((asset, index) =>
+	await evaluate(`['vault-balance.webp', 'vault-stake.webp'].every((asset, index) =>
 		getComputedStyle(document.querySelectorAll('.control-left .stat-block, .control-left .bet-control')[index]).backgroundImage.includes(asset)
 	)`),
 	'supplied Balance and Stake panel artwork renders',
 );
 check(
 	await evaluate(
-		"getComputedStyle(document.querySelector('.control-right .win-readout'), '::before').backgroundImage.includes('current-win-panel-v3.png')",
+		"getComputedStyle(document.querySelector('.control-right .win-readout'), '::before').backgroundImage.includes('current-win-panel-v3.webp')",
 	),
 	'supplied Current Win panel artwork renders',
 );
 check(
-	await evaluate("(() => { const asset = document.querySelector('.forge-shell')?.dataset.spinAudio; return Boolean(asset) && fetch(asset).then((response) => response.ok); })()"),
-	'the selected reel audio asset loads',
+	await evaluate("document.querySelector('audio') === null && !document.querySelector('.forge-shell')?.hasAttribute('data-spin-audio')"),
+	'spin audio uses the CSP-safe Web Audio path without a media element',
 );
 check(
 	!(await evaluate("Boolean(document.querySelector('.reel-sheen'))")),
@@ -711,14 +711,14 @@ const mobileActionLayout = await evaluate(`(() => {
 	return {
 		count: controls.length,
 		trailedByStage: Boolean(rail && stage && rail.top >= stage.bottom - 2),
-		sameRow: controls.length === 4 && controls.every((bounds) => Math.abs(bounds.top - controls[0].top) < 2),
+		sameRow: controls.length === 5 && controls.every((bounds) => Math.abs(bounds.top - controls[0].top) < 4),
 		withinViewport: controls.every((bounds) => bounds.left >= 0 && bounds.right <= innerWidth),
 		spinVisible: Boolean(spin && spin.top >= 0 && spin.bottom <= innerHeight),
 		footerVisible: Boolean(footer && footer.bottom <= innerHeight),
 	};
 })()`);
 check(
-	mobileActionLayout.count === 4 &&
+	mobileActionLayout.count === 5 &&
 	mobileActionLayout.trailedByStage &&
 	mobileActionLayout.sameRow &&
 	mobileActionLayout.withinViewport &&
@@ -774,7 +774,7 @@ await waitFor(
 await click(".mode-card[data-mode-id='standard']");
 await waitFor("Boolean(document.querySelector('.bonus-confirm-modal'))", 'Standard confirmation');
 check(
-	moneyValue(await text('.bonus-confirm-modal .total dd')) === 80,
+	moneyValue(await text('.bonus-confirm-modal .total dd b')) === 80,
 	'Standard mock confirmation displays its centralized 80x total cost',
 );
 check(
@@ -1263,7 +1263,7 @@ await waitFor(
 	'RGS Bonus Buy confirmation',
 );
 check(
-	moneyValue(await text('.bonus-confirm-modal .total dd')) === 100,
+	moneyValue(await text('.bonus-confirm-modal .total dd b')) === 100,
 	'RGS Bonus Buy confirmation uses the authenticated 100x multiplier',
 );
 await click('.bonus-confirm-actions .buy');

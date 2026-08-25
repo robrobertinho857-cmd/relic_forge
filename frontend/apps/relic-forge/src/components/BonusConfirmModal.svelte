@@ -67,7 +67,7 @@
 				</div>
 				<div class="total" aria-live="polite">
 					<dt>BONUS BUY PRICE</dt>
-					<dd><span>{mode.costMultiplier}×</span> {formatMoney(totalCost)}</dd>
+					<dd><span>{mode.costMultiplier}×</span> <b>{formatMoney(totalCost)}</b></dd>
 				</div>
 			</dl>
 			<div class="bonus-confirm-bet" aria-label="Bonus Buy bet controls">
@@ -220,6 +220,9 @@
 		color: #b8a779;
 		font-size: 0.62em;
 		letter-spacing: 0.04em;
+	}
+	.total dd b {
+		font: inherit;
 	}
 	.bonus-confirm-bet {
 		display: grid;
