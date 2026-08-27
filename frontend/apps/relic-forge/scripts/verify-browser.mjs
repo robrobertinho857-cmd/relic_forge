@@ -70,6 +70,7 @@ const runtimeErrors = [];
 const networkFailures = [];
 const requestCounts = { authenticate: 0, play: 0, endRound: 0 };
 const playModes = [];
+const playAmounts = [];
 let serveRecoveryRound = false;
 let serveRestrictedSession = false;
 let replayRequests = 0;
@@ -1016,10 +1017,14 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 		payload = {
 			balance: { amount: 1_000_000_000, currency: 'USD' },
 			config: {
+				minBet: 200_000,
+				maxBet: 50_000_000,
+				stepBet: 100_000,
+				defaultBetLevel: 1_000_000,
 				betLevels: [1_000_000],
 				betModes: {
-					BASE: { mode: 'BASE', costMultiplier: 1, feature: false },
-					BONUS: { mode: 'BONUS', costMultiplier: 100, feature: false, buyBonus: true },
+					BASE: { mode: 'BASE', cost: 1, feature: false },
+					BONUS: { mode: 'BONUS', cost: 100, feature: false, buyBonus: true },
 				},
 				jurisdiction: serveRestrictedSession
 					? {
@@ -1120,8 +1125,10 @@ on('Fetch.requestPaused', ({ requestId, request }) => {
 		};
 	} else if (request.url.endsWith('/wallet/play')) {
 		requestCounts.play += 1;
-		const mode = request.postData ? JSON.parse(request.postData).mode : undefined;
+		const playRequest = request.postData ? JSON.parse(request.postData) : {};
+		const mode = playRequest.mode;
 		playModes.push(mode);
+		playAmounts.push(playRequest.amount);
 		responseDelay = 400;
 		payload =
 			mode === 'BONUS'
@@ -1235,6 +1242,7 @@ await waitFor(
 check(true, 'reels keep moving while an authoritative RGS result is delayed');
 await waitForIdle();
 check(requestCounts.play === 1, 'rapid clicks create one RGS play request');
+check(playAmounts[0] === 1_000_000, 'RGS play sends the authenticated bet in API units');
 check(requestCounts.endRound === 0, 'zero-win base rounds close without end-round');
 check(moneyValue(await text('.stat-block strong')) === 999, 'RGS play response updates the authenticated balance');
 

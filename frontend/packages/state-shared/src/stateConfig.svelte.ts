@@ -1,5 +1,6 @@
 export type AuthenticatedBetMode = {
 	mode?: string;
+	cost?: number;
 	costMultiplier?: number;
 	feature?: boolean;
 	buyBonus?: boolean;

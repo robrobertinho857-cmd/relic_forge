@@ -19,6 +19,7 @@ export type ModeDefinition = {
 
 export type AuthenticatedMode = {
 	mode?: string;
+	cost?: number;
 	costMultiplier?: number;
 	feature?: boolean;
 	buyBonus?: boolean;
@@ -148,7 +149,10 @@ export const resolveModes = (
 
 		const authenticated = findAuthenticatedMode(definition, options.authenticatedModes);
 		const [key, config] = authenticated ?? ['', {}];
-		const configuredCost = Number(config.costMultiplier);
+		// Stake's RGS contract calls this value costMultiplier, while the current
+		// Math SDK frontend configuration emits cost. Both values are authoritative
+		// server metadata; never fall back to a local live-mode price.
+		const configuredCost = Number(config.costMultiplier ?? config.cost);
 		const validCost = Number.isFinite(configuredCost) && configuredCost > 0;
 		const featureAllowed =
 			definition.kind !== 'bonus' || config.feature === true || config.buyBonus === true;

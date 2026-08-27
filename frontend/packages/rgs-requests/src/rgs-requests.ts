@@ -66,7 +66,7 @@ export const requestBet = async (options: {
 			mode: options.mode,
 			currency: options.currency,
 			sessionID: options.sessionID,
-			amount: options.amount * API_AMOUNT_MULTIPLIER,
+			amount: Math.round(options.amount * API_AMOUNT_MULTIPLIER),
 		},
 	});
 
