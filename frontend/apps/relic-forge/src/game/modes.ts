@@ -154,8 +154,12 @@ export const resolveModes = (
 		// server metadata; never fall back to a local live-mode price.
 		const configuredCost = Number(config.costMultiplier ?? config.cost);
 		const validCost = Number.isFinite(configuredCost) && configuredCost > 0;
+		const hasFeatureMetadata = config.feature !== undefined || config.buyBonus !== undefined;
 		const featureAllowed =
-			definition.kind !== 'bonus' || config.feature === true || config.buyBonus === true;
+			definition.kind !== 'bonus' ||
+			!hasFeatureMetadata ||
+			config.feature === true ||
+			config.buyBonus === true;
 		const available = Boolean(
 			authenticated &&
 				validCost &&

@@ -25,12 +25,32 @@
 		stepBet?: unknown;
 		defaultBetLevel?: unknown;
 		betLevels?: unknown;
+		gameModes?: unknown;
 	};
 
 	const isRecord = (value: unknown): value is Record<string, unknown> =>
 		typeof value === 'object' && value !== null && !Array.isArray(value);
 	const positiveApiAmount = (value: unknown) =>
 		typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 0;
+	const normalizeGameModes = (value: unknown): Record<string, AuthenticatedBetMode> => {
+		if (!Array.isArray(value)) return {};
+
+		const modes: Record<string, AuthenticatedBetMode> = {};
+		for (const entry of value) {
+			if (!isRecord(entry) || typeof entry.mode !== 'string' || !entry.mode.trim()) continue;
+
+			const mode = entry.mode.trim();
+			const normalized: AuthenticatedBetMode = { mode };
+			if (typeof entry.costMultiplier === 'number') {
+				normalized.costMultiplier = entry.costMultiplier;
+			}
+			if (typeof entry.cost === 'number') normalized.cost = entry.cost;
+			if (typeof entry.feature === 'boolean') normalized.feature = entry.feature;
+			if (typeof entry.buyBonus === 'boolean') normalized.buyBonus = entry.buyBonus;
+			modes[mode] = normalized;
+		}
+		return modes;
+	};
 
 	const toBetToResume = (value: unknown): BetToResume | null => {
 		if (!isRecord(value) || !Array.isArray(value.state) || !value.state.every(isRecord)) return null;
@@ -99,10 +119,11 @@
 				// 	}
 				// }
 				stateConfig.jurisdiction = betConfig.jurisdiction;
-				stateConfig.betModes = (betConfig.betModes ?? {}) as Record<
-					string,
-					AuthenticatedBetMode
-				>;
+				const gameModes = normalizeGameModes(betConfig.gameModes);
+				const fallbackBetModes = isRecord(betConfig.betModes)
+					? (betConfig.betModes as Record<string, AuthenticatedBetMode>)
+					: {};
+				stateConfig.betModes = Object.keys(gameModes).length > 0 ? gameModes : fallbackBetModes;
 
 				const minBet = positiveApiAmount(betConfig.minBet);
 				const maxBet = positiveApiAmount(betConfig.maxBet);
