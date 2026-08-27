@@ -19,9 +19,18 @@
 
 	let authenticated = $state(false);
 	let authenticationError = $state('');
+	type RgsBetConfig = {
+		minBet?: unknown;
+		maxBet?: unknown;
+		stepBet?: unknown;
+		defaultBetLevel?: unknown;
+		betLevels?: unknown;
+	};
 
 	const isRecord = (value: unknown): value is Record<string, unknown> =>
 		typeof value === 'object' && value !== null && !Array.isArray(value);
+	const positiveApiAmount = (value: unknown) =>
+		typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 0;
 
 	const toBetToResume = (value: unknown): BetToResume | null => {
 		if (!isRecord(value) || !Array.isArray(value.state) || !value.state.every(isRecord)) return null;
@@ -63,6 +72,8 @@
 
 			// config
 			if (authenticateData?.config) {
+				const betConfig = authenticateData.config as typeof authenticateData.config &
+					RgsBetConfig;
 				// Example of authenticateData.config
 				// {
 				// 	"gameID": "37_test-lines",
@@ -87,17 +98,50 @@
 				// 			"minimumRoundDuration": 0
 				// 	}
 				// }
-				stateConfig.jurisdiction = authenticateData?.config?.jurisdiction;
-				stateConfig.betModes = (authenticateData.config.betModes ?? {}) as Record<
+				stateConfig.jurisdiction = betConfig.jurisdiction;
+				stateConfig.betModes = (betConfig.betModes ?? {}) as Record<
 					string,
 					AuthenticatedBetMode
 				>;
-				stateConfig.betAmountOptions = (authenticateData.config?.betLevels || []).map(
+
+				const minBet = positiveApiAmount(betConfig.minBet);
+				const maxBet = positiveApiAmount(betConfig.maxBet);
+				const stepBet = positiveApiAmount(betConfig.stepBet);
+				const defaultBetLevel = positiveApiAmount(betConfig.defaultBetLevel);
+				const apiBetLevels = Array.isArray(betConfig.betLevels)
+					? betConfig.betLevels.map(positiveApiAmount).filter((level) => level > 0)
+					: [];
+
+				stateConfig.minBet = minBet / API_AMOUNT_MULTIPLIER;
+				stateConfig.maxBet = maxBet / API_AMOUNT_MULTIPLIER;
+				stateConfig.stepBet = stepBet / API_AMOUNT_MULTIPLIER;
+				stateConfig.betAmountOptions = apiBetLevels.map(
 					(level) => level / API_AMOUNT_MULTIPLIER,
 				);
 				stateConfig.betMenuOptions = stateConfig.betAmountOptions.filter((_, index) =>
 					MOST_USED_BET_INDEXES.includes(index),
 				);
+
+				const defaultIsValid =
+					defaultBetLevel > 0 &&
+					(apiBetLevels.length > 0
+						? apiBetLevels.includes(defaultBetLevel)
+						: minBet > 0 &&
+							maxBet >= minBet &&
+							stepBet > 0 &&
+							defaultBetLevel >= minBet &&
+							defaultBetLevel <= maxBet &&
+							defaultBetLevel % stepBet === 0);
+				const firstSteppedBet =
+					minBet > 0 && maxBet >= minBet && stepBet > 0
+						? Math.ceil(minBet / stepBet) * stepBet
+						: 0;
+				const initialApiBet = defaultIsValid
+					? defaultBetLevel
+					: (apiBetLevels[0] ?? (firstSteppedBet <= maxBet ? firstSteppedBet : 0));
+				const initialBet = initialApiBet / API_AMOUNT_MULTIPLIER;
+				stateBet.betAmount = initialBet;
+				stateBet.wageredBetAmount = initialBet;
 			}
 
 			// round

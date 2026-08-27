@@ -198,6 +198,20 @@
 	let activePaylineKeys = $derived(
 		activePaylinePositions.map((position) => `${position.reel}:${position.row}`),
 	);
+	const amountsMatch = (left: number, right: number) =>
+		Math.abs(left - right) <= Math.max(1e-9, Math.abs(right) * 1e-9);
+	const isBetAllowed = (amount: number) => {
+		if (!Number.isFinite(amount) || amount <= 0) return false;
+		if (betLevels.length > 0) return betLevels.some((level) => amountsMatch(level, amount));
+		if (isMockMode) return false;
+
+		const { minBet, maxBet, stepBet } = stateConfig;
+		if (!(minBet > 0 && maxBet >= minBet && stepBet > 0)) return false;
+		const tolerance = Math.max(1e-9, stepBet * 1e-9);
+		if (amount < minBet - tolerance || amount > maxBet + tolerance) return false;
+		const stepCount = amount / stepBet;
+		return Math.abs(stepCount - Math.round(stepCount)) <= 1e-9;
+	};
 
 	const wait = (ms: number) =>
 		new Promise<void>((resolve) => setTimeout(resolve, turbo ? Math.max(80, ms * 0.35) : ms));
@@ -599,7 +613,7 @@
 			bet <= 0 ||
 			wagerCost <= 0 ||
 			wagerCost > balance ||
-			(!isMockMode && !betLevels.some((level) => level === bet))
+			!isBetAllowed(bet)
 		)
 			return false;
 		roundInFlight = true;
@@ -760,7 +774,7 @@
 		const storedTurbo = localStorage.getItem('relic-forge-turbo');
 		turbo = !stateConfig.jurisdiction?.disabledTurbo && storedTurbo === 'true';
 		if (isMockMode && stateBet.balanceAmount === 0) stateBet.balanceAmount = 845.22;
-		if (!betLevels.includes(stateBet.betAmount)) stateBet.betAmount = betLevels[0] || 0;
+		if (!isBetAllowed(stateBet.betAmount)) stateBet.betAmount = betLevels[0] || 0;
 		const resumedMode = playModes.find(
 			(mode) =>
 				mode.available && mode.mode.toUpperCase() === stateBet.activeBetModeKey.toUpperCase(),
