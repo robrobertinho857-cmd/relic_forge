@@ -2370,11 +2370,19 @@ button:focus-visible {
 	}
 	.control-right .win-readout {
 		min-height: 74px;
-		padding-top: 10px;
-		padding-bottom: 8px;
+		justify-content: flex-end;
+		gap: 1px;
+		padding: 23px 10px 7px;
 	}
 	.control-right .win-readout strong {
-		font-size: clamp(21px, 3vw, 30px);
+		top: 0;
+		font-size: clamp(16px, 2vw, 22px);
+		line-height: 1;
+	}
+	.control-right .win-readout em {
+		font-size: clamp(6px, 0.8vw, 8px);
+		line-height: 1;
+		letter-spacing: 0.14em;
 	}
 	.spin-button {
 		width: min(15vw, 128px);
