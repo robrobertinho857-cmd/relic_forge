@@ -1,0 +1,28 @@
+{
+	"name": "dragon-flight",
+	"version": "0.1.0",
+	"private": true,
+	"license": "MIT",
+	"scripts": {
+		"format": "prettier --write --ignore-path=../../.prettierignore .",
+		"lint": "eslint \"src\"",
+		"dev": "vite dev --host --port 3007",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"type": "module",
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "5.0.3",
+		"config-svelte": "workspace:*",
+		"config-ts": "workspace:*",
+		"config-vite": "workspace:*",
+		"eslint": "9.21.0",
+		"eslint-config-custom": "workspace:*",
+		"svelte-check": "4.1.4"
+	},
+	"dependencies": {
+		"@sveltejs/kit": "2.17.3",
+		"svelte": "5.20.5",
+		"vite": "6.2.0"
+	}
+}
