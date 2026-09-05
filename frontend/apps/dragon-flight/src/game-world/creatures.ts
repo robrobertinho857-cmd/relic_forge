@@ -11,6 +11,11 @@ export type CreatureProfile = {
 		flight?: string;
 		result?: string;
 	};
+	flightAnimation?: {
+		frames: readonly string[];
+		frameOrder: readonly number[];
+		fps: number;
+	};
 	sizeScale: number;
 	agility: number;
 	damping: number;
@@ -22,6 +27,13 @@ export type CreatureProfile = {
 	hoverLift: number;
 	description: string;
 };
+
+const AZURE_SWIFT_FRAMES = Array.from(
+	{ length: 9 },
+	(_, index) => `/creatures/azure-swift/fly-${String(index + 1).padStart(2, '0')}.png`,
+);
+
+const AZURE_SWIFT_FRAME_ORDER = [1, 2, 3, 4, 5, 6, 7, 9, 2, 1] as const;
 
 export const CREATURES: CreatureProfile[] = [
 	{
@@ -98,6 +110,31 @@ export const CREATURES: CreatureProfile[] = [
 		hoverDuration: 2100,
 		hoverLift: 3,
 		description: 'Heavy and dramatic',
+	},
+	{
+		id: 'azure-swift',
+		name: 'Azure Swift',
+		className: 'azure-swift',
+		assets: {
+			portrait: AZURE_SWIFT_FRAMES[2],
+			flight: AZURE_SWIFT_FRAMES[0],
+			result: AZURE_SWIFT_FRAMES[0],
+		},
+		flightAnimation: {
+			frames: AZURE_SWIFT_FRAMES,
+			frameOrder: AZURE_SWIFT_FRAME_ORDER,
+			fps: 10,
+		},
+		sizeScale: 1.05,
+		agility: 1.2,
+		damping: 0.92,
+		maxVerticalSpeed: 340,
+		rotationDivisor: 9.5,
+		rotationLimit: 38,
+		flapDuration: 145,
+		hoverDuration: 1150,
+		hoverLift: 5,
+		description: 'Fast, light and vividly animated',
 	},
 ];
 

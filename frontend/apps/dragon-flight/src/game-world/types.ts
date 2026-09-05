@@ -29,7 +29,7 @@ export type EmberParticle = {
 
 export type FlightRisk = 'safe' | 'balanced' | 'danger';
 
-export type CreatureId = 'tiny-bat' | 'firebird' | 'wyvern' | 'dragon' | 'ancient-dragon';
+export type CreatureId = 'tiny-bat' | 'firebird' | 'wyvern' | 'dragon' | 'ancient-dragon' | 'azure-swift';
 
 export type RelicType = 'guardian' | 'fortune' | 'chaos';
 

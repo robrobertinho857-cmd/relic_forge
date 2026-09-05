@@ -39,6 +39,7 @@
 	import type { DevScenarioId } from './devScenarios';
 
 	type DevScenarioModule = typeof import('./devScenarios');
+	type ControlTab = 'play' | 'style';
 
 	type StageAnnouncement = {
 		id: number;
@@ -117,6 +118,8 @@
 	let selectedTimeOfDay = $state<TimeOfDay>('day');
 	let selectedDevScenario = $state<DevScenarioId>('random');
 	let devScenarioModule = $state<DevScenarioModule>();
+	let activeControlTab = $state<ControlTab>('play');
+	let devToolsOpen = $state(false);
 	let helpOpen = $state(false);
 	let currentStageId = $state<FlightStageId>('FORGE_OUTSKIRTS');
 	let flightProgress = $state(0);
@@ -138,6 +141,7 @@
 	let comboFeedback = $state<ComboPresentation>();
 	let comboCount = $state(0);
 	let multiplierPulse = $state(false);
+	let creatureFrameNumber = $state(1);
 	let impactActive = $state(false);
 	let flapActive = $state(false);
 	let eventLabel = $state('READY');
@@ -164,12 +168,21 @@
 	const controlsLocked = $derived(status !== 'ready');
 	const betInputIsValid = $derived(isBetInputValid(betInput));
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
+	const selectedCreature = $derived(getCreature(selectedCreatureId));
+	const selectedPathNote = $derived(PATHS.find((path) => path.risk === selectedRisk)?.note ?? '');
+	const selectedRelicNote = $derived(RELICS.find((relic) => relic.type === selectedRelic)?.note ?? '');
+	const selectedLaunchNote = $derived(LAUNCH_STYLES.find((launch) => launch.style === selectedLaunchStyle)?.note ?? '');
+	const selectedWeatherConfig = $derived(getWeather(selectedWeather));
+	const selectedTimeConfig = $derived(getTimeOfDay(selectedTimeOfDay));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(getWinTier(currentRound?.finalMultiplier ?? 0));
 	const activeWeather = $derived(currentRound?.weather ?? selectedWeather);
 	const activeWeatherConfig = $derived(getWeather(activeWeather));
 	const activeTimeOfDay = $derived(currentRound?.timeOfDay ?? selectedTimeOfDay);
 	const activeTimeConfig = $derived(getTimeOfDay(activeTimeOfDay));
+	const activeCreatureFrame = $derived(
+		activeCreature.flightAnimation?.frames[creatureFrameNumber - 1],
+	);
 	const rotation = $derived(
 		clamp(
 			player.velocity.y / activeCreature.rotationDivisor,
@@ -178,6 +191,25 @@
 		),
 	);
 	const distanceMetres = $derived(Math.floor(distanceTravelled / 12));
+
+	$effect(() => {
+		const animation = activeCreature.flightAnimation;
+		creatureFrameNumber = animation?.frameOrder[0] ?? 1;
+		if (!animation) return;
+
+		for (const source of animation.frames) {
+			const image = new Image();
+			image.src = source;
+		}
+
+		let frameCursor = 0;
+		const frameTimer = setInterval(() => {
+			frameCursor = (frameCursor + 1) % animation.frameOrder.length;
+			creatureFrameNumber = animation.frameOrder[frameCursor] ?? 1;
+		}, 1000 / animation.fps);
+
+		return () => clearInterval(frameTimer);
+	});
 
 	function createPlayer(worldBounds: WorldBounds): PlayerBody {
 		return {
@@ -856,14 +888,14 @@
 				active={status !== 'ready' && status !== 'complete'}
 			/>
 			<div class="flight-hud">
-				<span>BET <strong>{formatLocalAmount(currentRound?.bet ?? selectedBet)}</strong></span>
-				<span>PATH <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
-				<span>CREATURE <strong>{activeCreature.name}</strong></span>
-				<span>RELIC <strong>{(currentRound?.relic ?? selectedRelic).toUpperCase()}</strong></span>
-				<span>WEATHER <strong>{activeWeatherConfig.name}</strong></span>
-				<span>TIME <strong>{activeTimeConfig.name}</strong></span>
-				<span class="stage-readout">STAGE {currentStage.order} <strong>{currentStage.name}</strong></span>
-				<span class:pulse={multiplierPulse} class="multiplier-readout">CURRENT <strong>x{currentMultiplier.toFixed(2)}</strong></span>
+				<div class="hud-selection">
+					<span>BET <strong>{formatLocalAmount(currentRound?.bet ?? selectedBet)}</strong></span>
+					<span>PATH <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
+					<span>CREATURE <strong>{activeCreature.name}</strong></span>
+					<span>RELIC <strong>{(currentRound?.relic ?? selectedRelic).toUpperCase()}</strong></span>
+				</div>
+				<span class="stage-readout">STAGE {currentStage.order}<strong>{currentStage.name}</strong></span>
+				<span class:pulse={multiplierPulse} class="multiplier-readout">CURRENT<strong>x{currentMultiplier.toFixed(2)}</strong></span>
 			</div>
 
 			{#if stageAnnouncement}
@@ -944,10 +976,15 @@
 				aria-label={activeCreature.name}
 			>
 				<div
+					class:uses-frame-animation={Boolean(activeCreatureFrame)}
 					class={`creature-sprite ${activeCreature.className}`}
 					style={`--hover-duration:${activeCreature.hoverDuration}ms;--hover-lift:${-activeCreature.hoverLift}px;--flap-burst:${activeCreature.flapDuration}ms;`}
 				>
-					<span class="wing wing-top"></span><span class="dragon-body"></span><span class="dragon-head"><i></i></span><span class="wing wing-bottom"></span><span class="tail"></span><span class="creature-detail"></span>
+					{#if activeCreatureFrame}
+						<img class="creature-frame" src={activeCreatureFrame} alt="" draggable="false" />
+					{:else}
+						<span class="wing wing-top"></span><span class="dragon-body"></span><span class="dragon-head"><i></i></span><span class="wing wing-bottom"></span><span class="tail"></span><span class="creature-detail"></span>
+					{/if}
 					<span class={`weather-trail ${activeWeather}`}></span>
 				</div>
 			</div>
@@ -975,114 +1012,134 @@
 		</div>
 
 		<aside class="control-panel">
+			<div class="control-tabs" role="tablist" aria-label="Flight setup sections">
+				<button role="tab" aria-selected={activeControlTab === 'play'} class:active={activeControlTab === 'play'} onclick={() => (activeControlTab = 'play')}>PLAY</button>
+				<button role="tab" aria-selected={activeControlTab === 'style'} class:active={activeControlTab === 'style'} onclick={() => (activeControlTab = 'style')}>STYLE</button>
+			</div>
+
 			{#if import.meta.env.DEV && devScenarioModule}
-				<section class="dev-scenario-panel">
-					<div><strong>DEV ONLY</strong><span>DETERMINISTIC PRESENTATION PREVIEW</span></div>
-					<label for="dev-scenario-select">DEV SCENARIO</label>
-					<select id="dev-scenario-select" bind:value={selectedDevScenario} disabled={controlsLocked}>
-						{#each devScenarioModule.DEV_SCENARIOS as scenario (scenario.id)}
-							<option value={scenario.id}>{scenario.name}</option>
-						{/each}
-					</select>
+				<section class:open={devToolsOpen} class="dev-scenario-panel">
+					<button class="dev-tools-toggle" type="button" aria-expanded={devToolsOpen} onclick={() => (devToolsOpen = !devToolsOpen)}>
+						<span><strong>DEV ONLY</strong><small>SCENARIO PREVIEW</small></span><b>{devToolsOpen ? '−' : '+'}</b>
+					</button>
+					{#if devToolsOpen}
+						<div class="dev-tools-body">
+							<label for="dev-scenario-select">DEV SCENARIO</label>
+							<select id="dev-scenario-select" bind:value={selectedDevScenario} disabled={controlsLocked}>
+								{#each devScenarioModule.DEV_SCENARIOS as scenario (scenario.id)}
+									<option value={scenario.id}>{scenario.name}</option>
+								{/each}
+							</select>
+						</div>
+					{/if}
 				</section>
 			{/if}
-			<section class="control-section creature-section">
-				<div class="section-heading"><div><p>CREATURE</p><span>Movement feel only - no outcome effect</span></div></div>
-				<div class="creature-options">
-					{#each CREATURES as creature (creature.id)}
-						<button disabled={controlsLocked} aria-pressed={selectedCreatureId === creature.id} class:active={selectedCreatureId === creature.id} onclick={() => (selectedCreatureId = creature.id)}>
-							<span class={`creature-preview ${creature.className}`}><i></i></span>
-							<span class="creature-copy"><b>{creature.name}</b><small>{creature.description}</small></span>
-						</button>
-					{/each}
-				</div>
-			</section>
 
-			<section class="control-section">
-				<div class="section-heading"><div><p>BET</p><span>Fake local prototype amount</span></div></div>
-				<div class="bet-stepper">
-					<button aria-label="Decrease bet" disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET} onclick={() => moveBet(-1)}>-</button>
-					<input
-						aria-label="Prototype bet amount"
-						aria-invalid={!betInputIsValid}
-						class="bet-input"
-						disabled={controlsLocked}
-						inputmode="decimal"
-						min={MIN_PROTOTYPE_BET}
-						max={MAX_PROTOTYPE_BET}
-						step="0.01"
-						type="number"
-						value={betInput}
-						oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
-						onblur={normalizeBetInput}
-					/>
-					<button aria-label="Increase bet" disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET} onclick={() => moveBet(1)}>+</button>
-				</div>
-			</section>
+			<div class="control-tab-body" role="tabpanel">
+				{#if activeControlTab === 'play'}
+					<section class="control-section bet-section">
+						<div class="section-heading"><div><p>BET</p><span>Local prototype amount</span></div></div>
+						<div class="bet-stepper">
+							<button aria-label="Decrease bet" disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET} onclick={() => moveBet(-1)}>−</button>
+							<input
+								aria-label="Prototype bet amount"
+								aria-invalid={!betInputIsValid}
+								class="bet-input"
+								disabled={controlsLocked}
+								inputmode="decimal"
+								min={MIN_PROTOTYPE_BET}
+								max={MAX_PROTOTYPE_BET}
+								step="0.01"
+								type="number"
+								value={betInput}
+								oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
+								onblur={normalizeBetInput}
+							/>
+							<button aria-label="Increase bet" disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET} onclick={() => moveBet(1)}>+</button>
+						</div>
+					</section>
 
-			<section class="control-section">
-				<div class="section-heading"><div><p>PATH / RISK</p><span>Outcome profile for this local mock round</span></div></div>
-				<div class="path-options">
-					{#each PATHS as path (path.risk)}
-						<button disabled={controlsLocked} aria-pressed={selectedRisk === path.risk} class:active={selectedRisk === path.risk} onclick={() => (selectedRisk = path.risk)}><b>{path.arrow} {path.risk}</b><span>{path.note}</span></button>
-					{/each}
-				</div>
-			</section>
+					<section class="control-section">
+						<div class="section-heading"><div><p>PATH / RISK</p><span>Local mock-round profile</span></div></div>
+						<div class="segmented-options path-options">
+							{#each PATHS as path (path.risk)}
+								<button disabled={controlsLocked} aria-pressed={selectedRisk === path.risk} class:active={selectedRisk === path.risk} onclick={() => (selectedRisk = path.risk)}><span>{path.arrow}</span><b>{path.risk}</b></button>
+							{/each}
+						</div>
+						<p class="selected-description">{selectedPathNote}</p>
+					</section>
 
-			<section class="control-section">
-				<div class="section-heading"><div><p>RELIC</p><span>Selection/state only - no payout effect</span></div></div>
-				<div class="choice-options relic-options">
-					{#each RELICS as relic (relic.type)}
-						<button disabled={controlsLocked} aria-pressed={selectedRelic === relic.type} class:active={selectedRelic === relic.type} onclick={() => (selectedRelic = relic.type)}><b>{relic.name}</b><span>{relic.note}</span></button>
-					{/each}
-				</div>
-			</section>
+					<section class="control-section">
+						<div class="section-heading"><div><p>RELIC</p><span>Selection only</span></div></div>
+						<div class="segmented-options relic-options">
+							{#each RELICS as relic (relic.type)}
+								<button disabled={controlsLocked} aria-pressed={selectedRelic === relic.type} class:active={selectedRelic === relic.type} onclick={() => (selectedRelic = relic.type)}><b>{relic.name.replace(' RELIC', '')}</b></button>
+							{/each}
+						</div>
+						<p class="selected-description">{selectedRelicNote}</p>
+					</section>
+				{:else}
+					<section class="control-section creature-section">
+						<div class="section-heading"><div><p>CREATURE</p><span>Movement feel only</span></div></div>
+						<div class="creature-options">
+							{#each CREATURES as creature (creature.id)}
+								<button title={creature.name} disabled={controlsLocked} aria-pressed={selectedCreatureId === creature.id} class:active={selectedCreatureId === creature.id} onclick={() => (selectedCreatureId = creature.id)}>
+									{#if creature.assets?.portrait}
+										<span class="creature-preview with-image"><img class="creature-preview-image" src={creature.assets.portrait} alt="" /></span>
+									{:else}
+										<span class={`creature-preview ${creature.className}`}><i></i></span>
+									{/if}
+									<span class="creature-copy"><b>{creature.name}</b></span>
+								</button>
+							{/each}
+						</div>
+						<p class="selected-description"><strong>{selectedCreature.name}</strong> — {selectedCreature.description}</p>
+					</section>
 
-			<section class="control-section">
-				<div class="section-heading"><div><p>LAUNCH STYLE</p><span>Presentation only - no outcome effect</span></div></div>
-				<div class="choice-options launch-options">
-					{#each LAUNCH_STYLES as launch (launch.style)}
-						<button disabled={controlsLocked} aria-pressed={selectedLaunchStyle === launch.style} class:active={selectedLaunchStyle === launch.style} onclick={() => (selectedLaunchStyle = launch.style)}><b>{launch.name}</b><span>{launch.note}</span></button>
-					{/each}
-				</div>
-			</section>
+					<section class="control-section">
+						<div class="section-heading"><div><p>LAUNCH</p><span>Presentation only</span></div></div>
+						<div class="segmented-options launch-options">
+							{#each LAUNCH_STYLES as launch (launch.style)}
+								<button disabled={controlsLocked} aria-pressed={selectedLaunchStyle === launch.style} class:active={selectedLaunchStyle === launch.style} onclick={() => (selectedLaunchStyle = launch.style)}><b>{launch.name}</b></button>
+							{/each}
+						</div>
+						<p class="selected-description">{selectedLaunchNote}</p>
+					</section>
 
-			<section class="control-section weather-section">
-				<div class="section-heading"><div><p>WEATHER</p><span>Atmosphere only - no outcome effect</span></div></div>
-				<div class="weather-options">
-					{#each WEATHER_OPTIONS as weather (weather.id)}
-						<button
-							disabled={controlsLocked}
-							aria-pressed={selectedWeather === weather.id}
-							class:active={selectedWeather === weather.id}
-							onclick={() => (selectedWeather = weather.id)}
-						>
-							<i class={`weather-indicator ${weather.className}`} aria-hidden="true"></i>
-							<span><b>{weather.name}</b><small>{weather.description}</small></span>
-						</button>
-					{/each}
-				</div>
-			</section>
+					<section class="control-section weather-section">
+						<div class="section-heading"><div><p>WEATHER</p><span>Atmosphere only</span></div></div>
+						<div class="weather-options">
+							{#each WEATHER_OPTIONS as weather (weather.id)}
+								<button disabled={controlsLocked} aria-pressed={selectedWeather === weather.id} class:active={selectedWeather === weather.id} onclick={() => (selectedWeather = weather.id)}>
+									<i class={`weather-indicator ${weather.className}`} aria-hidden="true"></i><b>{weather.name}</b>
+								</button>
+							{/each}
+						</div>
+						<p class="selected-description">{selectedWeatherConfig.description}</p>
+					</section>
 
-			<section class="control-section time-section">
-				<div class="section-heading"><div><p>TIME</p><span>Lighting only - no outcome effect</span></div></div>
-				<div class="time-options">
-					{#each TIME_OF_DAY_OPTIONS as time (time.id)}
-						<button
-							disabled={controlsLocked}
-							aria-pressed={selectedTimeOfDay === time.id}
-							class:active={selectedTimeOfDay === time.id}
-							onclick={() => (selectedTimeOfDay = time.id)}
-						>
-							<i class={`time-indicator ${time.overlayClass}`} aria-hidden="true"></i>
-							<span><b>{time.name}</b><small>{time.description}</small></span>
-						</button>
-					{/each}
-				</div>
-			</section>
+					<section class="control-section time-section">
+						<div class="section-heading"><div><p>TIME</p><span>Lighting only</span></div></div>
+						<div class="time-options">
+							{#each TIME_OF_DAY_OPTIONS as time (time.id)}
+								<button disabled={controlsLocked} aria-pressed={selectedTimeOfDay === time.id} class:active={selectedTimeOfDay === time.id} onclick={() => (selectedTimeOfDay = time.id)}>
+									<i class={`time-indicator ${time.overlayClass}`} aria-hidden="true"></i><b>{time.name}</b>
+								</button>
+							{/each}
+						</div>
+						<p class="selected-description">{selectedTimeConfig.description}</p>
+					</section>
+				{/if}
+			</div>
 
-			<div class="round-readout"><div><span>GATES PASSED</span><strong>{gatesPassed}</strong></div><div><span>DISTANCE</span><strong>{distanceMetres}m</strong></div></div>
-			<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button>
+			<div class="control-footer">
+				<div class="control-summary">
+					<div><span>BET</span><strong>{formatLocalAmount(selectedBet)}</strong></div>
+					<p>{selectedRisk} · {selectedRelic}</p>
+					<small>{gatesPassed} gates · {distanceMetres}m</small>
+				</div>
+				<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button>
+			</div>
 		</aside>
 	</section>
 	<footer><span>Prototype outcome is generated locally before animation.</span><span>No RGS, wallet, authentication, or real wagering.</span></footer>
@@ -1110,17 +1167,9 @@
 	.bet-input:disabled { cursor: not-allowed; opacity: 0.48; }
 	.bet-input::-webkit-inner-spin-button, .bet-input::-webkit-outer-spin-button { margin: 0; }
 	.bet-input[type='number'] { appearance: textfield; }
-	.choice-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-	.choice-options button { display: grid; gap: 5px; min-height: 62px; padding: 8px; text-align: left; }
-	.choice-options button b { font-size: 0.67rem; }
-	.choice-options button span { color: #929b8e; font: 0.55rem/1.2 system-ui, sans-serif; }
 	.relic-pickup.guardian { border-color: #e1bd63; }
 	.relic-pickup.chaos { border-color: #c671e7; background: radial-gradient(circle, #f29b5d 0 8%, #7c2b55 9% 38%, #17091e 68%); box-shadow: 0 0 35px #b145d8; }
 	.relic-pickup.fortune { border-color: #5ce7a1; }
-	@media (max-width: 620px) {
-		.choice-options { grid-template-columns: 1fr; }
-		.choice-options button { min-height: 48px; }
-	}
 	.event-callout { position: absolute; z-index: 10; left: 50%; top: 19%; max-width: 82%; padding: 8px 14px; border: 1px solid rgba(224, 169, 70, 0.72); background: rgba(8, 21, 14, 0.82); color: #f2c86d; font: 800 0.68rem/1.2 system-ui, sans-serif; letter-spacing: 0.14em; text-align: center; text-shadow: 0 1px 8px #000; transform: translateX(-50%); pointer-events: none; }
 	.world:has(.event-callout) .event-callout { animation: event-callout-in 0.24s ease-out; }
 	@keyframes event-callout-in { from { opacity: 0; transform: translate(-50%, -8px) scale(0.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
@@ -1192,9 +1241,8 @@
 	@media (prefers-reduced-motion: reduce) { .multiplier-readout.pulse, .combo-feedback, .hazard-decoration, .hazard-decoration i, .hazard-decoration b, .creature-flight.is-hit { animation: none; } }
 	.weather-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 	.weather-options button { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 54px; padding: 7px; text-align: left; }
-	.weather-options button > span, .weather-options b, .weather-options small { display: block; min-width: 0; }
+	.weather-options b { display: block; min-width: 0; }
 	.weather-options b { font-size: 0.62rem; letter-spacing: 0.05em; }
-	.weather-options small { margin-top: 3px; color: #89988d; font: 0.49rem/1.15 system-ui, sans-serif; }
 	.weather-indicator { position: relative; display: block; width: 20px; height: 20px; overflow: hidden; border: 1px solid #a47930; border-radius: 50%; background: #17251e; box-shadow: inset 0 0 8px #000; }
 	.weather-indicator::before, .weather-indicator::after { content: ''; position: absolute; }
 	.weather-indicator.weather-clear::before { inset: 5px; border-radius: 50%; background: #f0ca63; box-shadow: 0 0 7px #f0b847; }
@@ -1213,9 +1261,8 @@
 	.weather-trail.inferno { width: 70%; height: 54%; background: radial-gradient(circle at 20% 50%, #ffc54b 0 2px, transparent 3px), radial-gradient(circle at 55% 24%, #f26a1c 0 2px, transparent 3px), radial-gradient(circle at 82% 74%, #d54b19 0 1px, transparent 2px); filter: drop-shadow(0 0 5px #ff5c18); animation: creature-ember-trail 0.42s ease-in-out infinite alternate; }
 	.time-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 	.time-options button { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 54px; padding: 7px; text-align: left; }
-	.time-options button > span, .time-options b, .time-options small { display: block; min-width: 0; }
+	.time-options b { display: block; min-width: 0; }
 	.time-options b { font-size: 0.62rem; letter-spacing: 0.05em; }
-	.time-options small { margin-top: 3px; color: #89988d; font: 0.49rem/1.15 system-ui, sans-serif; }
 	.time-indicator { position: relative; display: block; width: 20px; height: 20px; overflow: hidden; border: 1px solid #a47930; border-radius: 50%; background: #17251e; box-shadow: inset 0 0 8px #000; }
 	.time-indicator::before, .time-indicator::after { content: ''; position: absolute; }
 	.time-indicator.time-dawn { background: linear-gradient(#697f95 0 45%, #e79b68 72%, #433027); }
@@ -1229,6 +1276,10 @@
 	.time-night .gate-part, .time-eclipse .gate-part { filter: brightness(calc(0.92 + var(--time-glow) * 0.13)) contrast(1.08); }
 	.time-night .jump-ember, .time-eclipse .jump-ember { filter: brightness(var(--time-glow)); }
 	.time-night .creature-flight, .time-eclipse .creature-flight { filter: drop-shadow(0 0 10px rgba(89, 232, 171, 0.3)) drop-shadow(0 7px 8px rgba(0, 0, 0, 0.65)); }
+	.creature-frame { position: absolute; top: 50%; left: 50%; display: block; width: 300%; height: 300%; max-width: none; object-fit: contain; object-position: center; transform: translate(-50%, -50%); user-select: none; pointer-events: none; }
+	.creature-preview.with-image { overflow: hidden; }
+	.creature-preview.with-image::before, .creature-preview.with-image::after { display: none; }
+	.creature-preview-image { position: absolute; top: 50%; left: 50%; display: block; width: 280%; height: 280%; max-width: none; object-fit: contain; transform: translate(-50%, -50%); }
 	.dev-scenario-panel { display: grid; grid-template-columns: auto minmax(120px, 1fr); align-items: center; gap: 7px 10px; padding: 10px; border: 1px dashed #c35b75; background: linear-gradient(135deg, rgba(48, 8, 24, 0.76), rgba(16, 7, 18, 0.8)); font-family: system-ui, sans-serif; }
 	.dev-scenario-panel > div { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 	.dev-scenario-panel strong { color: #ff8ca7; font-size: 0.62rem; letter-spacing: 0.15em; }
@@ -1241,4 +1292,177 @@
 	@media (max-width: 900px) { .weather-section, .time-section { grid-column: 1 / -1; } }
 	@media (max-width: 620px) { .weather-options, .time-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } .weather-options button, .time-options button { min-height: 50px; } .dev-scenario-panel { grid-template-columns: 1fr; } .dev-scenario-panel > div { display: grid; } }
 	@media (prefers-reduced-motion: reduce) { .weather-trail.inferno { animation: none; } }
+
+	/* Compact setup deck: the flight scene remains primary while setup stays viewport-bound. */
+	.prototype-shell { padding: clamp(10px, 1.5vw, 22px); }
+	.prototype-header { align-items: center; margin-bottom: clamp(8px, 1.2vh, 14px); }
+	.prototype-header .eyebrow { font-size: 0.58rem; }
+	.prototype-header h1 { margin-top: 2px; font-size: clamp(1.45rem, 2.45vw, 2.45rem); }
+	.status-chip { min-width: 132px; padding: 8px 12px; font-size: 0.62rem; }
+	.help-button { width: 38px; min-height: 38px; padding: 8px; }
+	.help-button svg { width: 19px; height: 19px; }
+
+	.game-layout {
+		--game-panel-height: clamp(430px, calc(100dvh - 112px), 760px);
+		grid-template-columns: minmax(0, 4fr) minmax(270px, 1fr);
+		gap: clamp(10px, 1.35vw, 20px);
+		align-items: stretch;
+	}
+	.world, .control-panel { height: var(--game-panel-height); min-height: 0; }
+
+	.flight-hud {
+		top: 10px;
+		right: 10px;
+		left: 10px;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto auto;
+		align-items: center;
+		gap: 0;
+		padding: 6px 9px;
+		border-color: rgba(189, 139, 46, 0.48);
+		background: linear-gradient(90deg, rgba(3, 17, 12, 0.88), rgba(5, 28, 19, 0.78));
+		font-size: 0.56rem;
+		line-height: 1.15;
+		transform: none;
+	}
+	.hud-selection { display: flex; min-width: 0; gap: clamp(8px, 1.25vw, 18px); overflow: hidden; }
+	.hud-selection span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+	.flight-hud .stage-readout, .flight-hud .multiplier-readout { display: grid; gap: 2px; min-width: 104px; padding-left: 10px; margin-left: 10px; border-left: 1px solid rgba(199, 153, 63, 0.3); }
+	.flight-hud .stage-readout strong, .flight-hud .multiplier-readout strong { display: block; margin: 0; }
+	.flight-hud .multiplier-readout { min-width: 72px; }
+
+	.control-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		min-width: 0;
+		overflow: hidden;
+		padding: clamp(10px, 1.2vw, 15px);
+		background:
+			linear-gradient(145deg, rgba(13, 42, 30, 0.97), rgba(5, 13, 10, 0.99)),
+			radial-gradient(circle at 50% 0, rgba(48, 218, 140, 0.12), transparent 42%);
+	}
+	.control-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 auto; padding: 3px; border: 1px solid rgba(163, 119, 41, 0.48); background: rgba(0, 0, 0, 0.28); }
+	.control-tabs button { min-height: 36px; border: 0; background: transparent; color: #8e9587; font-size: 0.68rem; letter-spacing: 0.18em; box-shadow: none; }
+	.control-tabs button.active { background: linear-gradient(180deg, rgba(32, 132, 88, 0.42), rgba(10, 55, 37, 0.5)); color: #84f3bd; box-shadow: inset 0 -2px #4fe3a1; }
+
+	.control-tab-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 4px 2px 1px; scrollbar-width: thin; scrollbar-color: #836326 rgba(0, 0, 0, 0.18); }
+	.control-tab-body::-webkit-scrollbar { width: 5px; }
+	.control-tab-body::-webkit-scrollbar-thumb { background: #836326; }
+	.control-section { padding: 10px 0 12px; border-bottom-color: rgba(199, 153, 63, 0.2); }
+	.control-section:first-child { padding-top: 5px; }
+	.control-section:last-child { border-bottom: 0; }
+	.section-heading { align-items: end; margin-bottom: 7px; }
+	.section-heading span { margin-top: 3px; font-size: 0.56rem; }
+	.control-section p { font-size: 0.61rem; }
+
+	.bet-stepper { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 7px; }
+	.bet-stepper button { width: 42px; height: 42px; min-height: 42px; font-size: 1.1rem; }
+	.bet-input { padding: 10px 6px; font-size: 0.93rem; }
+
+	.segmented-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+	.segmented-options button, .path-options button {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
+		min-height: 45px;
+		padding: 6px 4px;
+		text-align: center;
+		text-transform: uppercase;
+	}
+	.segmented-options button b, .path-options button b { font-size: 0.58rem; letter-spacing: 0.06em; }
+	.path-options button span { color: #d8ac57; font: 700 0.8rem/1 system-ui, sans-serif; }
+	.selected-description { min-height: 1.2em; margin: 6px 2px 0 !important; color: #919c91 !important; font: 0.56rem/1.35 system-ui, sans-serif !important; letter-spacing: 0.02em !important; text-transform: none; }
+	.selected-description strong { color: #d7ba79; font-size: inherit; }
+
+	.creature-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+	.creature-options button, .creature-options button:last-child {
+		display: grid;
+		grid-column: auto;
+		grid-template-columns: 1fr;
+		grid-template-rows: 31px auto;
+		justify-items: center;
+		gap: 4px;
+		min-width: 0;
+		min-height: 58px;
+		padding: 5px 3px;
+		text-align: center;
+	}
+	.creature-preview { width: 40px; height: 29px; }
+	.creature-copy { min-width: 0; width: 100%; }
+	.creature-copy b { display: block; overflow: hidden; font-size: 0.54rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+
+	.weather-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+	.weather-options button, .time-options button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
+		min-width: 0;
+		min-height: 39px;
+		padding: 5px 4px;
+		text-align: center;
+	}
+	.weather-options b, .time-options b { min-width: 0; overflow: hidden; font-size: 0.53rem; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+	.weather-indicator, .time-indicator { flex: 0 0 auto; width: 17px; height: 17px; }
+	.time-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+
+	.dev-scenario-panel { display: block; flex: 0 0 auto; padding: 0; border-style: solid; }
+	.dev-tools-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 30px; padding: 5px 8px; border: 0; background: rgba(39, 8, 20, 0.64); box-shadow: none; text-align: left; }
+	.dev-tools-toggle span { display: flex; align-items: center; gap: 8px; }
+	.dev-tools-toggle small { color: #8f7480; font: 0.45rem/1 system-ui, sans-serif; letter-spacing: 0.08em; }
+	.dev-tools-toggle > b { color: #d4778f; font: 700 1rem/1 system-ui, sans-serif; }
+	.dev-tools-body { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; padding: 7px; border-top: 1px solid rgba(195, 91, 117, 0.38); }
+
+	.control-footer { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(128px, 1.15fr); align-items: stretch; gap: 8px; flex: 0 0 auto; padding-top: 9px; border-top: 1px solid rgba(206, 157, 60, 0.42); background: linear-gradient(180deg, rgba(5, 16, 11, 0.12), rgba(5, 16, 11, 0.96) 25%); }
+	.control-summary { display: grid; align-content: center; gap: 3px; min-width: 0; padding: 3px 0 3px 3px; font-family: system-ui, sans-serif; text-transform: uppercase; }
+	.control-summary div { display: flex; align-items: baseline; gap: 6px; }
+	.control-summary span, .control-summary small { color: #838d83; font-size: 0.48rem; letter-spacing: 0.1em; }
+	.control-summary strong { color: #f1cf82; font-size: 0.75rem; }
+	.control-summary p { margin: 0; overflow: hidden; color: #5ee9a8; font-size: 0.56rem; letter-spacing: 0.07em; text-overflow: ellipsis; white-space: nowrap; }
+	.control-summary small { display: block; }
+	.fly-button { min-height: 56px; margin: 0; padding: 8px; font-size: clamp(0.88rem, 1.3vw, 1.08rem); letter-spacing: 0.11em; }
+
+	@media (max-width: 900px) {
+		.game-layout { --game-panel-height: clamp(390px, 58dvh, 560px); grid-template-columns: 1fr; }
+		.control-panel { display: flex; height: clamp(440px, 70dvh, 580px); }
+		.world { height: var(--game-panel-height); min-height: 0; }
+		.control-tab-body { overflow: auto; }
+		.weather-section, .time-section { grid-column: auto; }
+	}
+
+	@media (max-width: 620px) {
+		.prototype-shell { padding: 9px; }
+		.prototype-header { flex-wrap: nowrap; gap: 8px; }
+		.prototype-header .eyebrow { display: none; }
+		.prototype-header h1 { margin: 0; font-size: clamp(1.15rem, 5.8vw, 1.65rem); }
+		.header-actions { flex: 0 0 auto; }
+		.status-chip { min-width: 98px; padding: 7px 8px; font-size: 0.5rem; }
+		.help-button { width: 34px; min-height: 34px; padding: 7px; }
+		.game-layout { --game-panel-height: clamp(340px, 55dvh, 470px); gap: 10px; }
+		.control-panel { height: min(540px, calc(100dvh - 18px)); min-height: 430px; padding: 10px; }
+		.flight-hud { top: 6px; right: 6px; left: 6px; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0; padding: 5px 6px; font-size: 0.45rem; }
+		.hud-selection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 7px; }
+		.flight-hud .stage-readout, .flight-hud .multiplier-readout { min-width: 68px; padding-left: 6px; margin-left: 6px; }
+		.flight-hud .stage-readout { max-width: 84px; }
+		.flight-hud .stage-readout strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		.flight-hud .multiplier-readout { min-width: 54px; }
+		.control-tabs button { min-height: 34px; }
+		.control-footer { grid-template-columns: minmax(0, 1fr) minmax(132px, 1.25fr); }
+		.creature-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		.weather-options, .time-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+		.weather-options button, .time-options button { min-height: 39px; }
+		footer { display: none; }
+	}
+
+	@media (max-width: 390px) {
+		.control-panel { min-height: 420px; }
+		.creature-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		.control-footer { grid-template-columns: 1fr; gap: 5px; }
+		.control-summary { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding-inline: 2px; }
+		.control-summary small { display: none; }
+		.fly-button { min-height: 50px; }
+	}
 </style>
