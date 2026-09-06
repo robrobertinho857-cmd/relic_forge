@@ -18,6 +18,7 @@
 		{ name: 'Wyvern', description: 'A balanced, responsive sky guardian.' },
 		{ name: 'Dragon', description: 'The classic Relic Forge flight profile.' },
 		{ name: 'Ancient Dragon', description: 'Large, weighty and dramatic in motion.' },
+		{ name: 'Azure Swift', description: 'Fast, light and vividly animated.' },
 	];
 
 	const hazards = ['Fire Gate', 'Forge Hammer', 'Chain Tunnel', 'Lava Column', 'Spike Gate', 'Wind Tunnel'];
@@ -81,11 +82,8 @@
 				<ol>
 					<li>Choose a creature.</li>
 					<li>Choose your local prototype bet.</li>
-					<li>Choose a flight path.</li>
-					<li>Choose a relic.</li>
-					<li>Choose a launch style.</li>
-					<li>Choose presentation weather.</li>
-					<li>Choose a time of day.</li>
+					<li>Choose a Safe, Balanced or Danger route.</li>
+					<li>Optionally customize launch, weather and time.</li>
 					<li>Press <strong>FLY</strong>.</li>
 					<li>Watch the complete flight.</li>
 					<li>The flight may encounter hazards, relics, portals and bosses.</li>
@@ -123,12 +121,8 @@
 
 			<section aria-labelledby="help-relics">
 				<h3 id="help-relics">RELICS</h3>
-				<div class="guide-grid three-grid">
-					<article class="guide-card"><strong>GUARDIAN RELIC</strong><span>Stable and defensive flight profile.</span></article>
-					<article class="guide-card"><strong>FORTUNE RELIC</strong><span>More treasure and relic-focused events.</span></article>
-					<article class="guide-card"><strong>CHAOS RELIC</strong><span>More volatile flights, portals, bosses and high-intensity events.</span></article>
-				</div>
-				<p class="note">These profiles describe current local prototype behavior. They are not final Stake math or production payout rules.</p>
+				<p>Relics are generated discoveries during a flight. Common, Fire, Emerald, Ancient and Mythic relic events may increase the current multiplier when they appear.</p>
+				<p class="note">Relics are not selected before flight and do not protect an accumulated multiplier. A crash always finishes at x0 in this prototype.</p>
 			</section>
 
 			<section aria-labelledby="help-launch">
@@ -186,7 +180,7 @@
 			<section aria-labelledby="help-endings">
 				<h3 id="help-endings">ENDINGS</h3>
 				<div class="ending-list">
-					<div><strong>CRASH</strong><span>The flight ends before reaching a vault.</span></div>
+					<div><strong>CRASH</strong><span>The flight ends at x0, even if relics were collected earlier.</span></div>
 					<div><strong>SAFE LANDING</strong><span>The creature safely completes a smaller flight.</span></div>
 					<div><strong>FORGE VAULT</strong><span>The flight reaches the first major reward chamber.</span></div>
 					<div><strong>DRAGON VAULT</strong><span>A deeper high-value flight ending.</span></div>

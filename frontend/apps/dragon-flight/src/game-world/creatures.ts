@@ -28,6 +28,31 @@ export type CreatureProfile = {
 	description: string;
 };
 
+const decodedFlightFrameCache = new Map<string, Promise<readonly ImageBitmap[]>>();
+
+async function fetchAndDecodeFlightFrames(frames: readonly string[]): Promise<readonly ImageBitmap[]> {
+	return Promise.all(
+		frames.map(async (source) => {
+			const response = await fetch(source, { cache: 'force-cache' });
+			if (!response.ok) throw new Error(`Unable to load creature frame: ${source}`);
+			return createImageBitmap(await response.blob());
+		}),
+	);
+}
+
+export function loadDecodedFlightFrames(frames: readonly string[]): Promise<readonly ImageBitmap[]> {
+	const cacheKey = frames.join('\n');
+	const cachedFrames = decodedFlightFrameCache.get(cacheKey);
+	if (cachedFrames) return cachedFrames;
+
+	const loadedFrames = fetchAndDecodeFlightFrames(frames).catch((error) => {
+		decodedFlightFrameCache.delete(cacheKey);
+		throw error;
+	});
+	decodedFlightFrameCache.set(cacheKey, loadedFrames);
+	return loadedFrames;
+}
+
 const AZURE_SWIFT_FRAMES = Array.from(
 	{ length: 9 },
 	(_, index) => `/creatures/azure-swift/fly-${String(index + 1).padStart(2, '0')}.png`,
@@ -35,22 +60,14 @@ const AZURE_SWIFT_FRAMES = Array.from(
 
 const AZURE_SWIFT_FRAME_ORDER = [1, 2, 3, 4, 5, 6, 7, 9, 2, 1] as const;
 
+const ARCHAEOPTERYX_FRAMES = Array.from(
+	{ length: 8 },
+	(_, index) => `/creatures/archaeopteryx/fly-${String(index + 1).padStart(2, '0')}.png`,
+);
+
+const ARCHAEOPTERYX_FRAME_ORDER = [8, 7, 6, 5, 4, 3, 2, 1, 7, 8] as const;
+
 export const CREATURES: CreatureProfile[] = [
-	{
-		id: 'tiny-bat',
-		name: 'Tiny Bat',
-		className: 'tiny-bat',
-		sizeScale: 0.68,
-		agility: 1.38,
-		damping: 0.9,
-		maxVerticalSpeed: 360,
-		rotationDivisor: 8,
-		rotationLimit: 42,
-		flapDuration: 115,
-		hoverDuration: 900,
-		hoverLift: 5,
-		description: 'Light, quick and restless',
-	},
 	{
 		id: 'firebird',
 		name: 'Firebird',
@@ -97,21 +114,6 @@ export const CREATURES: CreatureProfile[] = [
 		description: 'Balanced and powerful',
 	},
 	{
-		id: 'ancient-dragon',
-		name: 'Ancient Dragon',
-		className: 'ancient-dragon',
-		sizeScale: 1.3,
-		agility: 0.72,
-		damping: 0.96,
-		maxVerticalSpeed: 260,
-		rotationDivisor: 15,
-		rotationLimit: 27,
-		flapDuration: 260,
-		hoverDuration: 2100,
-		hoverLift: 3,
-		description: 'Heavy and dramatic',
-	},
-	{
 		id: 'azure-swift',
 		name: 'Azure Swift',
 		className: 'azure-swift',
@@ -136,7 +138,32 @@ export const CREATURES: CreatureProfile[] = [
 		hoverLift: 5,
 		description: 'Fast, light and vividly animated',
 	},
+	{
+		id: 'archaeopteryx',
+		name: 'Archaeopteryx',
+		className: 'archaeopteryx',
+		assets: {
+			portrait: ARCHAEOPTERYX_FRAMES[5],
+			flight: ARCHAEOPTERYX_FRAMES[0],
+			result: ARCHAEOPTERYX_FRAMES[0],
+		},
+		flightAnimation: {
+			frames: ARCHAEOPTERYX_FRAMES,
+			frameOrder: ARCHAEOPTERYX_FRAME_ORDER,
+			fps: 10,
+		},
+		sizeScale: 1.12,
+		agility: 1.08,
+		damping: 0.935,
+		maxVerticalSpeed: 320,
+		rotationDivisor: 10.5,
+		rotationLimit: 35,
+		flapDuration: 165,
+		hoverDuration: 1350,
+		hoverLift: 5,
+		description: 'Broad-winged, steady and vividly animated',
+	},
 ];
 
 export const getCreature = (id: CreatureId) =>
-	CREATURES.find((creature) => creature.id === id) ?? CREATURES[3];
+	CREATURES.find((creature) => creature.id === id) ?? CREATURES[2];

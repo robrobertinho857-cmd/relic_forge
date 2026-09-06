@@ -6,7 +6,6 @@ import type {
 	FlightRisk,
 	FlightRound,
 	LaunchStyle,
-	RelicType,
 } from './types';
 
 export type DevScenarioId =
@@ -49,7 +48,6 @@ type DevRoundSelections = {
 	risk: FlightRisk;
 	roundId: number;
 	creature: CreatureId;
-	relic: RelicType;
 	launchStyle: LaunchStyle;
 };
 
@@ -284,7 +282,6 @@ export function createDevFlightRound(
 		bet: selections.bet,
 		risk: selections.risk,
 		creature: selections.creature,
-		relic: selections.relic,
 		launchStyle: selections.launchStyle,
 		events,
 		stagePlan: createFlightStagePlan(events, blueprint.ending),

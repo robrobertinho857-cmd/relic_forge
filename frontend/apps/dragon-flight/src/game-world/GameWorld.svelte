@@ -3,12 +3,14 @@
 	// Standalone local Dragon Flight prototype.
 	import { clamp, steerPlayer } from './physics';
 	import { generateMockRound } from './mockRound';
-	import { CREATURES, getCreature } from './creatures';
+	import { CREATURES, getCreature, loadDecodedFlightFrames } from './creatures';
 	import { getFlightStage, stageForEventIndex } from './stages';
 	import { BOSS_LABELS, getWinTier, PORTAL_LABELS, RELIC_LABELS } from './presentation';
-	import { getWeather, WEATHER_OPTIONS } from './weather';
-	import { getTimeOfDay, TIME_OF_DAY_OPTIONS } from './timeOfDay';
+	import { getWeather } from './weather';
+	import { getTimeOfDay } from './timeOfDay';
 	import BossEncounter from './components/BossEncounter.svelte';
+	import CreaturePicker from './components/CreaturePicker.svelte';
+	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
 	import EventWarning from './components/EventWarning.svelte';
 	import HelpDialog from './components/HelpDialog.svelte';
@@ -31,16 +33,10 @@
 		PortalType,
 		PrototypeStatus,
 		RelicEventType,
-		RelicType,
 		WorldBounds,
 		WeatherCondition,
 		TimeOfDay,
 	} from './types';
-	import type { DevScenarioId } from './devScenarios';
-
-	type DevScenarioModule = typeof import('./devScenarios');
-	type ControlTab = 'play' | 'style';
-
 	type StageAnnouncement = {
 		id: number;
 		name: string;
@@ -51,7 +47,6 @@
 		relicType: RelicEventType;
 		fromMultiplier: number;
 		toMultiplier: number;
-		protected: boolean;
 	};
 
 	type ActivePortalPresentation = {
@@ -89,20 +84,10 @@
 	const PROTOTYPE_BET_STEP = 0.1;
 	const INITIAL_BOUNDS: WorldBounds = { width: 900, height: 520, floorY: 478 };
 	const WORLD_SPEED = 285;
-	const PATHS: Array<{ risk: FlightRisk; arrow: string; note: string }> = [
-		{ risk: 'safe', arrow: '\u2196', note: 'More stable / smaller potential' },
-		{ risk: 'balanced', arrow: '\u2191', note: 'Balanced risk and reward' },
-		{ risk: 'danger', arrow: '\u2197', note: 'More crashes / larger potential' },
-	];
-	const RELICS: Array<{ type: RelicType; name: string; note: string; className: string }> = [
-		{ type: 'guardian', name: 'GUARDIAN RELIC', note: 'Defensive / gold shield theme', className: 'guardian' },
-		{ type: 'fortune', name: 'FORTUNE RELIC', note: 'Balanced / emerald treasure theme', className: 'fortune' },
-		{ type: 'chaos', name: 'CHAOS RELIC', note: 'Aggressive / fire purple theme', className: 'chaos' },
-	];
-	const LAUNCH_STYLES: Array<{ style: LaunchStyle; name: string; note: string }> = [
-		{ style: 'glide', name: 'GLIDE', note: 'Smoother horizontal launch' },
-		{ style: 'boost', name: 'BOOST', note: 'Dramatic upward launch' },
-		{ style: 'dive', name: 'DIVE', note: 'Starts high and dives into route' },
+	const PATHS: Array<{ risk: FlightRisk; note: string }> = [
+		{ risk: 'safe', note: 'Lower volatility · shorter flights · smaller potential' },
+		{ risk: 'balanced', note: 'Medium volatility · balanced survival and reward' },
+		{ risk: 'danger', note: 'High volatility · longer potential flights · larger rewards' },
 	];
 
 	let worldElement = $state<HTMLDivElement>();
@@ -112,14 +97,11 @@
 	let betInput = $state('1.00');
 	let selectedRisk = $state<FlightRisk>('balanced');
 	let selectedCreatureId = $state<CreatureId>('dragon');
-	let selectedRelic = $state<RelicType>('fortune');
 	let selectedLaunchStyle = $state<LaunchStyle>('glide');
 	let selectedWeather = $state<WeatherCondition>('clear');
 	let selectedTimeOfDay = $state<TimeOfDay>('day');
-	let selectedDevScenario = $state<DevScenarioId>('random');
-	let devScenarioModule = $state<DevScenarioModule>();
-	let activeControlTab = $state<ControlTab>('play');
-	let devToolsOpen = $state(false);
+	let creaturePickerOpen = $state(false);
+	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
 	let currentStageId = $state<FlightStageId>('FORGE_OUTSKIRTS');
 	let flightProgress = $state(0);
@@ -142,6 +124,8 @@
 	let comboCount = $state(0);
 	let multiplierPulse = $state(false);
 	let creatureFrameNumber = $state(1);
+	let creatureFrameCanvas = $state<HTMLCanvasElement>();
+	let loadedCreatureFrames = $state<Partial<Record<CreatureId, readonly ImageBitmap[]>>>({});
 	let impactActive = $state(false);
 	let flapActive = $state(false);
 	let eventLabel = $state('READY');
@@ -170,10 +154,6 @@
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
 	const selectedPathNote = $derived(PATHS.find((path) => path.risk === selectedRisk)?.note ?? '');
-	const selectedRelicNote = $derived(RELICS.find((relic) => relic.type === selectedRelic)?.note ?? '');
-	const selectedLaunchNote = $derived(LAUNCH_STYLES.find((launch) => launch.style === selectedLaunchStyle)?.note ?? '');
-	const selectedWeatherConfig = $derived(getWeather(selectedWeather));
-	const selectedTimeConfig = $derived(getTimeOfDay(selectedTimeOfDay));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(getWinTier(currentRound?.finalMultiplier ?? 0));
 	const activeWeather = $derived(currentRound?.weather ?? selectedWeather);
@@ -181,7 +161,7 @@
 	const activeTimeOfDay = $derived(currentRound?.timeOfDay ?? selectedTimeOfDay);
 	const activeTimeConfig = $derived(getTimeOfDay(activeTimeOfDay));
 	const activeCreatureFrame = $derived(
-		activeCreature.flightAnimation?.frames[creatureFrameNumber - 1],
+		loadedCreatureFrames[activeCreature.id]?.[creatureFrameNumber - 1],
 	);
 	const rotation = $derived(
 		clamp(
@@ -195,12 +175,7 @@
 	$effect(() => {
 		const animation = activeCreature.flightAnimation;
 		creatureFrameNumber = animation?.frameOrder[0] ?? 1;
-		if (!animation) return;
-
-		for (const source of animation.frames) {
-			const image = new Image();
-			image.src = source;
-		}
+		if (!animation || loadedCreatureFrames[activeCreature.id]?.length !== animation.frames.length) return;
 
 		let frameCursor = 0;
 		const frameTimer = setInterval(() => {
@@ -209,6 +184,21 @@
 		}, 1000 / animation.fps);
 
 		return () => clearInterval(frameTimer);
+	});
+
+	$effect(() => {
+		const canvas = creatureFrameCanvas;
+		const frame = activeCreatureFrame;
+		if (!canvas || !frame) return;
+
+		const context = canvas.getContext('2d');
+		if (!context) return;
+
+		const scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
+		const width = frame.width * scale;
+		const height = frame.height * scale;
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		context.drawImage(frame, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
 	});
 
 	function createPlayer(worldBounds: WorldBounds): PlayerBody {
@@ -514,10 +504,9 @@
 			relicType: event.relicType,
 			fromMultiplier,
 			toMultiplier: event.multiplier,
-			protected: event.protected ?? false,
 		};
 		eventLabel = RELIC_LABELS[event.relicType];
-		eventCallout = event.protected ? `${RELIC_LABELS[event.relicType]} · SHIELD` : RELIC_LABELS[event.relicType];
+		eventCallout = RELIC_LABELS[event.relicType];
 		flightTargetY = bounds.floorY * 0.43;
 		triggerFlap();
 		await delay(300);
@@ -702,23 +691,10 @@
 	function startFlight() {
 		if (controlsLocked || !betInputIsValid) return;
 		roundSequence += 1;
-		let generatedRound: FlightRound;
-		if (import.meta.env.DEV && selectedDevScenario !== 'random' && devScenarioModule) {
-			generatedRound = devScenarioModule.createDevFlightRound(selectedDevScenario, {
-				bet: selectedBet,
-				risk: selectedRisk,
-				roundId: roundSequence,
-				creature: selectedCreatureId,
-				relic: selectedRelic,
-				launchStyle: selectedLaunchStyle,
-			});
-		} else {
-			generatedRound = generateMockRound(selectedBet, selectedRisk, roundSequence, {
-				creature: selectedCreatureId,
-				relic: selectedRelic,
-				launchStyle: selectedLaunchStyle,
-			});
-		}
+		const generatedRound = generateMockRound(selectedBet, selectedRisk, roundSequence, {
+			creature: selectedCreatureId,
+			launchStyle: selectedLaunchStyle,
+		});
 		// Presentation metadata is attached only after the authoritative local outcome is complete.
 		const roundWithWeather: FlightRound = { ...generatedRound, weather: selectedWeather };
 		const round: FlightRound = { ...roundWithWeather, timeOfDay: selectedTimeOfDay };
@@ -819,10 +795,14 @@
 
 	onMount(() => {
 		let disposed = false;
-		if (import.meta.env.DEV) {
-			void import('./devScenarios').then((module) => {
-				if (!disposed) devScenarioModule = module;
-			});
+		for (const creature of CREATURES) {
+			if (!creature.flightAnimation) continue;
+			void loadDecodedFlightFrames(creature.flightAnimation.frames)
+				.then((frames) => {
+					if (disposed) return;
+					loadedCreatureFrames = { ...loadedCreatureFrames, [creature.id]: frames };
+				})
+				.catch(() => undefined);
 		}
 		const observer = new ResizeObserver(resizeWorld);
 		if (worldElement) observer.observe(worldElement);
@@ -854,6 +834,7 @@
 		animationFrame = requestAnimationFrame(update);
 		return () => {
 			disposed = true;
+			loadedCreatureFrames = {};
 			cancelPresentation();
 			observer.disconnect();
 			cancelAnimationFrame(animationFrame);
@@ -865,11 +846,9 @@
 
 <main class="prototype-shell">
 	<header class="prototype-header">
-		<div><p class="eyebrow">LOCAL CASINO-STYLE SIMULATION</p><h1>Relic Forge: Dragon Flight</h1></div>
+		<h1>Dragon Flight</h1>
 		<div class="header-actions">
-			<div class:danger={status === 'collided' || currentRound?.ending === 'crash'} class="status-chip" aria-live="polite">
-				{status === 'ready' ? 'SELECT A PATH' : status === 'complete' && currentRound ? formatEventName(currentRound.ending) : 'ROUND IN FLIGHT'}
-			</div>
+			<button class="header-button" type="button" disabled={controlsLocked} onclick={() => (customizeOpen = true)}>CUSTOMIZE</button>
 			<button class="help-button" type="button" aria-label="Open Dragon Flight game guide" onclick={() => (helpOpen = true)}>
 				<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.7 9.2a2.45 2.45 0 1 1 3.7 2.1c-.9.5-1.4 1-1.4 2" /><path d="M12 16.8h.01" /></svg>
 			</button>
@@ -889,10 +868,11 @@
 			/>
 			<div class="flight-hud">
 				<div class="hud-selection">
+					<span class:danger={status === 'collided' || currentRound?.ending === 'crash'} class="round-status">{status === 'ready' ? 'READY' : status === 'complete' && currentRound ? formatEventName(currentRound.ending) : 'IN FLIGHT'}</span>
 					<span>BET <strong>{formatLocalAmount(currentRound?.bet ?? selectedBet)}</strong></span>
 					<span>PATH <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
 					<span>CREATURE <strong>{activeCreature.name}</strong></span>
-					<span>RELIC <strong>{(currentRound?.relic ?? selectedRelic).toUpperCase()}</strong></span>
+					<span>RUN <strong>{gatesPassed} · {distanceMetres}m</strong></span>
 				</div>
 				<span class="stage-readout">STAGE {currentStage.order}<strong>{currentStage.name}</strong></span>
 				<span class:pulse={multiplierPulse} class="multiplier-readout">CURRENT<strong>x{currentMultiplier.toFixed(2)}</strong></span>
@@ -941,7 +921,6 @@
 					relicType={activeRelic.relicType}
 					fromMultiplier={activeRelic.fromMultiplier}
 					toMultiplier={activeRelic.toMultiplier}
-					protected={activeRelic.protected}
 				/>
 			{/if}
 
@@ -981,7 +960,7 @@
 					style={`--hover-duration:${activeCreature.hoverDuration}ms;--hover-lift:${-activeCreature.hoverLift}px;--flap-burst:${activeCreature.flapDuration}ms;`}
 				>
 					{#if activeCreatureFrame}
-						<img class="creature-frame" src={activeCreatureFrame} alt="" draggable="false" />
+						<canvas bind:this={creatureFrameCanvas} class="creature-frame" width="900" height="600" aria-hidden="true"></canvas>
 					{:else}
 						<span class="wing wing-top"></span><span class="dragon-body"></span><span class="dragon-head"><i></i></span><span class="wing wing-bottom"></span><span class="tail"></span><span class="creature-detail"></span>
 					{/if}
@@ -1001,7 +980,6 @@
 					<div><span>MULTIPLIER</span><b>x{finalMultiplier.toFixed(2)}</b></div>
 					<div><span>WIN</span><b>{formatLocalAmount(finalWin)}</b></div>
 					<div class="result-creature"><span>CREATURE</span><b>{activeCreature.name}</b></div>
-					<div><span>RELIC</span><b>{currentRound.relic.toUpperCase()}</b></div>
 					<div><span>LAUNCH</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
 					<div><span>WEATHER</span><b>{activeWeatherConfig.name}</b></div>
 					<div><span>TIME</span><b>{activeTimeConfig.name}</b></div>
@@ -1011,154 +989,79 @@
 			{/if}
 		</div>
 
-		<aside class="control-panel">
-			<div class="control-tabs" role="tablist" aria-label="Flight setup sections">
-				<button role="tab" aria-selected={activeControlTab === 'play'} class:active={activeControlTab === 'play'} onclick={() => (activeControlTab = 'play')}>PLAY</button>
-				<button role="tab" aria-selected={activeControlTab === 'style'} class:active={activeControlTab === 'style'} onclick={() => (activeControlTab = 'style')}>STYLE</button>
+		<section class="control-dock" aria-label="Flight controls">
+			<div class="creature-control">
+				<span class="dock-label">CREATURE</span>
+				<button class="creature-button" type="button" disabled={controlsLocked} onclick={() => (creaturePickerOpen = true)}>
+					<span>{selectedCreature.name}</span><b>▾</b>
+				</button>
 			</div>
 
-			{#if import.meta.env.DEV && devScenarioModule}
-				<section class:open={devToolsOpen} class="dev-scenario-panel">
-					<button class="dev-tools-toggle" type="button" aria-expanded={devToolsOpen} onclick={() => (devToolsOpen = !devToolsOpen)}>
-						<span><strong>DEV ONLY</strong><small>SCENARIO PREVIEW</small></span><b>{devToolsOpen ? '−' : '+'}</b>
-					</button>
-					{#if devToolsOpen}
-						<div class="dev-tools-body">
-							<label for="dev-scenario-select">DEV SCENARIO</label>
-							<select id="dev-scenario-select" bind:value={selectedDevScenario} disabled={controlsLocked}>
-								{#each devScenarioModule.DEV_SCENARIOS as scenario (scenario.id)}
-									<option value={scenario.id}>{scenario.name}</option>
-								{/each}
-							</select>
-						</div>
-					{/if}
-				</section>
-			{/if}
-
-			<div class="control-tab-body" role="tabpanel">
-				{#if activeControlTab === 'play'}
-					<section class="control-section bet-section">
-						<div class="section-heading"><div><p>BET</p><span>Local prototype amount</span></div></div>
-						<div class="bet-stepper">
-							<button aria-label="Decrease bet" disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET} onclick={() => moveBet(-1)}>−</button>
-							<input
-								aria-label="Prototype bet amount"
-								aria-invalid={!betInputIsValid}
-								class="bet-input"
-								disabled={controlsLocked}
-								inputmode="decimal"
-								min={MIN_PROTOTYPE_BET}
-								max={MAX_PROTOTYPE_BET}
-								step="0.01"
-								type="number"
-								value={betInput}
-								oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
-								onblur={normalizeBetInput}
-							/>
-							<button aria-label="Increase bet" disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET} onclick={() => moveBet(1)}>+</button>
-						</div>
-					</section>
-
-					<section class="control-section">
-						<div class="section-heading"><div><p>PATH / RISK</p><span>Local mock-round profile</span></div></div>
-						<div class="segmented-options path-options">
-							{#each PATHS as path (path.risk)}
-								<button disabled={controlsLocked} aria-pressed={selectedRisk === path.risk} class:active={selectedRisk === path.risk} onclick={() => (selectedRisk = path.risk)}><span>{path.arrow}</span><b>{path.risk}</b></button>
-							{/each}
-						</div>
-						<p class="selected-description">{selectedPathNote}</p>
-					</section>
-
-					<section class="control-section">
-						<div class="section-heading"><div><p>RELIC</p><span>Selection only</span></div></div>
-						<div class="segmented-options relic-options">
-							{#each RELICS as relic (relic.type)}
-								<button disabled={controlsLocked} aria-pressed={selectedRelic === relic.type} class:active={selectedRelic === relic.type} onclick={() => (selectedRelic = relic.type)}><b>{relic.name.replace(' RELIC', '')}</b></button>
-							{/each}
-						</div>
-						<p class="selected-description">{selectedRelicNote}</p>
-					</section>
-				{:else}
-					<section class="control-section creature-section">
-						<div class="section-heading"><div><p>CREATURE</p><span>Movement feel only</span></div></div>
-						<div class="creature-options">
-							{#each CREATURES as creature (creature.id)}
-								<button title={creature.name} disabled={controlsLocked} aria-pressed={selectedCreatureId === creature.id} class:active={selectedCreatureId === creature.id} onclick={() => (selectedCreatureId = creature.id)}>
-									{#if creature.assets?.portrait}
-										<span class="creature-preview with-image"><img class="creature-preview-image" src={creature.assets.portrait} alt="" /></span>
-									{:else}
-										<span class={`creature-preview ${creature.className}`}><i></i></span>
-									{/if}
-									<span class="creature-copy"><b>{creature.name}</b></span>
-								</button>
-							{/each}
-						</div>
-						<p class="selected-description"><strong>{selectedCreature.name}</strong> — {selectedCreature.description}</p>
-					</section>
-
-					<section class="control-section">
-						<div class="section-heading"><div><p>LAUNCH</p><span>Presentation only</span></div></div>
-						<div class="segmented-options launch-options">
-							{#each LAUNCH_STYLES as launch (launch.style)}
-								<button disabled={controlsLocked} aria-pressed={selectedLaunchStyle === launch.style} class:active={selectedLaunchStyle === launch.style} onclick={() => (selectedLaunchStyle = launch.style)}><b>{launch.name}</b></button>
-							{/each}
-						</div>
-						<p class="selected-description">{selectedLaunchNote}</p>
-					</section>
-
-					<section class="control-section weather-section">
-						<div class="section-heading"><div><p>WEATHER</p><span>Atmosphere only</span></div></div>
-						<div class="weather-options">
-							{#each WEATHER_OPTIONS as weather (weather.id)}
-								<button disabled={controlsLocked} aria-pressed={selectedWeather === weather.id} class:active={selectedWeather === weather.id} onclick={() => (selectedWeather = weather.id)}>
-									<i class={`weather-indicator ${weather.className}`} aria-hidden="true"></i><b>{weather.name}</b>
-								</button>
-							{/each}
-						</div>
-						<p class="selected-description">{selectedWeatherConfig.description}</p>
-					</section>
-
-					<section class="control-section time-section">
-						<div class="section-heading"><div><p>TIME</p><span>Lighting only</span></div></div>
-						<div class="time-options">
-							{#each TIME_OF_DAY_OPTIONS as time (time.id)}
-								<button disabled={controlsLocked} aria-pressed={selectedTimeOfDay === time.id} class:active={selectedTimeOfDay === time.id} onclick={() => (selectedTimeOfDay = time.id)}>
-									<i class={`time-indicator ${time.overlayClass}`} aria-hidden="true"></i><b>{time.name}</b>
-								</button>
-							{/each}
-						</div>
-						<p class="selected-description">{selectedTimeConfig.description}</p>
-					</section>
-				{/if}
-			</div>
-
-			<div class="control-footer">
-				<div class="control-summary">
-					<div><span>BET</span><strong>{formatLocalAmount(selectedBet)}</strong></div>
-					<p>{selectedRisk} · {selectedRelic}</p>
-					<small>{gatesPassed} gates · {distanceMetres}m</small>
+			<div class="risk-control">
+				<span class="dock-label">ROUTE / RISK</span>
+				<div class="risk-selector">
+					{#each PATHS as path (path.risk)}
+						<button type="button" disabled={controlsLocked} aria-pressed={selectedRisk === path.risk} class:active={selectedRisk === path.risk} onclick={() => (selectedRisk = path.risk)}>{path.risk}</button>
+					{/each}
 				</div>
-				<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button>
+				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
 			</div>
-		</aside>
+
+			<div class="bet-control">
+				<span class="dock-label">BET</span>
+				<div class="bet-stepper">
+					<button aria-label="Decrease bet" disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET} onclick={() => moveBet(-1)}>−</button>
+					<input
+						aria-label="Prototype bet amount"
+						aria-invalid={!betInputIsValid}
+						class="bet-input"
+						disabled={controlsLocked}
+						inputmode="decimal"
+						min={MIN_PROTOTYPE_BET}
+						max={MAX_PROTOTYPE_BET}
+						step="0.01"
+						type="number"
+						value={betInput}
+						oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
+						onblur={normalizeBetInput}
+					/>
+					<button aria-label="Increase bet" disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET} onclick={() => moveBet(1)}>+</button>
+				</div>
+			</div>
+
+			<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button>
+
+		</section>
 	</section>
 	<footer><span>Prototype outcome is generated locally before animation.</span><span>No RGS, wallet, authentication, or real wagering.</span></footer>
 </main>
 
 <HelpDialog open={helpOpen} onClose={() => (helpOpen = false)} />
+<CreaturePicker open={creaturePickerOpen} selected={selectedCreatureId} disabled={controlsLocked} onSelect={(creature) => (selectedCreatureId = creature)} onClose={() => (creaturePickerOpen = false)} />
+<CustomizeDrawer
+	open={customizeOpen}
+	disabled={controlsLocked}
+	weather={selectedWeather}
+	timeOfDay={selectedTimeOfDay}
+	launchStyle={selectedLaunchStyle}
+	onWeatherSelect={(weather) => (selectedWeather = weather)}
+	onTimeSelect={(time) => (selectedTimeOfDay = time)}
+	onLaunchSelect={(launch) => (selectedLaunchStyle = launch)}
+	onClose={() => (customizeOpen = false)}
+/>
 
 <style>
 	.prototype-shell,.prototype-shell *{box-sizing:border-box}.prototype-shell{position:fixed;inset:0;z-index:1000;overflow:auto;padding:clamp(16px,2.5vw,34px);color:#f7e8bd;font-family:Georgia,'Times New Roman',serif;background:radial-gradient(circle at 16% 22%,rgba(255,104,20,.12),transparent 27%),radial-gradient(circle at 82% 25%,rgba(16,202,124,.1),transparent 30%),linear-gradient(145deg,#090b09,#06110d 48%,#060706)}
-	.prototype-header,.game-layout,footer{width:min(1440px,100%);margin-inline:auto}.prototype-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:clamp(14px,2vh,24px)}.eyebrow,.control-section p{margin:0;color:#45e7a0;font:700 .7rem/1.2 system-ui,sans-serif;letter-spacing:.2em}h1{margin:4px 0 0;color:#f4c665;font-size:clamp(1.7rem,3.4vw,3.4rem);letter-spacing:.04em;text-shadow:0 2px 18px rgba(246,157,42,.26)}.status-chip{min-width:150px;padding:10px 16px;border:1px solid #21885d;background:rgba(4,32,23,.84);color:#5ff0ac;font:800 .72rem/1 system-ui,sans-serif;letter-spacing:.14em;text-align:center}.status-chip.danger{border-color:#da6436;background:rgba(51,17,7,.9);color:#ffac72}
+	.prototype-header,.game-layout,.control-dock,footer{width:min(1440px,100%);margin-inline:auto}.prototype-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:clamp(8px,1vh,14px)}h1{margin:0;color:#f4c665;font-size:clamp(1.3rem,2.4vw,2.2rem);letter-spacing:.04em;text-shadow:0 2px 18px rgba(246,157,42,.26)}
 	.game-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,360px);gap:clamp(14px,2vw,26px)}.world{position:relative;min-width:0;min-height:clamp(420px,68dvh,730px);overflow:hidden;border:2px solid #a87820;box-shadow:inset 0 0 0 5px #071811,inset 0 0 45px #000,0 18px 50px rgba(0,0,0,.45);background:linear-gradient(#07100f,#0d1913 64%,#17100a)}.world.has-impact{animation:impact-shake .4s ease-out}.far-forge,.near-forge,.ember-field{position:absolute;inset:0;pointer-events:none}.far-forge{background:repeating-linear-gradient(90deg,transparent 0 170px,rgba(72,116,89,.11) 171px 174px),repeating-linear-gradient(0deg,transparent 0 84px,rgba(194,141,57,.06) 85px 88px),radial-gradient(circle at 20% 80%,rgba(255,91,12,.25),transparent 20%);background-position:var(--far-scroll) 0,var(--far-scroll) 0,0 0}.near-forge{background:repeating-linear-gradient(90deg,transparent 0 245px,rgba(0,0,0,.42) 246px 274px),linear-gradient(rgba(0,0,0,.12),transparent 55%,rgba(8,4,2,.5));background-position:var(--wall-scroll) 0,0 0}.ember-field{opacity:.55;background-image:radial-gradient(circle,#ff8d28 0 1px,transparent 2px),radial-gradient(circle,#4bf2a8 0 1px,transparent 2px);background-size:95px 115px,145px 170px;background-position:var(--ember-scroll) 28%,var(--wall-scroll) 62%}
 	.flight-hud{position:absolute;z-index:8;top:14px;left:50%;display:flex;gap:18px;padding:8px 13px;border:1px solid rgba(189,139,46,.65);background:rgba(3,17,12,.82);transform:translateX(-50%);font:700 .66rem/1 system-ui,sans-serif;letter-spacing:.1em;white-space:nowrap}.flight-hud strong{margin-left:4px;color:#58eda8}.gate{position:absolute;z-index:3;inset-block:0}.gate-part{position:absolute;left:0;width:100%;border-inline:3px solid #bc8429;background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 38px),linear-gradient(90deg,#111814,#253228 42%,#0b100e);box-shadow:inset 7px 0 12px rgba(233,161,47,.13),inset -7px 0 14px #000,0 0 18px rgba(0,0,0,.7)}.gate-part.upper{top:0}.gate-part:after{content:'';position:absolute;left:-9px;right:-9px;bottom:-13px;height:18px;border:2px solid #d39b35;background:linear-gradient(#5c4522,#15120c);clip-path:polygon(0 0,100% 0,91% 100%,9% 100%)}.gate-part.lower:after{top:-13px;bottom:auto;transform:rotate(180deg)}.gate-part span{position:absolute;inset:12px 25%;border-inline:1px solid rgba(61,232,144,.35)}.gate-number{position:absolute;z-index:2;top:50%;left:50%;padding:5px 7px;background:rgba(4,20,14,.8);color:#dfbd6c;font:700 .55rem/1 system-ui,sans-serif;white-space:nowrap;transform:translate(-50%,-50%)}
 	.relic-pickup{position:absolute;z-index:6;left:64%;top:43%;display:grid;place-items:center;width:88px;height:88px;border:3px solid #d7a53e;border-radius:50%;background:radial-gradient(circle,#4cf2a3 0 8%,#127c50 9% 38%,#061c14 68%);box-shadow:0 0 35px #23d987;animation:relic-flight .65s ease-in forwards}.relic-pickup i{position:absolute;inset:-8px;border:1px solid #44e6a0;border-radius:50%;animation:relic-spin 1s linear infinite}.relic-pickup strong{font-size:1.4rem}.relic-pickup span{font:700 .55rem/1 system-ui,sans-serif;letter-spacing:.12em}.vault{position:absolute;z-index:3;right:-30px;bottom:8%;width:38%;height:62%;border:4px solid #bb812a;border-radius:50% 0 0 0;background:radial-gradient(circle at 52% 54%,#ffe374 0 4%,#7c4c18 5% 14%,#16231a 35%,#080b09 70%);box-shadow:0 0 45px rgba(255,170,45,.35);animation:vault-arrive 1.2s ease-out forwards}.vault i{position:absolute;inset:12%;border:2px solid #d4a94b;border-radius:50%;box-shadow:inset 0 0 30px #000}.vault strong{position:absolute;left:50%;top:50%;color:#f6d788;font-size:clamp(1rem,2vw,1.7rem);letter-spacing:.15em;transform:translate(-50%,-50%)}
 	.jump-ember{position:absolute;z-index:7;border-radius:50%;background:#ffad35;box-shadow:0 0 8px #ff641c;pointer-events:none}.creature-flight{position:absolute;z-index:7;width:clamp(58px,7vw,86px);height:clamp(38px,4.6vw,58px);filter:drop-shadow(0 7px 8px rgba(0,0,0,.55));transition:filter .12s}.creature-sprite{position:absolute;inset:0;animation:creature-hover var(--hover-duration) ease-in-out infinite alternate}.dragon-body{position:absolute;inset:24% 19% 17% 20%;border:2px solid #f4b847;border-radius:58% 43% 49% 55%;background:radial-gradient(circle at 65% 28%,#78f4a4,#158c54 38%,#063323 72%);box-shadow:inset -8px -7px 12px rgba(0,0,0,.42),0 0 13px rgba(32,232,132,.38)}.dragon-head{position:absolute;right:4%;top:20%;width:30%;height:36%;border:2px solid #e9ad42;border-radius:65% 70% 60% 45%;background:#167b49;transform:rotate(-7deg)}.dragon-head:after{content:'';position:absolute;right:17%;top:26%;width:4px;height:4px;border-radius:50%;background:#ffe46e;box-shadow:0 0 7px #fff083}.dragon-head i{position:absolute;left:16%;top:-42%;border-right:7px solid transparent;border-bottom:14px solid #d49a32;transform:rotate(-28deg)}.wing{position:absolute;left:25%;width:42%;height:44%;border:2px solid #d79c35;background:linear-gradient(145deg,#104e38,#1fb86d 52%,#073021);transform-origin:20% 50%}.wing-top{top:-8%;clip-path:polygon(0 100%,22% 0,100% 35%,58% 100%);animation:wing-top .42s ease-in-out infinite alternate}.wing-bottom{bottom:-8%;clip-path:polygon(0 0,58% 0,100% 65%,22% 100%);animation:wing-bottom .42s ease-in-out infinite alternate}.is-flapping .wing-top{animation:flap-top var(--flap-burst) ease-out}.is-flapping .wing-bottom{animation:flap-bottom var(--flap-burst) ease-out}.tail{position:absolute;left:0;top:45%;width:30%;height:20%;border-top:4px solid #c99131;border-radius:70% 0 0;transform:rotate(-9deg)}.creature-detail{position:absolute;pointer-events:none}.has-impact .creature-flight{filter:grayscale(.5) drop-shadow(0 0 12px #e85b2c)}.floor{position:absolute;z-index:5;left:0;right:0;bottom:0;border-top:2px solid #ca8530;background:repeating-linear-gradient(135deg,#16130e 0 22px,#211910 23px 43px),#14110d;background-position-x:var(--floor-scroll)}
 	.tiny-bat .dragon-body{inset:30% 31% 18%;border-color:#b89adf;background:radial-gradient(circle,#765a91,#241c32 72%)}.tiny-bat .dragon-head{right:20%;top:26%;width:23%;height:26%;border-color:#a782c8;background:#33243f}.tiny-bat .wing{left:4%;width:58%;height:52%;border-color:#8d6aaa;background:linear-gradient(145deg,#191222,#6a4b7b 55%,#130f19)}.tiny-bat .creature-detail{left:48%;top:11%;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:14px solid #8d6aaa}.firebird .dragon-body{border-color:#ffd167;background:radial-gradient(circle at 65% 28%,#fff09a,#f47e23 40%,#7a160d 76%);box-shadow:0 0 19px #ff6d24}.firebird .dragon-head{border-color:#ffe078;background:#e65d20}.firebird .wing{border-color:#ffc34f;background:linear-gradient(145deg,#7e190c,#ffad2e 50%,#e93018)}.firebird .tail{width:39%;border-top:6px double #ff8d24;box-shadow:-4px 0 8px #ff5f1c}.firebird .creature-detail{right:8%;top:4%;border-left:6px solid transparent;border-right:2px solid transparent;border-bottom:18px solid #ffd660;transform:rotate(24deg)}.wyvern .dragon-body{border-color:#a7d7d2;background:radial-gradient(circle,#74e0c4,#2b766e 44%,#15343b 76%)}.wyvern .dragon-head{border-color:#a8d8cf;background:#397d75}.wyvern .wing{left:16%;width:49%;border-color:#76bdb1;background:linear-gradient(145deg,#17343a,#5aa99b 52%,#12262d)}.wyvern .tail{width:38%;border-color:#7abcb2}.ancient-dragon .dragon-body{border-width:3px;border-color:#f1bd55;background:radial-gradient(circle,#5aab69,#183d29 42%,#080f0b 76%);box-shadow:inset -9px -8px 12px #000,0 0 22px rgba(197,151,53,.5)}.ancient-dragon .dragon-head{border-width:3px;border-color:#e0a941;background:#244d30}.ancient-dragon .wing{border-width:3px;border-color:#b6812f;background:linear-gradient(145deg,#101b13,#385c3d 52%,#090d0a)}.ancient-dragon .creature-detail{right:14%;top:-12%;width:20%;height:25%;border-top:4px double #e1a83e;border-right:4px solid #b57d2e;transform:skewX(-20deg)}
 	.start-hint{position:absolute;z-index:9;left:50%;bottom:12%;padding:8px 12px;border:1px solid rgba(68,229,154,.5);background:rgba(3,20,14,.8);color:#72f0b6;font:700 .62rem/1 system-ui,sans-serif;letter-spacing:.12em;transform:translateX(-50%);white-space:nowrap}.result-panel{position:absolute;z-index:12;left:50%;top:50%;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;min-width:min(470px,88%);padding:22px;border:1px solid #e16b39;background:rgba(31,9,4,.96);color:#ffc38c;text-align:center;transform:translate(-50%,-50%);box-shadow:0 0 45px rgba(234,82,30,.28)}.result-panel.success{border-color:#43d994;background:rgba(3,31,21,.96);box-shadow:0 0 45px rgba(35,218,134,.25)}.result-panel>strong,.result-panel>small,.result-panel>button,.result-panel .result-creature{grid-column:1/-1}.result-panel>strong{font-size:1.35rem;letter-spacing:.13em}.result-panel div{padding:10px 6px;border:1px solid rgba(221,174,82,.3);background:rgba(0,0,0,.2)}.result-panel span{display:block;margin-bottom:6px;font:700 .56rem/1 system-ui,sans-serif;letter-spacing:.12em}.result-panel b{color:#ffe0a0;font-size:1rem}.result-panel small{color:#8fa394;font:600 .55rem/1.2 system-ui,sans-serif;letter-spacing:.08em}.result-panel button{border-color:#d2923a;color:#ffe09f}
-	.control-panel{display:flex;flex-direction:column;gap:14px;padding:clamp(16px,2vw,24px);border:1px solid #8e6827;background:linear-gradient(160deg,rgba(8,28,20,.96),rgba(7,11,9,.98));box-shadow:inset 0 0 32px rgba(9,104,64,.12),0 18px 50px rgba(0,0,0,.35)}.control-section{padding-bottom:14px;border-bottom:1px solid rgba(199,153,63,.28)}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.section-heading span,.round-readout span{display:block;margin-top:4px;color:#9b9d8e;font: .66rem/1.3 system-ui,sans-serif}.section-heading strong{color:#e4bd6e;font:700 .72rem/1 system-ui,sans-serif;white-space:nowrap}.creature-options{display:grid;grid-template-columns:1fr 1fr;gap:6px}.creature-options button{display:grid;grid-template-columns:42px 1fr;align-items:center;min-height:54px;padding:5px 7px;text-align:left}.creature-options button:last-child{grid-column:1/-1}.creature-copy b,.creature-copy small{display:block}.creature-copy b{font-size:.68rem}.creature-copy small{margin-top:3px;color:#89958a;font: .55rem/1.15 system-ui,sans-serif}.creature-preview{position:relative;display:block;width:34px;height:25px;filter:drop-shadow(0 2px 3px #000)}.creature-preview i{position:absolute;left:11px;top:8px;width:15px;height:10px;border-radius:60% 45%;background:#2a8b58}.creature-preview:before,.creature-preview:after{content:'';position:absolute;top:3px;width:17px;height:18px;background:#286e50}.creature-preview:before{left:0;clip-path:polygon(100% 50%,0 0,16% 100%)}.creature-preview:after{right:0;clip-path:polygon(0 50%,100% 0,84% 100%)}.creature-preview.tiny-bat i,.creature-preview.tiny-bat:before,.creature-preview.tiny-bat:after{background:#6f5183}.creature-preview.firebird i,.creature-preview.firebird:before,.creature-preview.firebird:after{background:#ef7a25;box-shadow:0 0 5px #ff9b2f}.creature-preview.wyvern i,.creature-preview.wyvern:before,.creature-preview.wyvern:after{background:#4d9c91}.creature-preview.ancient-dragon{transform:scale(1.18)}.creature-preview.ancient-dragon i,.creature-preview.ancient-dragon:before,.creature-preview.ancient-dragon:after{background:#315c39;border:1px solid #b98632}button{min-height:42px;border:1px solid #795d28;background:linear-gradient(#10231a,#09130f);color:#ddc488;font:700 .8rem/1 system-ui,sans-serif;cursor:pointer;transition:.13s}button:hover:not(:disabled),button:focus-visible,button.active{border-color:#49e59c;color:#75f5b8;box-shadow:inset 0 0 13px rgba(26,221,133,.16),0 0 12px rgba(26,221,133,.12);outline:none}button:disabled{cursor:not-allowed;opacity:.42}.path-options{display:grid;gap:7px}.path-options button{display:grid;grid-template-columns:82px 1fr;align-items:center;padding:8px 10px;text-align:left}.path-options button b{font-size:.78rem}.path-options button span{color:#929b8e;font: .62rem/1.25 system-ui,sans-serif}.round-readout{display:grid;grid-template-columns:1fr 1fr;gap:8px}.round-readout div{padding:10px;border:1px solid rgba(154,115,44,.45);background:rgba(0,0,0,.22)}.round-readout span{margin:0 0 4px;letter-spacing:.12em}.round-readout strong{color:#e5ca91;font:700 .9rem/1.2 system-ui,sans-serif}.fly-button{min-height:70px;margin-top:auto;border-color:#2cce86;background:linear-gradient(#188457,#0b4b33);color:#f6d98b;font-family:Georgia,'Times New Roman',serif;font-size:1.3rem;letter-spacing:.14em;box-shadow:inset 0 0 20px rgba(68,255,165,.16),0 0 18px rgba(20,197,117,.16)}footer{display:flex;justify-content:space-between;gap:16px;padding-top:13px;color:#7f867a;font:.65rem/1.4 system-ui,sans-serif;letter-spacing:.07em}
+	button{min-height:42px;border:1px solid #795d28;background:linear-gradient(#10231a,#09130f);color:#ddc488;font:700 .8rem/1 system-ui,sans-serif;cursor:pointer;transition:.13s}button:hover:not(:disabled),button:focus-visible,button.active{border-color:#49e59c;color:#75f5b8;box-shadow:inset 0 0 13px rgba(26,221,133,.16),0 0 12px rgba(26,221,133,.12);outline:none}button:disabled{cursor:not-allowed;opacity:.42}.fly-button{border-color:#2cce86;background:linear-gradient(#188457,#0b4b33);color:#f6d98b;font-family:Georgia,'Times New Roman',serif;letter-spacing:.14em;box-shadow:inset 0 0 20px rgba(68,255,165,.16),0 0 18px rgba(20,197,117,.16)}footer{display:flex;justify-content:space-between;gap:16px;padding-top:8px;color:#7f867a;font:.65rem/1.4 system-ui,sans-serif;letter-spacing:.07em}
 	@keyframes creature-hover{from{transform:translateY(0)}to{transform:translateY(var(--hover-lift))}}@keyframes wing-top{from{transform:rotate(-12deg) scaleY(.78)}to{transform:rotate(8deg)}}@keyframes wing-bottom{from{transform:rotate(12deg) scaleY(.78)}to{transform:rotate(-8deg)}}@keyframes flap-top{50%{transform:rotate(-30deg) scaleY(.5)}}@keyframes flap-bottom{50%{transform:rotate(30deg) scaleY(.5)}}@keyframes impact-shake{20%{transform:translate(-8px,3px)}40%{transform:translate(7px,-3px)}60%{transform:translate(-5px,2px)}80%{transform:translate(3px,-1px)}}@keyframes relic-flight{to{left:25%;top:45%;transform:scale(.35);opacity:.25}}@keyframes relic-spin{to{transform:rotate(360deg)}}@keyframes vault-arrive{from{transform:translateX(110%)}to{transform:translateX(0)}}
-	@media(max-width:900px){.game-layout{grid-template-columns:1fr}.world{min-height:clamp(350px,56dvh,520px)}.control-panel{display:grid;grid-template-columns:1fr 1fr}.creature-section,.round-readout,.fly-button{grid-column:1/-1}.fly-button{margin-top:0}}@media(max-width:620px){.prototype-shell{padding:12px}.prototype-header{align-items:flex-start;flex-wrap:wrap}.prototype-header h1{font-size:clamp(1.45rem,8vw,2.2rem)}.header-actions{margin-left:auto}.status-chip{min-width:110px;padding-inline:8px}.world{min-height:360px}.control-panel{grid-template-columns:1fr;gap:10px;padding:14px}.flight-hud{top:8px;right:8px;left:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;padding:7px 9px;font-size:.52rem;line-height:1.2;white-space:normal;transform:none}.flight-hud span{min-width:0}.event-callout{top:27%;width:max-content}.result-panel{grid-template-columns:1fr;max-height:88%;overflow:auto;padding:16px}.result-panel>strong,.result-panel>small,.result-panel>button{grid-column:auto}.start-hint{max-width:calc(100% - 24px);font-size:.52rem;text-align:center;white-space:normal}footer{flex-direction:column;gap:2px}}@media(prefers-reduced-motion:reduce){.wing,.world.has-impact,.relic-pickup,.vault{animation:none}}
+	@media(max-width:620px){.flight-hud{top:8px;right:8px;left:8px;font-size:.52rem;line-height:1.2;white-space:normal;transform:none}.flight-hud span{min-width:0}.event-callout{top:27%;width:max-content}.result-panel{grid-template-columns:1fr;max-height:88%;overflow:auto;padding:16px}.result-panel>strong,.result-panel>small,.result-panel>button{grid-column:auto}.start-hint{max-width:calc(100% - 24px);font-size:.52rem;text-align:center;white-space:normal}footer{flex-direction:column;gap:2px}}@media(prefers-reduced-motion:reduce){.wing,.world.has-impact,.relic-pickup,.vault{animation:none}}
 	.bet-stepper { display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px; }
 	.bet-stepper button { height: 48px; border-radius: 50%; font-size: 1.35rem; }
 	.bet-input { min-width: 0; width: 100%; padding: 12px 8px; border: 1px solid rgba(199, 153, 63, 0.45); background: rgba(0, 0, 0, 0.22); color: #f2d594; font: 700 1rem/1 Georgia, 'Times New Roman', serif; text-align: center; }
@@ -1167,9 +1070,6 @@
 	.bet-input:disabled { cursor: not-allowed; opacity: 0.48; }
 	.bet-input::-webkit-inner-spin-button, .bet-input::-webkit-outer-spin-button { margin: 0; }
 	.bet-input[type='number'] { appearance: textfield; }
-	.relic-pickup.guardian { border-color: #e1bd63; }
-	.relic-pickup.chaos { border-color: #c671e7; background: radial-gradient(circle, #f29b5d 0 8%, #7c2b55 9% 38%, #17091e 68%); box-shadow: 0 0 35px #b145d8; }
-	.relic-pickup.fortune { border-color: #5ce7a1; }
 	.event-callout { position: absolute; z-index: 10; left: 50%; top: 19%; max-width: 82%; padding: 8px 14px; border: 1px solid rgba(224, 169, 70, 0.72); background: rgba(8, 21, 14, 0.82); color: #f2c86d; font: 800 0.68rem/1.2 system-ui, sans-serif; letter-spacing: 0.14em; text-align: center; text-shadow: 0 1px 8px #000; transform: translateX(-50%); pointer-events: none; }
 	.world:has(.event-callout) .event-callout { animation: event-callout-in 0.24s ease-out; }
 	@keyframes event-callout-in { from { opacity: 0; transform: translate(-50%, -8px) scale(0.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
@@ -1280,17 +1180,9 @@
 	.creature-preview.with-image { overflow: hidden; }
 	.creature-preview.with-image::before, .creature-preview.with-image::after { display: none; }
 	.creature-preview-image { position: absolute; top: 50%; left: 50%; display: block; width: 280%; height: 280%; max-width: none; object-fit: contain; transform: translate(-50%, -50%); }
-	.dev-scenario-panel { display: grid; grid-template-columns: auto minmax(120px, 1fr); align-items: center; gap: 7px 10px; padding: 10px; border: 1px dashed #c35b75; background: linear-gradient(135deg, rgba(48, 8, 24, 0.76), rgba(16, 7, 18, 0.8)); font-family: system-ui, sans-serif; }
-	.dev-scenario-panel > div { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-	.dev-scenario-panel strong { color: #ff8ca7; font-size: 0.62rem; letter-spacing: 0.15em; }
-	.dev-scenario-panel span { color: #9e7e8b; font-size: 0.46rem; letter-spacing: 0.08em; }
-	.dev-scenario-panel label { color: #d4a7b1; font: 800 0.56rem/1 system-ui, sans-serif; letter-spacing: 0.1em; }
-	.dev-scenario-panel select { min-width: 0; width: 100%; min-height: 36px; padding: 6px 28px 6px 9px; border: 1px solid #93475d; background: #170b11; color: #f2c3ce; font: 700 0.66rem/1 system-ui, sans-serif; }
-	.dev-scenario-panel select:focus-visible { border-color: #ff8ca7; outline: 2px solid rgba(255, 112, 147, 0.22); outline-offset: 1px; }
-	.dev-scenario-panel select:disabled { cursor: not-allowed; opacity: 0.5; }
 	@keyframes creature-ember-trail { to { opacity: 0.35; transform: translateX(-9px) scale(1.08); } }
 	@media (max-width: 900px) { .weather-section, .time-section { grid-column: 1 / -1; } }
-	@media (max-width: 620px) { .weather-options, .time-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } .weather-options button, .time-options button { min-height: 50px; } .dev-scenario-panel { grid-template-columns: 1fr; } .dev-scenario-panel > div { display: grid; } }
+	@media (max-width: 620px) { .weather-options, .time-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } .weather-options button, .time-options button { min-height: 50px; } }
 	@media (prefers-reduced-motion: reduce) { .weather-trail.inferno { animation: none; } }
 
 	/* Compact setup deck: the flight scene remains primary while setup stays viewport-bound. */
@@ -1344,7 +1236,6 @@
 	}
 	.control-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 auto; padding: 3px; border: 1px solid rgba(163, 119, 41, 0.48); background: rgba(0, 0, 0, 0.28); }
 	.control-tabs button { min-height: 36px; border: 0; background: transparent; color: #8e9587; font-size: 0.68rem; letter-spacing: 0.18em; box-shadow: none; }
-	.control-tabs button.active { background: linear-gradient(180deg, rgba(32, 132, 88, 0.42), rgba(10, 55, 37, 0.5)); color: #84f3bd; box-shadow: inset 0 -2px #4fe3a1; }
 
 	.control-tab-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 4px 2px 1px; scrollbar-width: thin; scrollbar-color: #836326 rgba(0, 0, 0, 0.18); }
 	.control-tab-body::-webkit-scrollbar { width: 5px; }
@@ -1354,7 +1245,6 @@
 	.control-section:last-child { border-bottom: 0; }
 	.section-heading { align-items: end; margin-bottom: 7px; }
 	.section-heading span { margin-top: 3px; font-size: 0.56rem; }
-	.control-section p { font-size: 0.61rem; }
 
 	.bet-stepper { grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 7px; }
 	.bet-stepper button { width: 42px; height: 42px; min-height: 42px; font-size: 1.1rem; }
@@ -1372,8 +1262,6 @@
 		text-align: center;
 		text-transform: uppercase;
 	}
-	.segmented-options button b, .path-options button b { font-size: 0.58rem; letter-spacing: 0.06em; }
-	.path-options button span { color: #d8ac57; font: 700 0.8rem/1 system-ui, sans-serif; }
 	.selected-description { min-height: 1.2em; margin: 6px 2px 0 !important; color: #919c91 !important; font: 0.56rem/1.35 system-ui, sans-serif !important; letter-spacing: 0.02em !important; text-transform: none; }
 	.selected-description strong { color: #d7ba79; font-size: inherit; }
 
@@ -1409,19 +1297,11 @@
 	.weather-indicator, .time-indicator { flex: 0 0 auto; width: 17px; height: 17px; }
 	.time-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 
-	.dev-scenario-panel { display: block; flex: 0 0 auto; padding: 0; border-style: solid; }
-	.dev-tools-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 30px; padding: 5px 8px; border: 0; background: rgba(39, 8, 20, 0.64); box-shadow: none; text-align: left; }
-	.dev-tools-toggle span { display: flex; align-items: center; gap: 8px; }
-	.dev-tools-toggle small { color: #8f7480; font: 0.45rem/1 system-ui, sans-serif; letter-spacing: 0.08em; }
-	.dev-tools-toggle > b { color: #d4778f; font: 700 1rem/1 system-ui, sans-serif; }
-	.dev-tools-body { display: grid !important; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 7px; padding: 7px; border-top: 1px solid rgba(195, 91, 117, 0.38); }
-
 	.control-footer { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(128px, 1.15fr); align-items: stretch; gap: 8px; flex: 0 0 auto; padding-top: 9px; border-top: 1px solid rgba(206, 157, 60, 0.42); background: linear-gradient(180deg, rgba(5, 16, 11, 0.12), rgba(5, 16, 11, 0.96) 25%); }
 	.control-summary { display: grid; align-content: center; gap: 3px; min-width: 0; padding: 3px 0 3px 3px; font-family: system-ui, sans-serif; text-transform: uppercase; }
 	.control-summary div { display: flex; align-items: baseline; gap: 6px; }
 	.control-summary span, .control-summary small { color: #838d83; font-size: 0.48rem; letter-spacing: 0.1em; }
 	.control-summary strong { color: #f1cf82; font-size: 0.75rem; }
-	.control-summary p { margin: 0; overflow: hidden; color: #5ee9a8; font-size: 0.56rem; letter-spacing: 0.07em; text-overflow: ellipsis; white-space: nowrap; }
 	.control-summary small { display: block; }
 	.fly-button { min-height: 56px; margin: 0; padding: 8px; font-size: clamp(0.88rem, 1.3vw, 1.08rem); letter-spacing: 0.11em; }
 
@@ -1464,5 +1344,90 @@
 		.control-summary { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding-inline: 2px; }
 		.control-summary small { display: none; }
 		.fly-button { min-height: 50px; }
+	}
+
+	/* Main game layout and compact flight dock. */
+	.prototype-shell { display: flex; height: 100dvh; min-height: 0; flex-direction: column; overflow: hidden; padding: clamp(8px, 1.2vw, 18px); }
+	.prototype-header { align-items: center; flex: 0 0 auto; margin-bottom: 8px; }
+	.prototype-header h1 { margin: 0; font-size: clamp(1.25rem, 2.25vw, 2rem); }
+	.header-actions { margin-left: auto; }
+	.header-button { min-height: 36px; padding: 7px 13px; border-color: #856328; background: rgba(4, 20, 14, 0.82); color: #e4c26f; font-size: 0.58rem; letter-spacing: 0.13em; }
+	.help-button { width: 36px; min-height: 36px; padding: 7px; }
+
+	.game-layout { display: grid; grid-template-columns: 1fr; grid-template-rows: minmax(280px, 1fr) auto; flex: 1 1 auto; min-height: 0; gap: 9px; }
+	.world { width: 100%; height: auto; min-height: 0; }
+
+	.flight-hud { grid-template-columns: minmax(0, 1fr) auto auto; }
+	.hud-selection { align-items: center; }
+	.round-status { flex: 0 0 auto; padding: 4px 6px; border: 1px solid rgba(73, 225, 157, 0.42); color: #70edb2; }
+	.round-status.danger { border-color: rgba(230, 96, 50, 0.56); color: #ff9a6a; }
+
+	.control-dock {
+		position: relative;
+		display: grid;
+		grid-template-columns: minmax(150px, 0.8fr) minmax(330px, 1.55fr) minmax(220px, 1fr) minmax(170px, 0.8fr);
+		align-items: center;
+		gap: clamp(8px, 1.2vw, 16px);
+		flex: 0 0 auto;
+		padding: 10px clamp(10px, 1.5vw, 18px);
+		border: 1px solid #8f6927;
+		background: linear-gradient(145deg, rgba(8, 31, 22, 0.98), rgba(4, 13, 9, 0.99));
+		box-shadow: inset 0 0 28px rgba(26, 177, 108, 0.08), 0 12px 28px rgba(0, 0, 0, 0.32);
+	}
+	.dock-label { display: block; margin-bottom: 6px; color: #809085; font: 800 0.5rem/1 system-ui, sans-serif; letter-spacing: 0.16em; }
+	.creature-button { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 9px; padding: 8px 11px; text-align: left; }
+	.creature-button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.creature-button b { color: #55e5a5; }
+	.risk-selector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+	.risk-selector button { min-height: 38px; padding: 6px 4px; font-size: 0.59rem; letter-spacing: 0.08em; text-transform: uppercase; }
+	.risk-selector button.active { border-color: #4be0a0; background: linear-gradient(#176745, #0b3b29); color: #86f2bd; box-shadow: inset 0 0 13px rgba(45, 232, 151, 0.16), 0 0 10px rgba(35, 207, 132, 0.12); }
+	.risk-control p { margin: 6px 1px 0; overflow: hidden; color: #849087; font: 0.54rem/1.2 system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+	.risk-control p strong { color: #d9bd7b; text-transform: uppercase; }
+	.bet-control .bet-stepper { grid-template-columns: 42px minmax(90px, 1fr) 42px; gap: 6px; }
+	.bet-control .bet-stepper button { width: 42px; height: 42px; min-height: 42px; }
+	.bet-control .bet-input { height: 42px; padding: 7px; font-size: 1.05rem; }
+	.control-dock .fly-button { width: 100%; min-height: 58px; margin: 0; border-color: #42e29c; background: linear-gradient(#1a8a5b, #0a4b32); font-size: clamp(0.95rem, 1.5vw, 1.2rem); box-shadow: inset 0 0 22px rgba(92, 255, 177, 0.18), 0 0 20px rgba(31, 216, 137, 0.18); }
+
+	@media (max-height: 720px) and (min-width: 701px) {
+		.prototype-shell { padding-block: 7px; }
+		.prototype-header { margin-bottom: 6px; }
+		.prototype-header h1 { font-size: 1.2rem; }
+		.control-dock { padding-block: 7px; }
+		footer { display: none; }
+	}
+
+	@media (max-width: 900px) {
+		.control-dock { grid-template-columns: minmax(140px, 0.8fr) minmax(270px, 1.45fr) minmax(205px, 1fr); }
+		.control-dock .fly-button { grid-column: 1 / -1; min-height: 50px; }
+	}
+
+	@media (max-width: 700px) {
+		.prototype-shell { overflow: hidden; padding: 7px; }
+		.prototype-header { margin-bottom: 6px; }
+		.prototype-header h1 { font-size: 1.15rem; }
+		.header-button { min-height: 32px; padding: 6px 9px; font-size: 0.5rem; }
+		.help-button { width: 32px; min-height: 32px; padding: 6px; }
+		.game-layout { grid-template-rows: minmax(250px, 1fr) auto; gap: 7px; }
+		.control-dock { grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr); gap: 7px; padding: 8px; }
+		.creature-control { grid-column: 1; }
+		.bet-control { grid-column: 2; }
+		.risk-control { grid-column: 1 / -1; grid-row: 2; }
+		.control-dock .fly-button { grid-column: 1 / -1; grid-row: 3; min-height: 48px; }
+		.risk-control p { white-space: normal; }
+		.flight-hud { top: 5px; right: 5px; left: 5px; grid-template-columns: minmax(0, 1fr) auto; }
+		.hud-selection { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 6px; }
+		.flight-hud .stage-readout { display: none; }
+		.flight-hud .multiplier-readout { min-width: 58px; }
+		footer { display: none; }
+	}
+
+	@media (max-width: 390px) {
+		.dock-label { margin-bottom: 4px; }
+		.creature-button { min-height: 40px; padding-inline: 8px; font-size: 0.68rem; }
+		.bet-control .bet-stepper { grid-template-columns: 38px minmax(74px, 1fr) 38px; gap: 4px; }
+		.bet-control .bet-stepper button { width: 38px; height: 40px; min-height: 40px; }
+		.bet-control .bet-input { height: 40px; font-size: 0.9rem; }
+		.risk-selector button { min-height: 35px; font-size: 0.53rem; }
+		.control-dock .fly-button { min-height: 44px; }
 	}
 </style>

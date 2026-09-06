@@ -29,9 +29,7 @@ export type EmberParticle = {
 
 export type FlightRisk = 'safe' | 'balanced' | 'danger';
 
-export type CreatureId = 'tiny-bat' | 'firebird' | 'wyvern' | 'dragon' | 'ancient-dragon' | 'azure-swift';
-
-export type RelicType = 'guardian' | 'fortune' | 'chaos';
+export type CreatureId = 'firebird' | 'wyvern' | 'dragon' | 'azure-swift' | 'archaeopteryx';
 
 export type LaunchStyle = 'glide' | 'boost' | 'dive';
 
@@ -78,7 +76,7 @@ export type FlightEvent =
 	| { type: 'launch'; path: FlightRisk }
 	| (GateEventBase & { result: 'pass' })
 	| (GateEventBase & { result: 'crash'; crashSide: 'upper' | 'lower' })
-	| { type: 'relic'; relicType: RelicEventType; multiplier: number; protected?: boolean }
+	| { type: 'relic'; relicType: RelicEventType; multiplier: number }
 	| { type: 'portal'; portalType: PortalType; multiplier: number }
 	| { type: 'boss'; bossType: BossType; result: 'pass' | 'crash'; multiplier: number }
 	| { type: 'ending'; ending: Exclude<FlightEnding, 'crash'>; multiplier: number }
@@ -90,7 +88,6 @@ export type FlightRound = {
 	bet: number;
 	risk: FlightRisk;
 	creature: CreatureId;
-	relic: RelicType;
 	launchStyle: LaunchStyle;
 	weather?: WeatherCondition;
 	timeOfDay?: TimeOfDay;

@@ -8,7 +8,6 @@ import type {
 	LaunchStyle,
 	PortalType,
 	RelicEventType,
-	RelicType,
 } from './types';
 import { createFlightStagePlan } from './stages';
 
@@ -21,7 +20,6 @@ type RiskProfile = {
 	relicChance: number;
 	portalChance: number;
 	bossChance: number;
-	shieldChance: number;
 	relicPool: RelicEventType[];
 	portalPool: PortalType[];
 	hazardPool: HazardType[];
@@ -32,18 +30,6 @@ type RiskProfile = {
 	endings: Exclude<FlightEnding, 'crash'>[];
 };
 
-type RelicProfile = {
-	passAdjustment: number;
-	relicAdjustment: number;
-	portalAdjustment: number;
-	bossAdjustment: number;
-	shieldAdjustment: number;
-	relicPool: RelicEventType[];
-	portalPool: PortalType[];
-	endingAdjustment: number;
-	multiplierScale: number;
-};
-
 const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	safe: {
 		gateCount: [2, 3],
@@ -51,7 +37,6 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 		relicChance: 0.3,
 		portalChance: 0.06,
 		bossChance: 0.015,
-		shieldChance: 0.12,
 		relicPool: ['commonRelic', 'emeraldRelic'],
 		portalPool: ['vaultPortal', 'relicPortal'],
 		hazardPool: ['fireGate', 'chainTunnel', 'windTunnel'],
@@ -67,7 +52,6 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 		relicChance: 0.42,
 		portalChance: 0.2,
 		bossChance: 0.1,
-		shieldChance: 0.08,
 		relicPool: ['commonRelic', 'emeraldRelic', 'ancientRelic'],
 		portalPool: ['multiplierPortal', 'relicPortal', 'vaultPortal'],
 		hazardPool: ['fireGate', 'forgeHammer', 'chainTunnel', 'spikeGate', 'windTunnel'],
@@ -78,12 +62,11 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 		endings: ['safeLanding', 'forgeVault', 'dragonVault'],
 	},
 	danger: {
-		gateCount: [4, 6],
+		gateCount: [5, 7],
 		passChance: 0.56,
 		relicChance: 0.36,
 		portalChance: 0.34,
 		bossChance: 0.2,
-		shieldChance: 0.04,
 		relicPool: ['fireRelic', 'ancientRelic', 'mythicRelic'],
 		portalPool: ['multiplierPortal', 'chaosPortal', 'relicPortal', 'vaultPortal'],
 		hazardPool: ['forgeHammer', 'lavaColumn', 'spikeGate', 'windTunnel', 'fireGate'],
@@ -95,45 +78,9 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	},
 };
 
-const RELIC_PROFILES: Record<RelicType, RelicProfile> = {
-	guardian: {
-		passAdjustment: 0.09,
-		relicAdjustment: 0.08,
-		portalAdjustment: -0.08,
-		bossAdjustment: -0.08,
-		shieldAdjustment: 0.26,
-		relicPool: ['commonRelic', 'ancientRelic'],
-		portalPool: ['vaultPortal', 'relicPortal'],
-		endingAdjustment: -0.12,
-		multiplierScale: 0.78,
-	},
-	fortune: {
-		passAdjustment: 0.01,
-		relicAdjustment: 0.17,
-		portalAdjustment: 0.05,
-		bossAdjustment: 0,
-		shieldAdjustment: 0,
-		relicPool: ['commonRelic', 'emeraldRelic', 'ancientRelic'],
-		portalPool: ['relicPortal', 'vaultPortal', 'multiplierPortal'],
-		endingAdjustment: 0.08,
-		multiplierScale: 1,
-	},
-	chaos: {
-		passAdjustment: -0.08,
-		relicAdjustment: -0.04,
-		portalAdjustment: 0.11,
-		bossAdjustment: 0.14,
-		shieldAdjustment: -0.02,
-		relicPool: ['fireRelic', 'ancientRelic', 'mythicRelic'],
-		portalPool: ['chaosPortal', 'multiplierPortal', 'relicPortal'],
-		endingAdjustment: 0.12,
-		multiplierScale: 1.4,
-	},
-};
-
-const hashSeed = (risk: FlightRisk, relic: RelicType, bet: number, roundId: number) => {
+const hashSeed = (risk: FlightRisk, bet: number, roundId: number) => {
 	// Creature and launch style are intentionally excluded: they are presentation-only.
-	const source = `${risk}:${relic}:${bet}:${roundId}`;
+	const source = `${risk}:${bet}:${roundId}`;
 	let hash = 2166136261;
 
 	for (let index = 0; index < source.length; index += 1) {
@@ -158,29 +105,8 @@ const createRandom = (seed: number) => {
 const pick = <T>(values: T[], random: () => number) =>
 	values[Math.min(values.length - 1, Math.floor(random() * values.length))];
 
-const clampProbability = (value: number) => Math.min(0.95, Math.max(0.01, value));
 const roundMultiplier = (value: number) => Math.round(value * 100) / 100;
 const roundAmount = (value: number) => Math.round(value * 100) / 100;
-
-const mergeUnique = <T>(primary: T[], secondary: T[]) => [...new Set([...primary, ...secondary])];
-
-const mergeRiskAndRelic = (risk: FlightRisk, relic: RelicType) => {
-	const riskProfile = RISK_PROFILES[risk];
-	const relicProfile = RELIC_PROFILES[relic];
-
-	return {
-		...riskProfile,
-		passChance: clampProbability(riskProfile.passChance + relicProfile.passAdjustment),
-		relicChance: clampProbability(riskProfile.relicChance + relicProfile.relicAdjustment),
-		portalChance: clampProbability(riskProfile.portalChance + relicProfile.portalAdjustment),
-		bossChance: clampProbability(riskProfile.bossChance + relicProfile.bossAdjustment),
-		shieldChance: clampProbability(riskProfile.shieldChance + relicProfile.shieldAdjustment),
-		relicPool: mergeUnique(riskProfile.relicPool, relicProfile.relicPool),
-		portalPool: mergeUnique(riskProfile.portalPool, relicProfile.portalPool),
-		endingAdjustment: relicProfile.endingAdjustment,
-		multiplierScale: relicProfile.multiplierScale,
-	};
-};
 
 export const generateMockRound = (
 	bet: number,
@@ -188,17 +114,15 @@ export const generateMockRound = (
 	roundId: number,
 	options: {
 		creature: CreatureId;
-		relic: RelicType;
 		launchStyle: LaunchStyle;
 	},
 ): FlightRound => {
-	const seed = hashSeed(risk, options.relic, bet, roundId);
+	const seed = hashSeed(risk, bet, roundId);
 	const random = createRandom(seed);
-	const profile = mergeRiskAndRelic(risk, options.relic);
+	const profile = RISK_PROFILES[risk];
 	const gateCount = profile.gateCount[0] + Math.floor(random() * (profile.gateCount[1] - profile.gateCount[0] + 1));
 	const events: FlightEvent[] = [{ type: 'launch', path: risk }];
 	let currentMultiplier = 1;
-	let collectedRelic = false;
 	let crashed = false;
 
 	for (let gate = 1; gate <= gateCount; gate += 1) {
@@ -221,20 +145,17 @@ export const generateMockRound = (
 		}
 
 		if (random() < profile.relicChance) {
-			const protectedRelic = options.relic === 'guardian' && random() < profile.shieldChance;
-			const increment = pick(profile.relicIncrements, random) * profile.multiplierScale;
+			const increment = pick(profile.relicIncrements, random);
 			currentMultiplier = roundMultiplier(currentMultiplier + increment);
-			collectedRelic = true;
 			events.push({
 				type: 'relic',
-				relicType: protectedRelic ? 'ancientRelic' : pick(profile.relicPool, random),
+				relicType: pick(profile.relicPool, random),
 				multiplier: currentMultiplier,
-				protected: protectedRelic,
 			});
 		}
 
 		if (random() < profile.portalChance) {
-			const increment = pick(profile.portalIncrements, random) * profile.multiplierScale;
+			const increment = pick(profile.portalIncrements, random);
 			currentMultiplier = roundMultiplier(currentMultiplier + increment);
 			events.push({
 				type: 'portal',
@@ -244,11 +165,11 @@ export const generateMockRound = (
 		}
 
 		if (gate > 1 && random() < profile.bossChance) {
-			const increment = pick(profile.bossIncrements, random) * profile.multiplierScale;
+			const increment = pick(profile.bossIncrements, random);
 			currentMultiplier = roundMultiplier(currentMultiplier + increment);
 			events.push({
 				type: 'boss',
-				bossType: options.relic === 'guardian' ? 'forgeGuardian' : pick(['ancientWyrm', 'forgeGuardian'], random),
+				bossType: pick(['ancientWyrm', 'forgeGuardian'], random),
 				result: 'pass',
 				multiplier: currentMultiplier,
 			});
@@ -257,17 +178,13 @@ export const generateMockRound = (
 
 	let ending: FlightEnding = 'crash';
 	if (!crashed) {
-		const endingIndex = Math.min(
-			profile.endings.length - 1,
-			Math.floor(random() * profile.endings.length + profile.endingAdjustment),
-		);
-		ending = profile.endings[Math.max(0, endingIndex)];
-		const vaultMultiplier = pick(profile.vaultMultipliers, random) * profile.multiplierScale;
+		ending = pick(profile.endings, random);
+		const vaultMultiplier = pick(profile.vaultMultipliers, random);
 		currentMultiplier = roundMultiplier(Math.max(currentMultiplier, vaultMultiplier));
 		events.push({ type: 'ending', ending, multiplier: currentMultiplier });
 	}
 
-	const finalMultiplier = crashed && !collectedRelic ? 0 : currentMultiplier;
+	const finalMultiplier = crashed ? 0 : currentMultiplier;
 	const finalWin = roundAmount(bet * finalMultiplier);
 	events.push({ type: 'finalWin', multiplier: finalMultiplier, win: finalWin });
 	// Stage milestones are attached after the outcome and financial summary are final.
@@ -279,7 +196,6 @@ export const generateMockRound = (
 		bet,
 		risk,
 		creature: options.creature,
-		relic: options.relic,
 		launchStyle: options.launchStyle,
 		events,
 		stagePlan,
