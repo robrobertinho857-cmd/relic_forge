@@ -10,6 +10,7 @@ import type {
 	RelicEventType,
 } from './types';
 import { createFlightStagePlan } from './stages';
+import { roundToTwoDecimals } from './utils/number';
 
 // This is deliberately local prototype behavior. Replace this module with an
 // authoritative game result later without moving selection or presentation code.
@@ -105,9 +106,6 @@ const createRandom = (seed: number) => {
 const pick = <T>(values: T[], random: () => number) =>
 	values[Math.min(values.length - 1, Math.floor(random() * values.length))];
 
-const roundMultiplier = (value: number) => Math.round(value * 100) / 100;
-const roundAmount = (value: number) => Math.round(value * 100) / 100;
-
 export const generateMockRound = (
 	bet: number,
 	risk: FlightRisk,
@@ -146,7 +144,7 @@ export const generateMockRound = (
 
 		if (random() < profile.relicChance) {
 			const increment = pick(profile.relicIncrements, random);
-			currentMultiplier = roundMultiplier(currentMultiplier + increment);
+			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
 				type: 'relic',
 				relicType: pick(profile.relicPool, random),
@@ -156,7 +154,7 @@ export const generateMockRound = (
 
 		if (random() < profile.portalChance) {
 			const increment = pick(profile.portalIncrements, random);
-			currentMultiplier = roundMultiplier(currentMultiplier + increment);
+			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
 				type: 'portal',
 				portalType: pick(profile.portalPool, random),
@@ -166,7 +164,7 @@ export const generateMockRound = (
 
 		if (gate > 1 && random() < profile.bossChance) {
 			const increment = pick(profile.bossIncrements, random);
-			currentMultiplier = roundMultiplier(currentMultiplier + increment);
+			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
 				type: 'boss',
 				bossType: pick(['ancientWyrm', 'forgeGuardian'], random),
@@ -180,12 +178,12 @@ export const generateMockRound = (
 	if (!crashed) {
 		ending = pick(profile.endings, random);
 		const vaultMultiplier = pick(profile.vaultMultipliers, random);
-		currentMultiplier = roundMultiplier(Math.max(currentMultiplier, vaultMultiplier));
+		currentMultiplier = roundToTwoDecimals(Math.max(currentMultiplier, vaultMultiplier));
 		events.push({ type: 'ending', ending, multiplier: currentMultiplier });
 	}
 
 	const finalMultiplier = crashed ? 0 : currentMultiplier;
-	const finalWin = roundAmount(bet * finalMultiplier);
+	const finalWin = roundToTwoDecimals(bet * finalMultiplier);
 	events.push({ type: 'finalWin', multiplier: finalMultiplier, win: finalWin });
 	// Stage milestones are attached after the outcome and financial summary are final.
 	const stagePlan = createFlightStagePlan(events, ending);

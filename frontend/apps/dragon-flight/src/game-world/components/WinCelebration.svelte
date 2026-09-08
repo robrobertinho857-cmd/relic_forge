@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { WinTier } from '../presentation';
+	import type { WinTier } from '../types';
 
 	type Props = {
 		tier: WinTier;

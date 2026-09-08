@@ -1,4 +1,5 @@
 import { createFlightStagePlan } from './stages';
+import { roundToTwoDecimals } from './utils/number';
 import type {
 	CreatureId,
 	FlightEnding,
@@ -263,14 +264,12 @@ function createBlueprint(scenario: ForcedDevScenarioId, risk: FlightRisk): Scena
 	}
 }
 
-const roundAmount = (value: number) => Math.round(value * 100) / 100;
-
 export function createDevFlightRound(
 	scenario: ForcedDevScenarioId,
 	selections: DevRoundSelections,
 ): FlightRound {
 	const blueprint = createBlueprint(scenario, selections.risk);
-	const finalWin = roundAmount(selections.bet * blueprint.finalMultiplier);
+	const finalWin = roundToTwoDecimals(selections.bet * blueprint.finalMultiplier);
 	const events: FlightEvent[] = [
 		...blueprint.events,
 		{ type: 'finalWin', multiplier: blueprint.finalMultiplier, win: finalWin },

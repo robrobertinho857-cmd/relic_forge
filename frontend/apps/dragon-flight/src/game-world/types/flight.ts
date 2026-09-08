@@ -1,35 +1,6 @@
-export type Vector2 = {
-	x: number;
-	y: number;
-};
-
-// Shared prototype types for Dragon Flight.
-
-export type PlayerBody = {
-	position: Vector2;
-	velocity: Vector2;
-	radius: number;
-};
-
-export type WorldBounds = {
-	width: number;
-	height: number;
-	floorY: number;
-};
-
-export type EmberParticle = {
-	id: number;
-	x: number;
-	y: number;
-	velocityX: number;
-	velocityY: number;
-	life: number;
-	size: number;
-};
+import type { CreatureId } from './creature';
 
 export type FlightRisk = 'safe' | 'balanced' | 'danger';
-
-export type CreatureId = 'firebird' | 'wyvern' | 'dragon' | 'azure-swift' | 'archaeopteryx';
 
 export type LaunchStyle = 'glide' | 'boost' | 'dive';
 

@@ -7,6 +7,12 @@ const MAX_FRAME_DELTA = 1 / 30;
 export const clamp = (value: number, minimum: number, maximum: number) =>
 	Math.min(maximum, Math.max(minimum, value));
 
+export const createPlayer = (bounds: WorldBounds): PlayerBody => ({
+	position: { x: bounds.width * 0.25, y: bounds.floorY * 0.5 },
+	velocity: { x: 0, y: 0 },
+	radius: clamp(bounds.width * 0.026, 17, 25),
+});
+
 export const steerPlayer = (
 	player: PlayerBody,
 	targetY: number,

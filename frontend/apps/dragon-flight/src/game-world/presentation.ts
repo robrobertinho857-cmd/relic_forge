@@ -1,13 +1,5 @@
-import type { BossType, PortalType, RelicEventType } from './types';
-
-export type WinTierId = 'normal' | 'win' | 'big' | 'epic' | 'mythic';
-
-export type WinTier = {
-	id: WinTierId;
-	label: string;
-	minimumMultiplier: number;
-	duration: number;
-};
+import type { BossType, PortalType, RelicEventType } from './types/flight';
+import type { WinTier } from './types/presentation';
 
 export const WIN_TIERS: readonly WinTier[] = [
 	{ id: 'normal', label: 'RESULT', minimumMultiplier: 0, duration: 480 },

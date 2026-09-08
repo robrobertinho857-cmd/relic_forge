@@ -1,32 +1,6 @@
-import type { CreatureId } from './types';
+import type { CreatureId, CreatureProfile } from './types';
 
 // Presentational creature profiles for the local prototype.
-
-export type CreatureProfile = {
-	id: CreatureId;
-	name: string;
-	className: string;
-	assets?: {
-		portrait?: string;
-		flight?: string;
-		result?: string;
-	};
-	flightAnimation?: {
-		frames: readonly string[];
-		frameOrder: readonly number[];
-		fps: number;
-	};
-	sizeScale: number;
-	agility: number;
-	damping: number;
-	maxVerticalSpeed: number;
-	rotationDivisor: number;
-	rotationLimit: number;
-	flapDuration: number;
-	hoverDuration: number;
-	hoverLift: number;
-	description: string;
-};
 
 const decodedFlightFrameCache = new Map<string, Promise<readonly ImageBitmap[]>>();
 

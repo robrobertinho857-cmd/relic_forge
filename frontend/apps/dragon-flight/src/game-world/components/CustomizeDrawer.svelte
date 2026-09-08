@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { WEATHER_OPTIONS } from '../weather';
 	import { TIME_OF_DAY_OPTIONS } from '../timeOfDay';
+	import { LAUNCH_OPTIONS } from '../config';
 	import type { LaunchStyle, TimeOfDay, WeatherCondition } from '../types';
 
 	type Props = {
@@ -14,12 +15,6 @@
 		onLaunchSelect: (launch: LaunchStyle) => void;
 		onClose: () => void;
 	};
-
-	const LAUNCH_OPTIONS: readonly { id: LaunchStyle; name: string; note: string }[] = [
-		{ id: 'glide', name: 'GLIDE', note: 'Smooth horizontal launch' },
-		{ id: 'boost', name: 'BOOST', note: 'Dramatic upward launch' },
-		{ id: 'dive', name: 'DIVE', note: 'High start with a diving entry' },
-	];
 
 	let {
 		open,
