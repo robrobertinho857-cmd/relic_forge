@@ -60,7 +60,7 @@ export const TIME_OF_DAY_OPTIONS: readonly TimeOfDayPresentation[] = [
 	{
 		id: 'eclipse',
 		name: 'ECLIPSE',
-		description: 'Dark halo atmosphere',
+		description: 'Sunlight dimmed by the moon',
 		ambientBrightness: 0.52,
 		warmth: 0.3,
 		contrast: 1.34,

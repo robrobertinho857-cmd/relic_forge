@@ -6,8 +6,8 @@ import type {
 	FlightRound,
 	HazardType,
 	LaunchStyle,
-	PortalType,
-	RelicEventType,
+	CurrentType,
+	PickupType,
 } from './types';
 import { createFlightStagePlan } from './stages';
 import { roundToTwoDecimals } from './utils/number';
@@ -18,16 +18,16 @@ import { roundToTwoDecimals } from './utils/number';
 type RiskProfile = {
 	gateCount: [number, number];
 	passChance: number;
-	relicChance: number;
-	portalChance: number;
-	bossChance: number;
-	relicPool: RelicEventType[];
-	portalPool: PortalType[];
+	pickupChance: number;
+	currentChance: number;
+	encounterChance: number;
+	pickupPool: PickupType[];
+	currentPool: CurrentType[];
 	hazardPool: HazardType[];
-	relicIncrements: number[];
-	portalIncrements: number[];
-	bossIncrements: number[];
-	vaultMultipliers: number[];
+	pickupIncrements: number[];
+	currentIncrements: number[];
+	encounterIncrements: number[];
+	rewardMultipliers: number[];
 	endings: Exclude<FlightEnding, 'crash'>[];
 };
 
@@ -35,47 +35,47 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	safe: {
 		gateCount: [2, 3],
 		passChance: 0.86,
-		relicChance: 0.3,
-		portalChance: 0.06,
-		bossChance: 0.015,
-		relicPool: ['commonRelic', 'emeraldRelic'],
-		portalPool: ['vaultPortal', 'relicPortal'],
-		hazardPool: ['fireGate', 'chainTunnel', 'windTunnel'],
-		relicIncrements: [0.15, 0.25, 0.5],
-		portalIncrements: [0.25, 0.5],
-		bossIncrements: [0.5, 1],
-		vaultMultipliers: [1.25, 1.5, 1.75, 2.25],
-		endings: ['safeLanding', 'forgeVault'],
+		pickupChance: 0.3,
+		currentChance: 0.06,
+		encounterChance: 0.015,
+		pickupPool: ['feather', 'greenCrystal'],
+		currentPool: ['valleyCurrent', 'ridgeCurrent'],
+		hazardPool: ['cliffGap', 'forestPass', 'windPass'],
+		pickupIncrements: [0.15, 0.25, 0.5],
+		currentIncrements: [0.25, 0.5],
+		encounterIncrements: [0.5, 1],
+		rewardMultipliers: [1.25, 1.5, 1.75, 2.25],
+		endings: ['safeLanding', 'meadowLanding'],
 	},
 	balanced: {
 		gateCount: [3, 5],
 		passChance: 0.72,
-		relicChance: 0.42,
-		portalChance: 0.2,
-		bossChance: 0.1,
-		relicPool: ['commonRelic', 'emeraldRelic', 'ancientRelic'],
-		portalPool: ['multiplierPortal', 'relicPortal', 'vaultPortal'],
-		hazardPool: ['fireGate', 'forgeHammer', 'chainTunnel', 'spikeGate', 'windTunnel'],
-		relicIncrements: [0.5, 0.75, 1, 1.5],
-		portalIncrements: [0.75, 1.25, 2],
-		bossIncrements: [1, 2, 3],
-		vaultMultipliers: [1.5, 2, 2.5, 4],
-		endings: ['safeLanding', 'forgeVault', 'dragonVault'],
+		pickupChance: 0.42,
+		currentChance: 0.2,
+		encounterChance: 0.1,
+		pickupPool: ['feather', 'greenCrystal', 'goldenFeather'],
+		currentPool: ['risingCurrent', 'ridgeCurrent', 'valleyCurrent'],
+		hazardPool: ['cliffGap', 'rockfall', 'forestPass', 'rockSpires', 'windPass'],
+		pickupIncrements: [0.5, 0.75, 1, 1.5],
+		currentIncrements: [0.75, 1.25, 2],
+		encounterIncrements: [1, 2, 3],
+		rewardMultipliers: [1.5, 2, 2.5, 4],
+		endings: ['safeLanding', 'meadowLanding', 'ridgeLanding'],
 	},
 	danger: {
 		gateCount: [5, 7],
 		passChance: 0.56,
-		relicChance: 0.36,
-		portalChance: 0.34,
-		bossChance: 0.2,
-		relicPool: ['fireRelic', 'ancientRelic', 'mythicRelic'],
-		portalPool: ['multiplierPortal', 'chaosPortal', 'relicPortal', 'vaultPortal'],
-		hazardPool: ['forgeHammer', 'lavaColumn', 'spikeGate', 'windTunnel', 'fireGate'],
-		relicIncrements: [1, 1.5, 2.5, 4],
-		portalIncrements: [1.5, 3, 6],
-		bossIncrements: [3, 6, 12],
-		vaultMultipliers: [2, 3, 5, 8],
-		endings: ['dragonVault', 'ancientVault', 'mythicRealm'],
+		pickupChance: 0.36,
+		currentChance: 0.34,
+		encounterChance: 0.2,
+		pickupPool: ['amberCrystal', 'goldenFeather', 'skyCrystal'],
+		currentPool: ['risingCurrent', 'crosswind', 'ridgeCurrent', 'valleyCurrent'],
+		hazardPool: ['rockfall', 'lavaColumn', 'rockSpires', 'windPass', 'cliffGap'],
+		pickupIncrements: [1, 1.5, 2.5, 4],
+		currentIncrements: [1.5, 3, 6],
+		encounterIncrements: [3, 6, 12],
+		rewardMultipliers: [2, 3, 5, 8],
+		endings: ['ridgeLanding', 'hiddenValley', 'summitLanding'],
 	},
 };
 
@@ -118,7 +118,8 @@ export const generateMockRound = (
 	const seed = hashSeed(risk, bet, roundId);
 	const random = createRandom(seed);
 	const profile = RISK_PROFILES[risk];
-	const gateCount = profile.gateCount[0] + Math.floor(random() * (profile.gateCount[1] - profile.gateCount[0] + 1));
+	const gateCount =
+		profile.gateCount[0] + Math.floor(random() * (profile.gateCount[1] - profile.gateCount[0] + 1));
 	const events: FlightEvent[] = [{ type: 'launch', path: risk }];
 	let currentMultiplier = 1;
 	let crashed = false;
@@ -142,32 +143,32 @@ export const generateMockRound = (
 			break;
 		}
 
-		if (random() < profile.relicChance) {
-			const increment = pick(profile.relicIncrements, random);
+		if (random() < profile.pickupChance) {
+			const increment = pick(profile.pickupIncrements, random);
 			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
-				type: 'relic',
-				relicType: pick(profile.relicPool, random),
+				type: 'pickup',
+				pickupType: pick(profile.pickupPool, random),
 				multiplier: currentMultiplier,
 			});
 		}
 
-		if (random() < profile.portalChance) {
-			const increment = pick(profile.portalIncrements, random);
+		if (random() < profile.currentChance) {
+			const increment = pick(profile.currentIncrements, random);
 			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
-				type: 'portal',
-				portalType: pick(profile.portalPool, random),
+				type: 'current',
+				currentType: pick(profile.currentPool, random),
 				multiplier: currentMultiplier,
 			});
 		}
 
-		if (gate > 1 && random() < profile.bossChance) {
-			const increment = pick(profile.bossIncrements, random);
+		if (gate > 1 && random() < profile.encounterChance) {
+			const increment = pick(profile.encounterIncrements, random);
 			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
-				type: 'boss',
-				bossType: pick(['ancientWyrm', 'forgeGuardian'], random),
+				type: 'encounter',
+				encounterType: pick(['ridgeDragon', 'mountainRaptor'], random),
 				result: 'pass',
 				multiplier: currentMultiplier,
 			});
@@ -177,8 +178,8 @@ export const generateMockRound = (
 	let ending: FlightEnding = 'crash';
 	if (!crashed) {
 		ending = pick(profile.endings, random);
-		const vaultMultiplier = pick(profile.vaultMultipliers, random);
-		currentMultiplier = roundToTwoDecimals(Math.max(currentMultiplier, vaultMultiplier));
+		const rewardMultiplier = pick(profile.rewardMultipliers, random);
+		currentMultiplier = roundToTwoDecimals(Math.max(currentMultiplier, rewardMultiplier));
 		events.push({ type: 'ending', ending, multiplier: currentMultiplier });
 	}
 

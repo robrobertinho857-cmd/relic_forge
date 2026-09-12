@@ -15,7 +15,7 @@ export type WorldBounds = {
 	floorY: number;
 };
 
-export type EmberParticle = {
+export type FlightParticle = {
 	id: number;
 	x: number;
 	y: number;

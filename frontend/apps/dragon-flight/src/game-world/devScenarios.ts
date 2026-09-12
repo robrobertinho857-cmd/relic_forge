@@ -14,16 +14,16 @@ export type DevScenarioId =
 	| 'earlyCrash'
 	| 'midCrash'
 	| 'safeLanding'
-	| 'relicRun'
-	| 'chaosPortal'
-	| 'bossPass'
-	| 'bossCrash'
-	| 'forgeVault'
-	| 'dragonVault'
-	| 'ancientVault'
-	| 'mythicRealm'
+	| 'pickupRun'
+	| 'crosswind'
+	| 'encounterPass'
+	| 'encounterCrash'
+	| 'meadowLanding'
+	| 'ridgeLanding'
+	| 'hiddenValley'
+	| 'summitLanding'
 	| 'bigWin'
-	| 'mythicWin';
+	| 'recordWin';
 
 export type ForcedDevScenarioId = Exclude<DevScenarioId, 'random'>;
 
@@ -32,16 +32,16 @@ export const DEV_SCENARIOS: readonly { id: DevScenarioId; name: string }[] = [
 	{ id: 'earlyCrash', name: 'EARLY CRASH' },
 	{ id: 'midCrash', name: 'MID CRASH' },
 	{ id: 'safeLanding', name: 'SAFE LANDING' },
-	{ id: 'relicRun', name: 'RELIC RUN' },
-	{ id: 'chaosPortal', name: 'CHAOS PORTAL' },
-	{ id: 'bossPass', name: 'BOSS PASS' },
-	{ id: 'bossCrash', name: 'BOSS CRASH' },
-	{ id: 'forgeVault', name: 'FORGE VAULT' },
-	{ id: 'dragonVault', name: 'DRAGON VAULT' },
-	{ id: 'ancientVault', name: 'ANCIENT VAULT' },
-	{ id: 'mythicRealm', name: 'MYTHIC REALM' },
+	{ id: 'pickupRun', name: 'PICKUP RUN' },
+	{ id: 'crosswind', name: 'CROSSWIND' },
+	{ id: 'encounterPass', name: 'ENCOUNTER PASS' },
+	{ id: 'encounterCrash', name: 'ENCOUNTER CRASH' },
+	{ id: 'meadowLanding', name: 'MEADOW LANDING' },
+	{ id: 'ridgeLanding', name: 'RIDGE LANDING' },
+	{ id: 'hiddenValley', name: 'HIDDEN VALLEY' },
+	{ id: 'summitLanding', name: 'SUMMIT LANDING' },
 	{ id: 'bigWin', name: 'BIG WIN' },
-	{ id: 'mythicWin', name: 'MYTHIC WIN' },
+	{ id: 'recordWin', name: 'OUTSTANDING WIN' },
 ] as const;
 
 type DevRoundSelections = {
@@ -60,7 +60,11 @@ type ScenarioBlueprint = {
 
 const launch = (risk: FlightRisk): FlightEvent => ({ type: 'launch', path: risk });
 
-const passGate = (gate: number, hazard: Extract<FlightEvent, { type: 'gate' }>['hazard'], gapRatio: number): FlightEvent => ({
+const passGate = (
+	gate: number,
+	hazard: Extract<FlightEvent, { type: 'gate' }>['hazard'],
+	gapRatio: number,
+): FlightEvent => ({
 	type: 'gate',
 	gate,
 	hazard,
@@ -84,7 +88,7 @@ function createBlueprint(scenario: ForcedDevScenarioId, risk: FlightRisk): Scena
 	switch (scenario) {
 		case 'earlyCrash':
 			return {
-				events: [launch(risk), crashGate(1, 'fireGate', 0.43, 'upper')],
+				events: [launch(risk), crashGate(1, 'cliffGap', 0.43, 'upper')],
 				ending: 'crash',
 				finalMultiplier: 0,
 			};
@@ -92,9 +96,9 @@ function createBlueprint(scenario: ForcedDevScenarioId, risk: FlightRisk): Scena
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'windTunnel', 0.48),
-					{ type: 'relic', relicType: 'ancientRelic', multiplier: 2 },
-					crashGate(2, 'chainTunnel', 0.37, 'lower'),
+					passGate(1, 'windPass', 0.48),
+					{ type: 'pickup', pickupType: 'goldenFeather', multiplier: 2 },
+					crashGate(2, 'forestPass', 0.37, 'lower'),
 				],
 				ending: 'crash',
 				finalMultiplier: 0,
@@ -103,162 +107,162 @@ function createBlueprint(scenario: ForcedDevScenarioId, risk: FlightRisk): Scena
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'windTunnel', 0.52),
-					passGate(2, 'fireGate', 0.46),
+					passGate(1, 'windPass', 0.52),
+					passGate(2, 'cliffGap', 0.46),
 					successfulEnding('safeLanding', 1.5),
 				],
 				ending: 'safeLanding',
 				finalMultiplier: 1.5,
 			};
-		case 'relicRun':
+		case 'pickupRun':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.44),
-					{ type: 'relic', relicType: 'commonRelic', multiplier: 1.5 },
-					passGate(2, 'chainTunnel', 0.55),
-					{ type: 'relic', relicType: 'emeraldRelic', multiplier: 3 },
-					passGate(3, 'spikeGate', 0.39),
-					{ type: 'relic', relicType: 'ancientRelic', multiplier: 6 },
-					successfulEnding('forgeVault', 8),
+					passGate(1, 'cliffGap', 0.44),
+					{ type: 'pickup', pickupType: 'feather', multiplier: 1.5 },
+					passGate(2, 'forestPass', 0.55),
+					{ type: 'pickup', pickupType: 'greenCrystal', multiplier: 3 },
+					passGate(3, 'rockSpires', 0.39),
+					{ type: 'pickup', pickupType: 'goldenFeather', multiplier: 6 },
+					successfulEnding('meadowLanding', 8),
 				],
-				ending: 'forgeVault',
+				ending: 'meadowLanding',
 				finalMultiplier: 8,
 			};
-		case 'chaosPortal':
+		case 'crosswind':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'forgeHammer', 0.48),
-					{ type: 'portal', portalType: 'chaosPortal', multiplier: 3 },
+					passGate(1, 'rockfall', 0.48),
+					{ type: 'current', currentType: 'crosswind', multiplier: 3 },
 					passGate(2, 'lavaColumn', 0.42),
-					{ type: 'relic', relicType: 'fireRelic', multiplier: 5 },
-					passGate(3, 'windTunnel', 0.56),
-					successfulEnding('forgeVault', 8),
+					{ type: 'pickup', pickupType: 'amberCrystal', multiplier: 5 },
+					passGate(3, 'windPass', 0.56),
+					successfulEnding('meadowLanding', 8),
 				],
-				ending: 'forgeVault',
+				ending: 'meadowLanding',
 				finalMultiplier: 8,
 			};
-		case 'bossPass':
+		case 'encounterPass':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.45),
-					passGate(2, 'spikeGate', 0.52),
-					{ type: 'boss', bossType: 'ancientWyrm', result: 'pass', multiplier: 6 },
-					passGate(3, 'windTunnel', 0.41),
-					successfulEnding('dragonVault', 14),
+					passGate(1, 'cliffGap', 0.45),
+					passGate(2, 'rockSpires', 0.52),
+					{ type: 'encounter', encounterType: 'ridgeDragon', result: 'pass', multiplier: 6 },
+					passGate(3, 'windPass', 0.41),
+					successfulEnding('ridgeLanding', 14),
 				],
-				ending: 'dragonVault',
+				ending: 'ridgeLanding',
 				finalMultiplier: 14,
 			};
-		case 'bossCrash':
+		case 'encounterCrash':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'chainTunnel', 0.5),
-					{ type: 'relic', relicType: 'commonRelic', multiplier: 2 },
-					passGate(2, 'forgeHammer', 0.43),
-					{ type: 'boss', bossType: 'forgeGuardian', result: 'crash', multiplier: 4 },
+					passGate(1, 'forestPass', 0.5),
+					{ type: 'pickup', pickupType: 'feather', multiplier: 2 },
+					passGate(2, 'rockfall', 0.43),
+					{ type: 'encounter', encounterType: 'mountainRaptor', result: 'crash', multiplier: 4 },
 				],
 				ending: 'crash',
 				finalMultiplier: 0,
 			};
-		case 'forgeVault':
+		case 'meadowLanding':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.46),
-					passGate(2, 'forgeHammer', 0.52),
-					{ type: 'relic', relicType: 'emeraldRelic', multiplier: 3 },
-					passGate(3, 'chainTunnel', 0.4),
-					successfulEnding('forgeVault', 8),
+					passGate(1, 'cliffGap', 0.46),
+					passGate(2, 'rockfall', 0.52),
+					{ type: 'pickup', pickupType: 'greenCrystal', multiplier: 3 },
+					passGate(3, 'forestPass', 0.4),
+					successfulEnding('meadowLanding', 8),
 				],
-				ending: 'forgeVault',
+				ending: 'meadowLanding',
 				finalMultiplier: 8,
 			};
-		case 'dragonVault':
+		case 'ridgeLanding':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.45),
-					{ type: 'relic', relicType: 'fireRelic', multiplier: 2.5 },
+					passGate(1, 'cliffGap', 0.45),
+					{ type: 'pickup', pickupType: 'amberCrystal', multiplier: 2.5 },
 					passGate(2, 'lavaColumn', 0.53),
-					{ type: 'portal', portalType: 'relicPortal', multiplier: 6 },
-					passGate(3, 'spikeGate', 0.39),
-					passGate(4, 'windTunnel', 0.5),
-					successfulEnding('dragonVault', 18),
+					{ type: 'current', currentType: 'ridgeCurrent', multiplier: 6 },
+					passGate(3, 'rockSpires', 0.39),
+					passGate(4, 'windPass', 0.5),
+					successfulEnding('ridgeLanding', 18),
 				],
-				ending: 'dragonVault',
+				ending: 'ridgeLanding',
 				finalMultiplier: 18,
 			};
-		case 'ancientVault':
+		case 'hiddenValley':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.48),
-					{ type: 'relic', relicType: 'emeraldRelic', multiplier: 2 },
-					passGate(2, 'forgeHammer', 0.43),
-					{ type: 'portal', portalType: 'vaultPortal', multiplier: 7 },
-					passGate(3, 'chainTunnel', 0.55),
-					{ type: 'boss', bossType: 'ancientWyrm', result: 'pass', multiplier: 14 },
+					passGate(1, 'cliffGap', 0.48),
+					{ type: 'pickup', pickupType: 'greenCrystal', multiplier: 2 },
+					passGate(2, 'rockfall', 0.43),
+					{ type: 'current', currentType: 'valleyCurrent', multiplier: 7 },
+					passGate(3, 'forestPass', 0.55),
+					{ type: 'encounter', encounterType: 'ridgeDragon', result: 'pass', multiplier: 14 },
 					passGate(4, 'lavaColumn', 0.4),
-					{ type: 'relic', relicType: 'ancientRelic', multiplier: 22 },
-					passGate(5, 'spikeGate', 0.5),
-					successfulEnding('ancientVault', 36),
+					{ type: 'pickup', pickupType: 'goldenFeather', multiplier: 22 },
+					passGate(5, 'rockSpires', 0.5),
+					successfulEnding('hiddenValley', 36),
 				],
-				ending: 'ancientVault',
+				ending: 'hiddenValley',
 				finalMultiplier: 36,
 			};
-		case 'mythicRealm':
+		case 'summitLanding':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.46),
-					{ type: 'relic', relicType: 'fireRelic', multiplier: 2 },
-					passGate(2, 'forgeHammer', 0.52),
-					{ type: 'portal', portalType: 'chaosPortal', multiplier: 6 },
-					passGate(3, 'chainTunnel', 0.39),
-					{ type: 'relic', relicType: 'ancientRelic', multiplier: 12 },
+					passGate(1, 'cliffGap', 0.46),
+					{ type: 'pickup', pickupType: 'amberCrystal', multiplier: 2 },
+					passGate(2, 'rockfall', 0.52),
+					{ type: 'current', currentType: 'crosswind', multiplier: 6 },
+					passGate(3, 'forestPass', 0.39),
+					{ type: 'pickup', pickupType: 'goldenFeather', multiplier: 12 },
 					passGate(4, 'lavaColumn', 0.55),
-					{ type: 'boss', bossType: 'ancientWyrm', result: 'pass', multiplier: 24 },
-					passGate(5, 'spikeGate', 0.43),
-					{ type: 'portal', portalType: 'vaultPortal', multiplier: 40 },
-					passGate(6, 'windTunnel', 0.5),
-					{ type: 'relic', relicType: 'mythicRelic', multiplier: 58 },
-					successfulEnding('mythicRealm', 72),
+					{ type: 'encounter', encounterType: 'ridgeDragon', result: 'pass', multiplier: 24 },
+					passGate(5, 'rockSpires', 0.43),
+					{ type: 'current', currentType: 'valleyCurrent', multiplier: 40 },
+					passGate(6, 'windPass', 0.5),
+					{ type: 'pickup', pickupType: 'skyCrystal', multiplier: 58 },
+					successfulEnding('summitLanding', 72),
 				],
-				ending: 'mythicRealm',
+				ending: 'summitLanding',
 				finalMultiplier: 72,
 			};
 		case 'bigWin':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'windTunnel', 0.47),
-					{ type: 'relic', relicType: 'emeraldRelic', multiplier: 4 },
-					passGate(2, 'spikeGate', 0.52),
-					{ type: 'portal', portalType: 'multiplierPortal', multiplier: 10 },
+					passGate(1, 'windPass', 0.47),
+					{ type: 'pickup', pickupType: 'greenCrystal', multiplier: 4 },
+					passGate(2, 'rockSpires', 0.52),
+					{ type: 'current', currentType: 'risingCurrent', multiplier: 10 },
 					passGate(3, 'lavaColumn', 0.41),
-					successfulEnding('dragonVault', 18),
+					successfulEnding('ridgeLanding', 18),
 				],
-				ending: 'dragonVault',
+				ending: 'ridgeLanding',
 				finalMultiplier: 18,
 			};
-		case 'mythicWin':
+		case 'recordWin':
 			return {
 				events: [
 					launch(risk),
-					passGate(1, 'fireGate', 0.45),
-					{ type: 'relic', relicType: 'ancientRelic', multiplier: 8 },
-					passGate(2, 'chainTunnel', 0.52),
-					{ type: 'portal', portalType: 'chaosPortal', multiplier: 20 },
+					passGate(1, 'cliffGap', 0.45),
+					{ type: 'pickup', pickupType: 'goldenFeather', multiplier: 8 },
+					passGate(2, 'forestPass', 0.52),
+					{ type: 'current', currentType: 'crosswind', multiplier: 20 },
 					passGate(3, 'lavaColumn', 0.4),
-					{ type: 'boss', bossType: 'forgeGuardian', result: 'pass', multiplier: 38 },
-					passGate(4, 'spikeGate', 0.54),
-					successfulEnding('mythicRealm', 60),
+					{ type: 'encounter', encounterType: 'mountainRaptor', result: 'pass', multiplier: 38 },
+					passGate(4, 'rockSpires', 0.54),
+					successfulEnding('summitLanding', 60),
 				],
-				ending: 'mythicRealm',
+				ending: 'summitLanding',
 				finalMultiplier: 60,
 			};
 	}

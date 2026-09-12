@@ -13,32 +13,40 @@
 	import { generateMockRound } from './mockRound';
 	import { CREATURES, getCreature, loadDecodedFlightFrames } from './creatures';
 	import { getFlightStage, stageForEventIndex } from './stages';
-	import { BOSS_LABELS, getWinTier, PORTAL_LABELS, RELIC_LABELS } from './presentation';
+	import {
+		ENCOUNTER_LABELS,
+		getWinTier,
+		CURRENT_LABELS,
+		PICKUP_LABELS,
+		ENDING_LABELS,
+		HAZARD_LABELS,
+	} from './presentation';
 	import { getWeather } from './weather';
 	import { getTimeOfDay } from './timeOfDay';
+	import { getFinishBackground, LANDING_ANCHOR } from './backgrounds';
 	import { clampBet, isBetInputValid, roundBet, sanitizeBetInput } from './utils/bet';
-	import { formatEventName, formatLocalAmount } from './utils/format';
-	import BossEncounter from './components/BossEncounter.svelte';
+	import { formatLocalAmount } from './utils/format';
+	import Atmosphere from './components/Atmosphere.svelte';
+	import Landscape from './components/Landscape.svelte';
+	import DangerEncounter from './components/DangerEncounter.svelte';
 	import CreaturePicker from './components/CreaturePicker.svelte';
 	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
+	import TerrainObstacle from './components/TerrainObstacle.svelte';
+	import ResultScenery from './components/ResultScenery.svelte';
 	import EventWarning from './components/EventWarning.svelte';
-	import ForgeEnvironmentEffect from './components/ForgeEnvironmentEffect.svelte';
 	import HelpDialog from './components/HelpDialog.svelte';
-	import PortalEffect from './components/PortalEffect.svelte';
-	import RelicPickup from './components/RelicPickup.svelte';
+	import AirCurrentEffect from './components/AirCurrentEffect.svelte';
+	import CollectiblePickup from './components/CollectiblePickup.svelte';
 	import WinCelebration from './components/WinCelebration.svelte';
-	import WeatherBackground from './components/WeatherBackground.svelte';
-	import WeatherEffect from './components/WeatherEffect.svelte';
-	import { VFX_ASSETS } from './vfx';
 	import type {
-		ActiveBossPresentation,
+		ActiveEncounterPresentation,
 		ActiveGate,
-		ActivePortalPresentation,
-		ActiveRelicPresentation,
+		ActiveCurrentPresentation,
+		ActivePickupPresentation,
 		CreatureId,
 		ComboPresentation,
-		EmberParticle,
+		FlightParticle,
 		FlightEnding,
 		FlightEvent,
 		FlightRisk,
@@ -67,7 +75,7 @@
 	let creaturePickerOpen = $state(false);
 	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
-	let currentStageId = $state<FlightStageId>('FORGE_OUTSKIRTS');
+	let currentStageId = $state<FlightStageId>('MOUNTAIN_VALLEY');
 	let flightProgress = $state(0);
 	let stageAnnouncement = $state<StageAnnouncement>();
 	let roundCreatureId = $state<CreatureId>();
@@ -79,10 +87,11 @@
 	let gatesPassed = $state(0);
 	let distanceTravelled = $state(0);
 	let activeGate = $state<ActiveGate>();
-	let activeRelic = $state<ActiveRelicPresentation>();
-	let activePortal = $state<ActivePortalPresentation>();
-	let activeBoss = $state<ActiveBossPresentation>();
+	let activePickup = $state<ActivePickupPresentation>();
+	let activeCurrent = $state<ActiveCurrentPresentation>();
+	let activeEncounter = $state<ActiveEncounterPresentation>();
 	let activeEnding = $state<Exclude<FlightEnding, 'crash'>>();
+	let landingProgress = $state(0);
 	let eventWarning = $state<WarningPresentation>();
 	let comboFeedback = $state<ComboPresentation>();
 	let comboCount = $state(0);
@@ -96,7 +105,7 @@
 	let eventProgress = $state(0);
 	let eventCallout = $state('');
 	let flightTargetY = $state(INITIAL_BOUNDS.floorY * 0.5);
-	let particles = $state<EmberParticle[]>([]);
+	let particles = $state<FlightParticle[]>([]);
 	let parallaxOffset = $state(0);
 	let roundSequence = 0;
 	let presentationToken = 0;
@@ -114,6 +123,7 @@
 	let pendingDelays: Array<() => void> = [];
 
 	const controlsLocked = $derived(status !== 'ready');
+	const landed = $derived(Boolean(activeEnding) && landingProgress === 1);
 	const betInputIsValid = $derived(isBetInputValid(betInput));
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
@@ -139,6 +149,7 @@
 	$effect(() => {
 		const animation = activeCreature.flightAnimation;
 		creatureFrameNumber = animation?.frameOrder[0] ?? 1;
+		if (landed) return;
 		if (!animation || loadedCreatureFrames[activeCreature.id]?.length !== animation.frames.length)
 			return;
 
@@ -314,10 +325,11 @@
 		stageAnnouncement = undefined;
 		eventWarning = undefined;
 		comboFeedback = undefined;
-		activeRelic = undefined;
-		activePortal = undefined;
-		activeBoss = undefined;
+		activePickup = undefined;
+		activeCurrent = undefined;
+		activeEncounter = undefined;
 		activeEnding = undefined;
+		landingProgress = 0;
 		multiplierPulse = false;
 		flapActive = false;
 	}
@@ -364,7 +376,7 @@
 	function emitParticles(count: number, impact = false) {
 		const additions = Array.from(
 			{ length: count },
-			(): EmberParticle => ({
+			(): FlightParticle => ({
 				id: particleSequence++,
 				x: player.position.x + (impact ? player.radius : -player.radius),
 				y: player.position.y + (Math.random() - 0.5) * player.radius * 1.5,
@@ -383,7 +395,7 @@
 		status = 'ready';
 		currentRound = undefined;
 		roundCreatureId = undefined;
-		currentStageId = 'FORGE_OUTSKIRTS';
+		currentStageId = 'MOUNTAIN_VALLEY';
 		flightProgress = 0;
 		currentMultiplier = 1;
 		finalMultiplier = 0;
@@ -391,9 +403,9 @@
 		gatesPassed = 0;
 		distanceTravelled = 0;
 		activeGate = undefined;
-		activeRelic = undefined;
-		activePortal = undefined;
-		activeBoss = undefined;
+		activePickup = undefined;
+		activeCurrent = undefined;
+		activeEncounter = undefined;
 		activeEnding = undefined;
 		comboCount = 0;
 		impactActive = false;
@@ -413,7 +425,7 @@
 		return {
 			...event,
 			x: bounds.width + 45,
-			width: clamp(bounds.width * 0.068, 44, 70),
+			width: clamp(bounds.width * 0.19, 95, 210),
 			gapCenterY,
 			gapHeight,
 		};
@@ -421,8 +433,8 @@
 
 	function presentGate(event: Extract<FlightEvent, { type: 'gate' }>) {
 		activeGate = createPresentedGate(event);
-		eventLabel = formatEventName(event.hazard);
-		eventCallout = `${formatEventName(event.hazard)} · GATE ${event.gate}`;
+		eventLabel = HAZARD_LABELS[event.hazard];
+		eventCallout = `${HAZARD_LABELS[event.hazard]} · GATE ${event.gate}`;
 		status = 'flying';
 		triggerFlap();
 
@@ -433,8 +445,8 @@
 			const gapBottom = activeGate.gapCenterY + activeGate.gapHeight / 2;
 			flightTargetY =
 				event.crashSide === 'upper'
-					? Math.max(player.radius, gapTop - player.radius * 0.7)
-					: Math.min(bounds.floorY - player.radius, gapBottom + player.radius * 0.7);
+					? Math.max(player.radius, gapTop - player.radius * 1.6)
+					: Math.min(bounds.floorY - player.radius, gapBottom + player.radius * 1.6);
 		}
 
 		return new Promise<void>((resolve) => {
@@ -442,41 +454,41 @@
 		});
 	}
 
-	async function presentRelic(event: Extract<FlightEvent, { type: 'relic' }>, token: number) {
+	async function presentPickup(event: Extract<FlightEvent, { type: 'pickup' }>, token: number) {
 		const fromMultiplier = currentMultiplier;
-		activeRelic = {
-			relicType: event.relicType,
+		activePickup = {
+			pickupType: event.pickupType,
 			fromMultiplier,
 			toMultiplier: event.multiplier,
 		};
-		eventLabel = RELIC_LABELS[event.relicType];
-		eventCallout = RELIC_LABELS[event.relicType];
+		eventLabel = PICKUP_LABELS[event.pickupType];
+		eventCallout = PICKUP_LABELS[event.pickupType];
 		flightTargetY = bounds.floorY * 0.43;
 		triggerFlap();
 		await delay(300);
 		if (token !== presentationToken) return;
 		await animateCurrentMultiplier(event.multiplier, 340, token);
 		if (token !== presentationToken) return;
-		emitParticles(event.relicType === 'mythicRelic' ? 28 : 18);
-		activeRelic = undefined;
+		emitParticles(event.pickupType === 'skyCrystal' ? 28 : 18);
+		activePickup = undefined;
 		await delay(150);
 	}
 
-	async function presentPortal(event: Extract<FlightEvent, { type: 'portal' }>, token: number) {
-		const portalLabel = PORTAL_LABELS[event.portalType];
-		if (event.portalType === 'chaosPortal' || event.portalType === 'vaultPortal') {
+	async function presentCurrent(event: Extract<FlightEvent, { type: 'current' }>, token: number) {
+		const currentLabel = CURRENT_LABELS[event.currentType];
+		if (event.currentType === 'crosswind' || event.currentType === 'valleyCurrent') {
 			const warningShown = await showWarning(
-				portalLabel,
-				event.portalType === 'vaultPortal' ? 'vault' : 'portal',
+				currentLabel,
+				event.currentType === 'valleyCurrent' ? 'reward' : 'current',
 				token,
 				360,
 			);
 			if (!warningShown) return;
 		}
-		eventLabel = portalLabel;
-		eventCallout = portalLabel;
-		activePortal = {
-			portalType: event.portalType,
+		eventLabel = currentLabel;
+		eventCallout = currentLabel;
+		activeCurrent = {
+			currentType: event.currentType,
 			phase: 'approach',
 			multiplier: event.multiplier,
 		};
@@ -484,67 +496,112 @@
 		triggerFlap();
 		await delay(300);
 		if (token !== presentationToken) return;
-		activePortal = { portalType: event.portalType, phase: 'enter', multiplier: event.multiplier };
-		impactActive = event.portalType === 'chaosPortal';
+		activeCurrent = {
+			currentType: event.currentType,
+			phase: 'enter',
+			multiplier: event.multiplier,
+		};
+		impactActive = event.currentType === 'crosswind';
 		await animateCurrentMultiplier(event.multiplier, 360, token);
 		if (token !== presentationToken) return;
-		emitParticles(event.portalType === 'chaosPortal' ? 30 : 20);
-		activePortal = { portalType: event.portalType, phase: 'release', multiplier: event.multiplier };
+		emitParticles(event.currentType === 'crosswind' ? 30 : 20);
+		activeCurrent = {
+			currentType: event.currentType,
+			phase: 'release',
+			multiplier: event.multiplier,
+		};
 		await delay(220);
 		if (token !== presentationToken) return;
-		activePortal = undefined;
+		activeCurrent = undefined;
 		impactActive = false;
 	}
 
-	async function presentBoss(event: Extract<FlightEvent, { type: 'boss' }>, token: number) {
-		const bossLabel = BOSS_LABELS[event.bossType];
-		const warningShown = await showWarning(bossLabel, 'danger', token, 430);
+	async function presentEncounter(
+		event: Extract<FlightEvent, { type: 'encounter' }>,
+		token: number,
+	) {
+		const encounterLabel = ENCOUNTER_LABELS[event.encounterType];
+		const warningShown = await showWarning(encounterLabel, 'danger', token, 430);
 		if (!warningShown) return;
-		eventLabel = bossLabel;
+		eventLabel = encounterLabel;
 		eventCallout = 'DANGER AHEAD';
-		activeBoss = { bossType: event.bossType, result: event.result, phase: 'enter' };
+		activeEncounter = { encounterType: event.encounterType, result: event.result, phase: 'enter' };
 		flightTargetY = bounds.floorY * 0.38;
 		triggerFlap();
 		await delay(330);
 		if (token !== presentationToken) return;
-		activeBoss = { bossType: event.bossType, result: event.result, phase: 'engage' };
+		activeEncounter = { encounterType: event.encounterType, result: event.result, phase: 'engage' };
 		impactActive = true;
 		await delay(380);
 		if (token !== presentationToken) return;
-		activeBoss = { bossType: event.bossType, result: event.result, phase: 'resolve' };
+		activeEncounter = {
+			encounterType: event.encounterType,
+			result: event.result,
+			phase: 'resolve',
+		};
 		await animateCurrentMultiplier(event.multiplier, 300, token);
 		if (token !== presentationToken) return;
 		if (event.result === 'pass') {
-			eventCallout = 'BOSS PASSED · BREAKTHROUGH';
+			eventCallout = 'PREDATOR AVOIDED';
 			emitParticles(30, true);
 		} else {
-			eventCallout = 'BOSS ATTACK · CRASH';
+			eventCallout = 'PREDATOR STRIKE';
 			status = 'collided';
 			player = { ...player, velocity: { x: 0, y: 0 } };
 			emitParticles(38, true);
 		}
 		await delay(event.result === 'crash' ? 420 : 300);
 		if (token !== presentationToken) return;
-		activeBoss = undefined;
+		activeEncounter = undefined;
 		impactActive = event.result === 'crash';
 	}
 
 	async function presentEnding(event: Extract<FlightEvent, { type: 'ending' }>, token: number) {
 		activeEnding = event.ending;
 		status = 'ending';
-		flightTargetY = bounds.floorY * 0.48;
+		landingProgress = 0;
+		eventCallout = ENDING_LABELS[event.ending];
+		player = { ...player, velocity: { x: 0, y: 0 } };
 		triggerFlap();
 		await animateCurrentMultiplier(event.multiplier, 320, token);
 		if (token !== presentationToken) return;
+		const start = { x: player.position.x / bounds.width, y: player.position.y / bounds.height };
+		await animatePresentationValues(
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 1500,
+			(progress) => {
+				landingProgress = progress;
+				const eased = progress;
+				const target = landingPosition();
+				player = {
+					...player,
+					position: {
+						x: start.x * bounds.width + (target.x - start.x * bounds.width) * eased,
+						y:
+							start.y * bounds.height +
+							(target.y - start.y * bounds.height) * eased -
+							Math.sin(progress * Math.PI) * bounds.height * 0.09,
+					},
+					velocity: { x: 0, y: 0 },
+				};
+			},
+			token,
+		);
+		if (token !== presentationToken) return;
 		const endingIntensity = {
 			safeLanding: 12,
-			forgeVault: 20,
-			dragonVault: 28,
-			ancientVault: 34,
-			mythicRealm: 42,
+			meadowLanding: 20,
+			ridgeLanding: 28,
+			hiddenValley: 34,
+			summitLanding: 42,
 		}[event.ending];
 		emitParticles(endingIntensity);
 		await delay(300 + endingIntensity * 10);
+	}
+
+	function landingPosition() {
+		// Same normalized anchor as the image's object-position, including narrow cover crops.
+		const footOffset = clamp(window.innerWidth * 0.046, 38, 58) * activeCreature.sizeScale * 0.32;
+		return { x: bounds.width * LANDING_ANCHOR.x, y: bounds.height * LANDING_ANCHOR.y - footOffset };
 	}
 
 	async function presentFinalResult(round: FlightRound, token: number) {
@@ -585,7 +642,7 @@
 			switch (event.type) {
 				case 'launch':
 					eventLabel = 'LAUNCH';
-					eventCallout = `${formatEventName(round.launchStyle)} LAUNCH`;
+					eventCallout = `${round.launchStyle.toUpperCase()} LAUNCH`;
 					status = 'flying';
 					flightTargetY =
 						event.path === 'safe'
@@ -616,18 +673,18 @@
 					}
 					await delay(event.result === 'crash' ? 420 : 140);
 					break;
-				case 'relic':
-					await presentRelic(event, token);
+				case 'pickup':
+					await presentPickup(event, token);
 					break;
-				case 'portal':
-					await presentPortal(event, token);
+				case 'current':
+					await presentCurrent(event, token);
 					break;
-				case 'boss':
-					await presentBoss(event, token);
+				case 'encounter':
+					await presentEncounter(event, token);
 					break;
 				case 'ending':
-					eventLabel = formatEventName(event.ending);
-					eventCallout = formatEventName(event.ending);
+					eventLabel = ENDING_LABELS[event.ending];
+					eventCallout = ENDING_LABELS[event.ending];
 					await presentEnding(event, token);
 					break;
 				case 'finalWin':
@@ -647,11 +704,16 @@
 		// Presentation metadata is attached only after the authoritative local outcome is complete.
 		const roundWithWeather: FlightRound = { ...generatedRound, weather: selectedWeather };
 		const round: FlightRound = { ...roundWithWeather, timeOfDay: selectedTimeOfDay };
+		if (round.ending !== 'crash') {
+			const finishImage = new Image();
+			finishImage.src = getFinishBackground(round.ending, selectedWeather, selectedTimeOfDay);
+			void finishImage.decode().catch(() => undefined);
+		}
 		const token = ++presentationToken;
 		player = createPlayer(bounds);
 		currentRound = round;
 		roundCreatureId = round.creature;
-		currentStageId = round.stagePlan[0]?.stage ?? 'FORGE_OUTSKIRTS';
+		currentStageId = round.stagePlan[0]?.stage ?? 'MOUNTAIN_VALLEY';
 		flightProgress = 0;
 		stageAnnouncement = undefined;
 		currentMultiplier = 1;
@@ -660,9 +722,9 @@
 		gatesPassed = 0;
 		distanceTravelled = 0;
 		activeGate = undefined;
-		activeRelic = undefined;
-		activePortal = undefined;
-		activeBoss = undefined;
+		activePickup = undefined;
+		activeCurrent = undefined;
+		activeEncounter = undefined;
 		activeEnding = undefined;
 		eventWarning = undefined;
 		comboFeedback = undefined;
@@ -674,6 +736,8 @@
 		eventCallout = '';
 		particles = [];
 		status = 'flying';
+		// Short windows may have scrolled down to the controls.
+		worldElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 		void presentRound(round, token);
 	}
 
@@ -703,7 +767,10 @@
 		if (activeGate.result === 'pass' && activeGate.x + activeGate.width < player.position.x) {
 			gatesPassed += 1;
 			finishActiveGate();
-		} else if (activeGate.result === 'crash' && activeGate.x <= player.position.x + player.radius) {
+		} else if (
+			activeGate.result === 'crash' &&
+			activeGate.x + activeGate.width * 0.48 <= player.position.x + player.radius
+		) {
 			status = 'collided';
 			impactActive = true;
 			player = { ...player, velocity: { x: 0, y: 0 } };
@@ -715,8 +782,9 @@
 	function resizeWorld() {
 		if (!worldElement) return;
 		const previous = bounds;
-		const width = Math.max(300, worldElement.clientWidth);
-		const height = Math.max(260, worldElement.clientHeight);
+		const width = worldElement.clientWidth;
+		const height = worldElement.clientHeight;
+		if (!width || !height) return;
 		bounds = { width, height, floorY: height - clamp(height * 0.085, 34, 48) };
 		const widthRatio = width / previous.width;
 		const heightRatio = height / previous.height;
@@ -729,11 +797,12 @@
 						radius: clamp(width * 0.026, 17, 25),
 					};
 		flightTargetY *= heightRatio;
+		if (activeEnding && landingProgress === 1) player = { ...player, position: landingPosition() };
 		if (activeGate) {
 			activeGate = {
 				...activeGate,
 				x: activeGate.x * widthRatio,
-				width: clamp(width * 0.068, 44, 70),
+				width: clamp(width * 0.19, 95, 210),
 				gapCenterY: activeGate.gapCenterY * heightRatio,
 				gapHeight: clamp(height * 0.35, 145, 215),
 			};
@@ -766,7 +835,7 @@
 			parallaxOffset = (parallaxOffset + deltaSeconds * (moving ? presentationSpeed : 30)) % 1800;
 			updateParticles(deltaSeconds);
 
-			if (status === 'flying' || status === 'ending') {
+			if (status === 'flying') {
 				player = steerPlayer(player, flightTargetY, deltaSeconds, bounds, {
 					agility: activeCreature.agility,
 					damping: activeCreature.damping,
@@ -798,6 +867,9 @@
 			<button
 				class="header-button"
 				type="button"
+				aria-haspopup="dialog"
+				aria-controls="customize-flight"
+				aria-expanded={customizeOpen}
 				disabled={controlsLocked}
 				onclick={() => (customizeOpen = true)}>CUSTOMIZE</button
 			>
@@ -820,16 +892,21 @@
 		<div
 			bind:this={worldElement}
 			class:has-impact={impactActive}
+			class:has-ending={Boolean(activeEnding)}
 			class={`world ${currentStage.className} weather-${activeWeather}`}
-			style={`--far-scroll:${-parallaxOffset * 0.16}px;--wall-scroll:${-parallaxOffset * 0.34}px;--ember-scroll:${-parallaxOffset * 0.55}px;--floor-scroll:${-parallaxOffset}px;--stage-intensity:${currentStage.intensity};`}
+			style={`--floor-scroll:${-parallaxOffset}px;`}
 		>
-			<WeatherBackground weather={activeWeather} timeOfDay={activeTimeOfDay} />
-			<div class="far-forge"></div>
-			<div class="near-forge"></div>
-			<div class="ember-field"></div>
-			<ForgeEnvironmentEffect stageIntensity={currentStage.intensity} />
-			<WeatherEffect
+			<Landscape
+				ending={activeEnding}
+				stage={currentStageId}
 				weather={activeWeather}
+				timeOfDay={activeTimeOfDay}
+				{parallaxOffset}
+			/>
+			<Atmosphere
+				finishScene={Boolean(activeEnding)}
+				weather={activeWeather}
+				timeOfDay={activeTimeOfDay}
 				stageIntensity={currentStage.intensity}
 				{parallaxOffset}
 				launchStyle={currentRound?.launchStyle ?? selectedLaunchStyle}
@@ -843,11 +920,11 @@
 						>{status === 'ready'
 							? 'READY'
 							: status === 'complete' && currentRound
-								? formatEventName(currentRound.ending)
+								? ENDING_LABELS[currentRound.ending]
 								: 'IN FLIGHT'}</span
 					>
 					<span>BET <strong>{formatLocalAmount(currentRound?.bet ?? selectedBet)}</strong></span>
-					<span>PATH <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
+					<span>RISK <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
 					<span>CREATURE <strong>{activeCreature.name}</strong></span>
 					<span>RUN <strong>{gatesPassed} · {distanceMetres}m</strong></span>
 				</div>
@@ -906,53 +983,43 @@
 					class={`gate hazard-${activeGate.hazard} ${activeGate.result}`}
 					style={`left:${activeGate.x}px;width:${activeGate.width}px;`}
 				>
-					<div
-						class="gate-part upper"
-						style={`height:${activeGate.gapCenterY - activeGate.gapHeight / 2}px;`}
-					>
-						<span></span>
-					</div>
-					<div
-						class="gate-part lower"
-						style={`top:${activeGate.gapCenterY + activeGate.gapHeight / 2}px;bottom:${bounds.height - bounds.floorY}px;`}
-					>
-						<span></span>
-					</div>
-					<div class="hazard-decoration" aria-hidden="true">
-						<i></i><b></b><span></span>
-						{#if activeGate.hazard === 'lavaColumn'}
-							<img class="lava-column-vfx" src={VFX_ASSETS.lava.column} alt="" draggable="false" />
-						{/if}
-					</div>
-					<b class="gate-number">GATE {activeGate.gate} · {formatEventName(activeGate.hazard)}</b>
+					<TerrainObstacle
+						hazard={activeGate.hazard}
+						stage={currentStageId}
+						weather={activeWeather}
+						timeOfDay={activeTimeOfDay}
+						gapTop={activeGate.gapCenterY - activeGate.gapHeight / 2}
+						gapBottom={activeGate.gapCenterY + activeGate.gapHeight / 2}
+					/>
+					<b class="gate-number">GATE {activeGate.gate} · {HAZARD_LABELS[activeGate.hazard]}</b>
 				</div>
 			{/if}
 
-			{#if activeRelic}
-				<RelicPickup
-					relicType={activeRelic.relicType}
-					fromMultiplier={activeRelic.fromMultiplier}
-					toMultiplier={activeRelic.toMultiplier}
+			{#if activePickup}
+				<CollectiblePickup
+					pickupType={activePickup.pickupType}
+					fromMultiplier={activePickup.fromMultiplier}
+					toMultiplier={activePickup.toMultiplier}
 				/>
 			{/if}
 
-			{#if activePortal}
-				<PortalEffect
-					portalType={activePortal.portalType}
-					phase={activePortal.phase}
-					multiplier={activePortal.multiplier}
+			{#if activeCurrent}
+				<AirCurrentEffect
+					currentType={activeCurrent.currentType}
+					phase={activeCurrent.phase}
+					multiplier={activeCurrent.multiplier}
 				/>
 			{/if}
 
-			{#if activeBoss}
-				<BossEncounter
-					bossType={activeBoss.bossType}
-					result={activeBoss.result}
-					phase={activeBoss.phase}
+			{#if activeEncounter}
+				<DangerEncounter
+					encounterType={activeEncounter.encounterType}
+					result={activeEncounter.result}
+					phase={activeEncounter.phase}
 				/>
 			{/if}
 
-			{#if activeEnding}<EndingEffect ending={activeEnding} />{/if}
+			{#if activeEnding}<EndingEffect progress={landingProgress} />{/if}
 
 			{#if comboFeedback}
 				{#key comboFeedback.id}
@@ -965,7 +1032,7 @@
 
 			{#each particles as particle (particle.id)}
 				<span
-					class="jump-ember"
+					class="flight-particle"
 					style={`left:${particle.x}px;top:${particle.y}px;width:${particle.size}px;height:${particle.size}px;opacity:${Math.min(1, particle.life * 2.4)};`}
 				></span>
 			{/each}
@@ -973,6 +1040,7 @@
 			<div
 				class:is-flapping={flapActive}
 				class:is-hit={status === 'collided'}
+				class:landed
 				class="creature-flight"
 				style={`left:${player.position.x}px;top:${player.position.y}px;transform:translate(-50%,-50%) rotate(${rotation}deg) scale(${activeCreature.sizeScale});`}
 				aria-label={activeCreature.name}
@@ -1002,7 +1070,7 @@
 			<div class="floor" style={`height:${bounds.height - bounds.floorY}px;`}></div>
 
 			{#if status === 'ready'}<div class="start-hint">
-					CHOOSE LOCAL BET + RISK PATH, THEN FLY
+					CHOOSE YOUR CREATURE, BET AND RISK. THEN FLY.
 				</div>{/if}
 			{#if status === 'complete' && currentRound}
 				<div
@@ -1010,7 +1078,14 @@
 					class="result-panel"
 					aria-labelledby="flight-result-title"
 				>
-					<strong id="flight-result-title">{formatEventName(currentRound.ending)}</strong>
+					{#if currentRound.ending !== 'crash'}
+						<ResultScenery
+							ending={currentRound.ending}
+							weather={activeWeather}
+							timeOfDay={activeTimeOfDay}
+						/>
+					{/if}
+					<strong id="flight-result-title">{ENDING_LABELS[currentRound.ending]}</strong>
 					{#if currentRound.ending !== 'crash'}
 						<WinCelebration
 							tier={resultWinTier}
@@ -1025,7 +1100,7 @@
 					<div><span>LAUNCH</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
 					<div><span>WEATHER</span><b>{activeWeatherConfig.name}</b></div>
 					<div><span>TIME</span><b>{activeTimeConfig.name}</b></div>
-					<small>LOCAL PROTOTYPE SIMULATION - NOT REAL MONEY</small>
+					<small>DEMO RESULT · NO REAL MONEY</small>
 					<button onclick={resetPresentation}>TRY AGAIN</button>
 				</div>
 			{/if}
@@ -1042,22 +1117,6 @@
 				>
 					<span>{selectedCreature.name}</span><b>▾</b>
 				</button>
-			</div>
-
-			<div class="risk-control">
-				<span class="dock-label">ROUTE / RISK</span>
-				<div class="risk-selector">
-					{#each PATHS as path (path.risk)}
-						<button
-							type="button"
-							disabled={controlsLocked}
-							aria-pressed={selectedRisk === path.risk}
-							class:active={selectedRisk === path.risk}
-							onclick={() => (selectedRisk = path.risk)}>{path.risk}</button
-						>
-					{/each}
-				</div>
-				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
 			</div>
 
 			<div class="bet-control">
@@ -1090,14 +1149,30 @@
 				</div>
 			</div>
 
+			<div class="risk-control">
+				<span class="dock-label">RISK</span>
+				<div class="risk-selector">
+					{#each PATHS as path (path.risk)}
+						<button
+							type="button"
+							disabled={controlsLocked}
+							aria-pressed={selectedRisk === path.risk}
+							class:active={selectedRisk === path.risk}
+							onclick={() => (selectedRisk = path.risk)}>{path.risk}</button
+						>
+					{/each}
+				</div>
+				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
+			</div>
+
 			<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}
 				>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button
 			>
 		</section>
 	</section>
 	<footer>
-		<span>Prototype outcome is generated locally before animation.</span><span
-			>No RGS, wallet, authentication, or real wagering.</span
+		<span>Explore the peaks. Find your next landing.</span><span
+			>Local demo · No real-money bets.</span
 		>
 	</footer>
 </main>
@@ -1116,8 +1191,12 @@
 	weather={selectedWeather}
 	timeOfDay={selectedTimeOfDay}
 	launchStyle={selectedLaunchStyle}
-	onWeatherSelect={(weather) => (selectedWeather = weather)}
-	onTimeSelect={(time) => (selectedTimeOfDay = time)}
+	onWeatherSelect={(weather) => {
+		selectedWeather = weather;
+	}}
+	onTimeSelect={(time) => {
+		selectedTimeOfDay = time;
+	}}
 	onLaunchSelect={(launch) => (selectedLaunchStyle = launch)}
 	onClose={() => (customizeOpen = false)}
 />
@@ -1133,12 +1212,11 @@
 		z-index: 1000;
 		overflow: auto;
 		padding: clamp(16px, 2.5vw, 34px);
-		color: #f7e8bd;
-		font-family: Georgia, 'Times New Roman', serif;
+		color: #dce6e3;
+		font-family: system-ui, sans-serif;
 		background:
-			radial-gradient(circle at 16% 22%, rgba(255, 104, 20, 0.12), transparent 27%),
-			radial-gradient(circle at 82% 25%, rgba(16, 202, 124, 0.1), transparent 30%),
-			linear-gradient(145deg, #090b09, #06110d 48%, #060706);
+			radial-gradient(ellipse at 50% 0, #29414b, transparent 70%),
+			linear-gradient(145deg, #111f27, #0b171d);
 	}
 	.prototype-header,
 	.game-layout,
@@ -1156,7 +1234,7 @@
 	}
 	h1 {
 		margin: 0;
-		color: #f4c665;
+		color: #e6eee9;
 		font-size: clamp(1.3rem, 2.4vw, 2.2rem);
 		letter-spacing: 0.04em;
 		text-shadow: 0 2px 18px rgba(246, 157, 42, 0.26);
@@ -1171,7 +1249,8 @@
 		min-width: 0;
 		min-height: clamp(420px, 68dvh, 730px);
 		overflow: hidden;
-		border: 2px solid #a87820;
+		border: 1px solid #718b91;
+		border-radius: 12px;
 		box-shadow:
 			inset 0 0 0 5px #071811,
 			inset 0 0 45px #000,
@@ -1181,37 +1260,10 @@
 	.world.has-impact {
 		animation: impact-shake 0.4s ease-out;
 	}
-	.far-forge,
-	.near-forge,
-	.ember-field {
-		position: absolute;
-		inset: 0;
-		pointer-events: none;
-	}
-	.far-forge {
-		background: radial-gradient(circle at 20% 80%, rgba(255, 91, 12, 0.25), transparent 20%);
-	}
-	.near-forge {
-		background: linear-gradient(rgba(0, 0, 0, 0.08), transparent 55%, rgba(8, 4, 2, 0.42));
-	}
-	.ember-field {
-		opacity: 0.55;
-		background-image:
-			radial-gradient(circle, #ff8d28 0 1px, transparent 2px),
-			radial-gradient(circle, #4bf2a8 0 1px, transparent 2px);
-		background-size:
-			95px 115px,
-			145px 170px;
-		background-position:
-			var(--ember-scroll) 28%,
-			var(--wall-scroll) 62%;
-	}
-	.world.weather-inferno .ember-field {
-		opacity: 0;
-	}
+
 	.flight-hud {
 		position: absolute;
-		z-index: 8;
+		z-index: 12;
 		top: 14px;
 		left: 50%;
 		display: flex;
@@ -1235,43 +1287,6 @@
 		z-index: 3;
 		inset-block: 0;
 	}
-	.gate-part {
-		position: absolute;
-		left: 0;
-		width: 100%;
-		border-inline: 3px solid #bc8429;
-		background:
-			repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 38px),
-			linear-gradient(90deg, #111814, #253228 42%, #0b100e);
-		box-shadow:
-			inset 7px 0 12px rgba(233, 161, 47, 0.13),
-			inset -7px 0 14px #000,
-			0 0 18px rgba(0, 0, 0, 0.7);
-	}
-	.gate-part.upper {
-		top: 0;
-	}
-	.gate-part:after {
-		content: '';
-		position: absolute;
-		left: -9px;
-		right: -9px;
-		bottom: -13px;
-		height: 18px;
-		border: 2px solid #d39b35;
-		background: linear-gradient(#5c4522, #15120c);
-		clip-path: polygon(0 0, 100% 0, 91% 100%, 9% 100%);
-	}
-	.gate-part.lower:after {
-		top: -13px;
-		bottom: auto;
-		transform: rotate(180deg);
-	}
-	.gate-part span {
-		position: absolute;
-		inset: 12px 25%;
-		border-inline: 1px solid rgba(61, 232, 144, 0.35);
-	}
 	.gate-number {
 		position: absolute;
 		z-index: 2;
@@ -1286,78 +1301,13 @@
 		white-space: nowrap;
 		transform: translate(-50%, -50%);
 	}
-	.relic-pickup {
-		position: absolute;
-		z-index: 6;
-		left: 64%;
-		top: 43%;
-		display: grid;
-		place-items: center;
-		width: 88px;
-		height: 88px;
-		border: 3px solid #d7a53e;
-		border-radius: 50%;
-		background: radial-gradient(circle, #4cf2a3 0 8%, #127c50 9% 38%, #061c14 68%);
-		box-shadow: 0 0 35px #23d987;
-		animation: relic-flight 0.65s ease-in forwards;
-	}
-	.relic-pickup i {
-		position: absolute;
-		inset: -8px;
-		border: 1px solid #44e6a0;
-		border-radius: 50%;
-		animation: relic-spin 1s linear infinite;
-	}
-	.relic-pickup strong {
-		font-size: 1.4rem;
-	}
-	.relic-pickup span {
-		font:
-			700 0.55rem/1 system-ui,
-			sans-serif;
-		letter-spacing: 0.12em;
-	}
-	.vault {
-		position: absolute;
-		z-index: 3;
-		right: -30px;
-		bottom: 8%;
-		width: 38%;
-		height: 62%;
-		border: 4px solid #bb812a;
-		border-radius: 50% 0 0 0;
-		background: radial-gradient(
-			circle at 52% 54%,
-			#ffe374 0 4%,
-			#7c4c18 5% 14%,
-			#16231a 35%,
-			#080b09 70%
-		);
-		box-shadow: 0 0 45px rgba(255, 170, 45, 0.35);
-		animation: vault-arrive 1.2s ease-out forwards;
-	}
-	.vault i {
-		position: absolute;
-		inset: 12%;
-		border: 2px solid #d4a94b;
-		border-radius: 50%;
-		box-shadow: inset 0 0 30px #000;
-	}
-	.vault strong {
-		position: absolute;
-		left: 50%;
-		top: 50%;
-		color: #f6d788;
-		font-size: clamp(1rem, 2vw, 1.7rem);
-		letter-spacing: 0.15em;
-		transform: translate(-50%, -50%);
-	}
-	.jump-ember {
+
+	.flight-particle {
 		position: absolute;
 		z-index: 7;
 		border-radius: 50%;
-		background: #ffad35;
-		box-shadow: 0 0 8px #ff641c;
+		background: #d3e5db;
+		box-shadow: 0 0 5px #c7dfd366;
 		pointer-events: none;
 	}
 	.creature-flight {
@@ -1461,43 +1411,14 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		border-top: 2px solid #ca8530;
-		background: repeating-linear-gradient(135deg, #16130e 0 22px, #211910 23px 43px), #14110d;
+		border-top: 2px solid #7a927b;
+		background: repeating-linear-gradient(165deg, #293e36 0 22px, #31473e 23px 43px);
 		background-position-x: var(--floor-scroll);
-	}
-	.tiny-bat .dragon-body {
-		inset: 30% 31% 18%;
-		border-color: #b89adf;
-		background: radial-gradient(circle, #765a91, #241c32 72%);
-	}
-	.tiny-bat .dragon-head {
-		right: 20%;
-		top: 26%;
-		width: 23%;
-		height: 26%;
-		border-color: #a782c8;
-		background: #33243f;
-	}
-	.tiny-bat .wing {
-		left: 4%;
-		width: 58%;
-		height: 52%;
-		border-color: #8d6aaa;
-		background: linear-gradient(145deg, #191222, #6a4b7b 55%, #130f19);
-	}
-	.tiny-bat .creature-detail {
-		left: 48%;
-		top: 11%;
-		width: 0;
-		height: 0;
-		border-left: 5px solid transparent;
-		border-right: 5px solid transparent;
-		border-bottom: 14px solid #8d6aaa;
 	}
 	.firebird .dragon-body {
 		border-color: #ffd167;
 		background: radial-gradient(circle at 65% 28%, #fff09a, #f47e23 40%, #7a160d 76%);
-		box-shadow: 0 0 19px #ff6d24;
+		box-shadow: 0 4px 10px #28373155;
 	}
 	.firebird .dragon-head {
 		border-color: #ffe078;
@@ -1510,7 +1431,7 @@
 	.firebird .tail {
 		width: 39%;
 		border-top: 6px double #ff8d24;
-		box-shadow: -4px 0 8px #ff5f1c;
+		box-shadow: none;
 	}
 	.firebird .creature-detail {
 		right: 8%;
@@ -1538,33 +1459,6 @@
 		width: 38%;
 		border-color: #7abcb2;
 	}
-	.ancient-dragon .dragon-body {
-		border-width: 3px;
-		border-color: #f1bd55;
-		background: radial-gradient(circle, #5aab69, #183d29 42%, #080f0b 76%);
-		box-shadow:
-			inset -9px -8px 12px #000,
-			0 0 22px rgba(197, 151, 53, 0.5);
-	}
-	.ancient-dragon .dragon-head {
-		border-width: 3px;
-		border-color: #e0a941;
-		background: #244d30;
-	}
-	.ancient-dragon .wing {
-		border-width: 3px;
-		border-color: #b6812f;
-		background: linear-gradient(145deg, #101b13, #385c3d 52%, #090d0a);
-	}
-	.ancient-dragon .creature-detail {
-		right: 14%;
-		top: -12%;
-		width: 20%;
-		height: 25%;
-		border-top: 4px double #e1a83e;
-		border-right: 4px solid #b57d2e;
-		transform: skewX(-20deg);
-	}
 	.start-hint {
 		position: absolute;
 		z-index: 9;
@@ -1587,9 +1481,13 @@
 		left: 50%;
 		top: 50%;
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 9px;
-		min-width: min(470px, 88%);
+		width: min(470px, calc(100% - 24px));
+		min-width: 0;
+		max-height: calc(100% - 24px);
+		overflow: auto;
+		overflow-wrap: anywhere;
 		padding: 22px;
 		border: 1px solid #e16b39;
 		background: rgba(31, 9, 4, 0.96);
@@ -1600,8 +1498,16 @@
 	}
 	.result-panel.success {
 		border-color: #43d994;
-		background: rgba(3, 31, 21, 0.96);
+		background: #071c20;
+		isolation: isolate;
 		box-shadow: 0 0 45px rgba(35, 218, 134, 0.25);
+	}
+	.has-ending .floor {
+		opacity: 0;
+	}
+	.landed .creature-sprite,
+	.landed .wing {
+		animation: none;
 	}
 	.result-panel > strong,
 	.result-panel > small,
@@ -1643,9 +1549,10 @@
 	}
 	button {
 		min-height: 42px;
-		border: 1px solid #795d28;
+		border-radius: 6px;
+		border: 1px solid #536d70;
 		background: linear-gradient(#10231a, #09130f);
-		color: #ddc488;
+		color: #ceded9;
 		font:
 			700 0.8rem/1 system-ui,
 			sans-serif;
@@ -1655,8 +1562,8 @@
 	button:hover:not(:disabled),
 	button:focus-visible,
 	button.active {
-		border-color: #49e59c;
-		color: #75f5b8;
+		border-color: #9dc5ad;
+		color: #c3deca;
 		box-shadow:
 			inset 0 0 13px rgba(26, 221, 133, 0.16),
 			0 0 12px rgba(26, 221, 133, 0.12);
@@ -1669,8 +1576,8 @@
 	.fly-button {
 		border-color: #2cce86;
 		background: linear-gradient(#188457, #0b4b33);
-		color: #f6d98b;
-		font-family: Georgia, 'Times New Roman', serif;
+		color: #f2f4e7;
+		font-family: system-ui, sans-serif;
 		letter-spacing: 0.14em;
 		box-shadow:
 			inset 0 0 20px rgba(68, 255, 165, 0.16),
@@ -1735,27 +1642,6 @@
 			transform: translate(3px, -1px);
 		}
 	}
-	@keyframes relic-flight {
-		to {
-			left: 25%;
-			top: 45%;
-			transform: scale(0.35);
-			opacity: 0.25;
-		}
-	}
-	@keyframes relic-spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-	@keyframes vault-arrive {
-		from {
-			transform: translateX(110%);
-		}
-		to {
-			transform: translateX(0);
-		}
-	}
 	@media (max-width: 620px) {
 		.flight-hud {
 			top: 8px;
@@ -1797,9 +1683,7 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.wing,
-		.world.has-impact,
-		.relic-pickup,
-		.vault {
+		.world.has-impact {
 			animation: none;
 		}
 	}
@@ -1822,13 +1706,12 @@
 		background: rgba(0, 0, 0, 0.22);
 		color: #f2d594;
 		font:
-			700 1rem/1 Georgia,
-			'Times New Roman',
-			serif;
+			700 1rem/1 system-ui,
+			sans-serif;
 		text-align: center;
 	}
 	.bet-input:focus {
-		border-color: #49e59c;
+		border-color: #9dc5ad;
 		outline: 2px solid rgba(73, 229, 156, 0.25);
 		outline-offset: 1px;
 	}
@@ -1879,101 +1762,11 @@
 			transform: translate(-50%, 0) scale(1);
 		}
 	}
-	.world::before {
-		content: '';
-		position: absolute;
-		z-index: 2;
-		inset: 0;
-		pointer-events: none;
-		opacity: calc(0.28 + var(--stage-intensity) * 0.42);
-		transition:
-			background 0.65s ease,
-			opacity 0.65s ease;
-	}
-	.world,
-	.far-forge,
-	.near-forge,
-	.ember-field {
-		transition:
-			filter 0.65s ease,
-			box-shadow 0.65s ease,
-			opacity 0.65s ease;
-	}
-	.ember-field {
-		opacity: calc(0.38 + var(--stage-intensity) * 0.46);
-		filter: saturate(calc(0.9 + var(--stage-intensity) * 0.8));
-	}
-	.stage-forge-outskirts::before {
-		background:
-			radial-gradient(circle at 18% 82%, rgba(196, 79, 15, 0.2), transparent 32%),
-			linear-gradient(rgba(0, 0, 0, 0.24), transparent 58%);
-	}
-	.stage-forge-outskirts .far-forge {
-		filter: brightness(0.78) saturate(0.75);
-	}
-	.stage-lava-chamber::before {
-		background:
-			radial-gradient(ellipse at 50% 104%, rgba(255, 78, 5, 0.55), transparent 48%),
-			linear-gradient(rgba(92, 16, 3, 0.2), rgba(52, 8, 1, 0.28));
-	}
-	.stage-lava-chamber {
-		box-shadow:
-			inset 0 0 0 5px #1d0d07,
-			inset 0 -80px 90px rgba(176, 36, 5, 0.22),
-			0 18px 50px rgba(0, 0, 0, 0.45);
-	}
-	.stage-lava-chamber .ember-field {
-		filter: saturate(1.7) hue-rotate(-12deg);
-	}
-	.stage-ancient-tunnels::before {
-		background:
-			repeating-linear-gradient(
-				103deg,
-				transparent 0 15%,
-				rgba(111, 91, 58, 0.11) 15.4% 15.8%,
-				transparent 16.2% 31%
-			),
-			linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 25% 72%, rgba(0, 0, 0, 0.46));
-	}
-	.stage-ancient-tunnels .near-forge {
-		filter: brightness(0.68) sepia(0.18);
-	}
-	.stage-dragon-territory::before {
-		background:
-			radial-gradient(circle at 78% 38%, rgba(192, 30, 13, 0.32), transparent 31%),
-			repeating-linear-gradient(
-				118deg,
-				transparent 0 22%,
-				rgba(255, 83, 26, 0.09) 22.4% 22.7%,
-				transparent 23.1% 45%
-			);
-	}
-	.stage-dragon-territory {
-		box-shadow:
-			inset 0 0 0 5px #1a100c,
-			inset 0 0 72px rgba(153, 35, 16, 0.2),
-			0 18px 50px rgba(0, 0, 0, 0.45);
-	}
-	.stage-dragon-territory .near-forge,
-	.stage-vault-approach .near-forge {
-		animation: environment-sway 2.8s ease-in-out infinite alternate;
-	}
-	.stage-vault-approach::before {
-		background:
-			radial-gradient(circle at 78% 45%, rgba(69, 244, 157, 0.3), transparent 25%),
-			radial-gradient(circle at 72% 53%, rgba(255, 192, 60, 0.28), transparent 42%),
-			linear-gradient(90deg, transparent 45%, rgba(41, 129, 82, 0.16));
-	}
-	.stage-vault-approach {
-		box-shadow:
-			inset 0 0 0 5px #071811,
-			inset -80px 0 110px rgba(37, 184, 111, 0.16),
-			0 18px 50px rgba(0, 0, 0, 0.45);
-	}
+
 	.stage-readout strong {
 		display: block;
 		margin: 3px 0 0;
-		color: #f0ca74;
+		color: #e2e9df;
 	}
 	.multiplier-readout strong {
 		color: #7dffc2;
@@ -2084,14 +1877,6 @@
 			transform: translate(-50%, -7px) scale(1.02);
 		}
 	}
-	@keyframes environment-sway {
-		from {
-			transform: translate3d(-3px, 0, 0) scale(1.015);
-		}
-		to {
-			transform: translate3d(4px, -2px, 0) scale(1.025);
-		}
-	}
 	.header-actions {
 		display: flex;
 		align-items: center;
@@ -2145,8 +1930,6 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.stage-dragon-territory .near-forge,
-		.stage-vault-approach .near-forge,
 		.stage-transition {
 			animation: none;
 		}
@@ -2178,7 +1961,7 @@
 		animation: combo-pop 0.68s ease-out both;
 	}
 	.combo-feedback strong {
-		color: #f3d17f;
+		color: #e2e9df;
 		font:
 			900 0.65rem/1 system-ui,
 			sans-serif;
@@ -2189,145 +1972,6 @@
 			900 0.58rem/1 system-ui,
 			sans-serif;
 		letter-spacing: 0.16em;
-	}
-	.hazard-decoration {
-		position: absolute;
-		z-index: 1;
-		inset: 0;
-		overflow: visible;
-		color: #d29c3e;
-		pointer-events: none;
-	}
-	.hazard-decoration i,
-	.hazard-decoration b,
-	.hazard-decoration span {
-		position: absolute;
-		display: block;
-	}
-	.hazard-fireGate .gate-part {
-		border-color: #e16a2c;
-		box-shadow:
-			inset 7px 0 15px rgba(255, 76, 13, 0.28),
-			inset -7px 0 14px #000,
-			0 0 20px rgba(231, 71, 12, 0.4);
-	}
-	.hazard-fireGate .hazard-decoration i,
-	.hazard-fireGate .hazard-decoration b {
-		left: -13px;
-		width: calc(100% + 26px);
-		height: 35px;
-		background: radial-gradient(ellipse at 50% 100%, #ffd364 0 9%, #ed5a1e 30%, transparent 68%);
-		filter: drop-shadow(0 0 7px #e54c14);
-		animation: fire-flicker 0.32s ease-in-out infinite alternate;
-	}
-	.hazard-fireGate .hazard-decoration i {
-		top: 4%;
-	}
-	.hazard-fireGate .hazard-decoration b {
-		bottom: 10%;
-		transform: rotate(180deg);
-		animation-delay: -0.17s;
-	}
-	.hazard-forgeHammer .gate-part {
-		border-color: #d4ad60;
-		background:
-			repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 34px),
-			linear-gradient(90deg, #181816, #524733 50%, #111);
-	}
-	.hazard-forgeHammer .hazard-decoration i {
-		top: 29%;
-		left: 42%;
-		width: 10px;
-		height: 43%;
-		background: #a77831;
-		transform-origin: 50% 0;
-		animation: hammer-swing 0.72s ease-in-out infinite alternate;
-	}
-	.hazard-forgeHammer .hazard-decoration i::after {
-		content: '';
-		position: absolute;
-		left: 50%;
-		bottom: -8px;
-		width: 45px;
-		height: 24px;
-		border: 2px solid #d4a856;
-		background: linear-gradient(#4b4437, #171716);
-		transform: translateX(-50%);
-		box-shadow: 0 0 9px rgba(238, 165, 63, 0.35);
-	}
-	.hazard-chainTunnel .gate-part {
-		border-color: #8b8e7e;
-		background: repeating-linear-gradient(135deg, #202722 0 9px, #0e1210 10px 20px);
-	}
-	.hazard-chainTunnel .hazard-decoration {
-		background: repeating-linear-gradient(
-			112deg,
-			transparent 0 16px,
-			rgba(185, 166, 112, 0.38) 17px 20px,
-			transparent 21px 37px
-		);
-		opacity: 0.72;
-		animation: chain-drift 0.8s linear infinite;
-	}
-	.hazard-lavaColumn .gate-part {
-		border-color: #ff7a22;
-		background: linear-gradient(90deg, #2d0c03, #ee4b0b 35%, #ffae31 52%, #b52d06 70%, #220703);
-		box-shadow: 0 0 24px rgba(255, 74, 10, 0.68);
-	}
-	.hazard-lavaColumn .hazard-decoration span {
-		inset: 0 -18px;
-		background: radial-gradient(ellipse at 50% 30%, rgba(255, 192, 48, 0.45), transparent 48%);
-		animation: lava-breathe 0.55s ease-in-out infinite alternate;
-	}
-	.hazard-lavaColumn .lava-column-vfx {
-		position: absolute;
-		z-index: 2;
-		top: 50%;
-		left: 50%;
-		display: block;
-		width: clamp(95px, 195%, 180px);
-		height: 96%;
-		max-width: none;
-		object-fit: contain;
-		opacity: 0.86;
-		user-select: none;
-		pointer-events: none;
-		transform: translate(-50%, -50%);
-		animation: lava-column-pulse 0.72s ease-in-out infinite alternate;
-		will-change: transform, opacity;
-	}
-	.hazard-spikeGate .gate-part::before {
-		content: '';
-		position: absolute;
-		left: -16px;
-		width: calc(100% + 32px);
-		height: 31px;
-		background: linear-gradient(135deg, #d5a348, #26231d 62%);
-		clip-path: polygon(0 0, 17% 100%, 32% 0, 49% 100%, 66% 0, 83% 100%, 100% 0);
-	}
-	.hazard-spikeGate .gate-part.upper::before {
-		bottom: -29px;
-	}
-	.hazard-spikeGate .gate-part.lower::before {
-		top: -29px;
-		transform: rotate(180deg);
-	}
-	.hazard-windTunnel .gate-part {
-		border-color: #5ec8c0;
-		box-shadow:
-			inset 0 0 16px rgba(74, 213, 202, 0.24),
-			0 0 18px rgba(62, 194, 185, 0.28);
-	}
-	.hazard-windTunnel .hazard-decoration {
-		inset: 13% -115px;
-		background: repeating-linear-gradient(
-			170deg,
-			transparent 0 25px,
-			rgba(125, 240, 223, 0.48) 26px 28px,
-			transparent 29px 48px
-		);
-		mask-image: linear-gradient(90deg, transparent, #000 25% 75%, transparent);
-		animation: wind-stream 0.42s linear infinite;
 	}
 	.creature-flight.is-hit {
 		animation: creature-hit 0.52s ease-out both;
@@ -2354,42 +1998,6 @@
 			transform: translate(12px, -8px) scale(1.03);
 		}
 	}
-	@keyframes fire-flicker {
-		to {
-			transform: scale(1.12, 0.76) translateY(-3px);
-			filter: brightness(1.35) drop-shadow(0 0 10px #ff6a17);
-		}
-	}
-	@keyframes hammer-swing {
-		from {
-			transform: rotate(-14deg);
-		}
-		to {
-			transform: rotate(16deg);
-		}
-	}
-	@keyframes chain-drift {
-		to {
-			background-position: 38px 0;
-		}
-	}
-	@keyframes lava-breathe {
-		to {
-			opacity: 0.48;
-			filter: brightness(1.5);
-		}
-	}
-	@keyframes lava-column-pulse {
-		to {
-			opacity: 1;
-			transform: translate(-50%, -50%) scale(1.035, 1.015);
-		}
-	}
-	@keyframes wind-stream {
-		to {
-			background-position: -48px 0;
-		}
-	}
 	@keyframes creature-hit {
 		20% {
 			transform: translate(-50%, -50%) rotate(-18deg) scale(1.12);
@@ -2413,179 +2021,11 @@
 	@media (prefers-reduced-motion: reduce) {
 		.multiplier-readout.pulse,
 		.combo-feedback,
-		.hazard-decoration,
-		.hazard-decoration i,
-		.hazard-decoration b,
-		.lava-column-vfx,
 		.creature-flight.is-hit {
 			animation: none;
 		}
 	}
-	.weather-options {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 6px;
-	}
-	.weather-options button {
-		display: grid;
-		grid-template-columns: 22px minmax(0, 1fr);
-		align-items: center;
-		gap: 7px;
-		min-height: 54px;
-		padding: 7px;
-		text-align: left;
-	}
-	.weather-options b {
-		display: block;
-		min-width: 0;
-	}
-	.weather-options b {
-		font-size: 0.62rem;
-		letter-spacing: 0.05em;
-	}
-	.weather-indicator {
-		position: relative;
-		display: block;
-		width: 20px;
-		height: 20px;
-		overflow: hidden;
-		border: 1px solid #a47930;
-		border-radius: 50%;
-		background: #17251e;
-		box-shadow: inset 0 0 8px #000;
-	}
-	.weather-indicator::before,
-	.weather-indicator::after {
-		content: '';
-		position: absolute;
-	}
-	.weather-indicator.weather-clear::before {
-		inset: 5px;
-		border-radius: 50%;
-		background: #f0ca63;
-		box-shadow: 0 0 7px #f0b847;
-	}
-	.weather-indicator.weather-rain,
-	.weather-indicator.weather-storm {
-		background: linear-gradient(#273b48, #101c22);
-	}
-	.weather-indicator.weather-rain::before,
-	.weather-indicator.weather-storm::before {
-		inset: 2px;
-		background: repeating-linear-gradient(110deg, transparent 0 4px, #80bec8 5px 6px);
-	}
-	.weather-indicator.weather-storm::after {
-		top: 3px;
-		left: 8px;
-		width: 5px;
-		height: 13px;
-		background: #f4dc7b;
-		clip-path: polygon(55% 0, 100% 0, 65% 43%, 100% 43%, 18% 100%, 42% 55%, 0 55%);
-	}
-	.weather-indicator.weather-fog::before {
-		inset: 4px 1px;
-		background: repeating-linear-gradient(
-			0deg,
-			rgba(211, 221, 211, 0.75) 0 2px,
-			transparent 3px 5px
-		);
-		filter: blur(0.5px);
-	}
-	.weather-indicator.weather-snow::before {
-		inset: 2px;
-		background:
-			radial-gradient(circle at 25% 35%, #e4f5ef 0 1px, transparent 2px),
-			radial-gradient(circle at 70% 28%, #e4f5ef 0 1.5px, transparent 2.5px),
-			radial-gradient(circle at 48% 75%, #e4f5ef 0 1px, transparent 2px);
-	}
-	.weather-indicator.weather-inferno {
-		background: radial-gradient(circle at 50% 80%, #ffba37, #bc3b0a 35%, #25110a 68%);
-		box-shadow:
-			inset 0 0 7px #2a0903,
-			0 0 6px rgba(255, 87, 18, 0.45);
-	}
-	.time-options {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 6px;
-	}
-	.time-options button {
-		display: grid;
-		grid-template-columns: 22px minmax(0, 1fr);
-		align-items: center;
-		gap: 7px;
-		min-height: 54px;
-		padding: 7px;
-		text-align: left;
-	}
-	.time-options b {
-		display: block;
-		min-width: 0;
-	}
-	.time-options b {
-		font-size: 0.62rem;
-		letter-spacing: 0.05em;
-	}
-	.time-indicator {
-		position: relative;
-		display: block;
-		width: 20px;
-		height: 20px;
-		overflow: hidden;
-		border: 1px solid #a47930;
-		border-radius: 50%;
-		background: #17251e;
-		box-shadow: inset 0 0 8px #000;
-	}
-	.time-indicator::before,
-	.time-indicator::after {
-		content: '';
-		position: absolute;
-	}
-	.time-indicator.time-dawn {
-		background: linear-gradient(#697f95 0 45%, #e79b68 72%, #433027);
-	}
-	.time-indicator.time-dawn::before {
-		right: 3px;
-		bottom: 3px;
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: #ffd181;
-		box-shadow: 0 0 5px #f3a85d;
-	}
-	.time-indicator.time-day {
-		background: linear-gradient(#6eabb4, #b8d5bc);
-	}
-	.time-indicator.time-day::before {
-		inset: 5px;
-		border-radius: 50%;
-		background: #ffe28d;
-		box-shadow: 0 0 7px #f6bf54;
-	}
-	.time-indicator.time-sunset {
-		background: linear-gradient(#64243a, #d85b30 58%, #f0a044);
-	}
-	.time-indicator.time-sunset::before {
-		right: 3px;
-		bottom: 1px;
-		width: 9px;
-		height: 9px;
-		border-radius: 50%;
-		background: #ffc15d;
-		box-shadow: 0 0 6px #ff6c25;
-	}
-	.time-indicator.time-night {
-		background:
-			radial-gradient(circle at 65% 30%, #d5ded5 0 2px, transparent 3px),
-			linear-gradient(#071126, #152d3b);
-	}
-	.time-indicator.time-eclipse {
-		background: radial-gradient(circle, #050505 0 28%, #cf5931 32% 39%, #1e060a 48%);
-		box-shadow:
-			inset 0 0 7px #000,
-			0 0 6px rgba(198, 59, 28, 0.45);
-	}
+
 	.creature-frame {
 		position: absolute;
 		top: 50%;
@@ -2600,40 +2040,6 @@
 		user-select: none;
 		pointer-events: none;
 	}
-	.creature-preview.with-image {
-		overflow: hidden;
-	}
-	.creature-preview.with-image::before,
-	.creature-preview.with-image::after {
-		display: none;
-	}
-	.creature-preview-image {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		display: block;
-		width: 280%;
-		height: 280%;
-		max-width: none;
-		object-fit: contain;
-		transform: translate(-50%, -50%);
-	}
-	@media (max-width: 900px) {
-		.weather-section,
-		.time-section {
-			grid-column: 1 / -1;
-		}
-	}
-	@media (max-width: 620px) {
-		.weather-options,
-		.time-options {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.weather-options button,
-		.time-options button {
-			min-height: 50px;
-		}
-	}
 
 	/* Compact setup deck: the flight scene remains primary while setup stays viewport-bound. */
 	.prototype-shell {
@@ -2643,18 +2049,12 @@
 		align-items: center;
 		margin-bottom: clamp(8px, 1.2vh, 14px);
 	}
-	.prototype-header .eyebrow {
-		font-size: 0.58rem;
-	}
+
 	.prototype-header h1 {
 		margin-top: 2px;
 		font-size: clamp(1.45rem, 2.45vw, 2.45rem);
 	}
-	.status-chip {
-		min-width: 132px;
-		padding: 8px 12px;
-		font-size: 0.62rem;
-	}
+
 	.help-button {
 		width: 38px;
 		min-height: 38px;
@@ -2671,8 +2071,7 @@
 		gap: clamp(10px, 1.35vw, 20px);
 		align-items: stretch;
 	}
-	.world,
-	.control-panel {
+	.world {
 		height: var(--game-panel-height);
 		min-height: 0;
 	}
@@ -2686,7 +2085,7 @@
 		align-items: center;
 		gap: 0;
 		padding: 6px 9px;
-		border-color: rgba(189, 139, 46, 0.48);
+		border-color: rgba(149, 179, 180, 0.48);
 		background: linear-gradient(90deg, rgba(3, 17, 12, 0.88), rgba(5, 28, 19, 0.78));
 		font-size: 0.56rem;
 		line-height: 1.15;
@@ -2710,7 +2109,7 @@
 		min-width: 104px;
 		padding-left: 10px;
 		margin-left: 10px;
-		border-left: 1px solid rgba(199, 153, 63, 0.3);
+		border-left: 1px solid rgba(149, 179, 180, 0.3);
 	}
 	.flight-hud .stage-readout strong,
 	.flight-hud .multiplier-readout strong {
@@ -2719,68 +2118,6 @@
 	}
 	.flight-hud .multiplier-readout {
 		min-width: 72px;
-	}
-
-	.control-panel {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		min-width: 0;
-		overflow: hidden;
-		padding: clamp(10px, 1.2vw, 15px);
-		background:
-			linear-gradient(145deg, rgba(13, 42, 30, 0.97), rgba(5, 13, 10, 0.99)),
-			radial-gradient(circle at 50% 0, rgba(48, 218, 140, 0.12), transparent 42%);
-	}
-	.control-tabs {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		flex: 0 0 auto;
-		padding: 3px;
-		border: 1px solid rgba(163, 119, 41, 0.48);
-		background: rgba(0, 0, 0, 0.28);
-	}
-	.control-tabs button {
-		min-height: 36px;
-		border: 0;
-		background: transparent;
-		color: #8e9587;
-		font-size: 0.68rem;
-		letter-spacing: 0.18em;
-		box-shadow: none;
-	}
-
-	.control-tab-body {
-		flex: 1 1 auto;
-		min-height: 0;
-		overflow: auto;
-		padding: 2px 4px 2px 1px;
-		scrollbar-width: thin;
-		scrollbar-color: #836326 rgba(0, 0, 0, 0.18);
-	}
-	.control-tab-body::-webkit-scrollbar {
-		width: 5px;
-	}
-	.control-tab-body::-webkit-scrollbar-thumb {
-		background: #836326;
-	}
-	.control-section {
-		padding: 10px 0 12px;
-		border-bottom-color: rgba(199, 153, 63, 0.2);
-	}
-	.control-section:first-child {
-		padding-top: 5px;
-	}
-	.control-section:last-child {
-		border-bottom: 0;
-	}
-	.section-heading {
-		align-items: end;
-		margin-bottom: 7px;
-	}
-	.section-heading span {
-		margin-top: 3px;
-		font-size: 0.56rem;
 	}
 
 	.bet-stepper {
@@ -2798,146 +2135,6 @@
 		font-size: 0.93rem;
 	}
 
-	.segmented-options {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 5px;
-	}
-	.segmented-options button,
-	.path-options button {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 4px;
-		min-height: 45px;
-		padding: 6px 4px;
-		text-align: center;
-		text-transform: uppercase;
-	}
-	.selected-description {
-		min-height: 1.2em;
-		margin: 6px 2px 0 !important;
-		color: #919c91 !important;
-		font:
-			0.56rem/1.35 system-ui,
-			sans-serif !important;
-		letter-spacing: 0.02em !important;
-		text-transform: none;
-	}
-	.selected-description strong {
-		color: #d7ba79;
-		font-size: inherit;
-	}
-
-	.creature-options {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 5px;
-	}
-	.creature-options button,
-	.creature-options button:last-child {
-		display: grid;
-		grid-column: auto;
-		grid-template-columns: 1fr;
-		grid-template-rows: 31px auto;
-		justify-items: center;
-		gap: 4px;
-		min-width: 0;
-		min-height: 58px;
-		padding: 5px 3px;
-		text-align: center;
-	}
-	.creature-preview {
-		width: 40px;
-		height: 29px;
-	}
-	.creature-copy {
-		min-width: 0;
-		width: 100%;
-	}
-	.creature-copy b {
-		display: block;
-		overflow: hidden;
-		font-size: 0.54rem;
-		line-height: 1.1;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.weather-options {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 5px;
-	}
-	.weather-options button,
-	.time-options button {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 5px;
-		min-width: 0;
-		min-height: 39px;
-		padding: 5px 4px;
-		text-align: center;
-	}
-	.weather-options b,
-	.time-options b {
-		min-width: 0;
-		overflow: hidden;
-		font-size: 0.53rem;
-		line-height: 1.05;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.weather-indicator,
-	.time-indicator {
-		flex: 0 0 auto;
-		width: 17px;
-		height: 17px;
-	}
-	.time-options {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 5px;
-	}
-
-	.control-footer {
-		position: relative;
-		z-index: 2;
-		display: grid;
-		grid-template-columns: minmax(0, 0.85fr) minmax(128px, 1.15fr);
-		align-items: stretch;
-		gap: 8px;
-		flex: 0 0 auto;
-		padding-top: 9px;
-		border-top: 1px solid rgba(206, 157, 60, 0.42);
-		background: linear-gradient(180deg, rgba(5, 16, 11, 0.12), rgba(5, 16, 11, 0.96) 25%);
-	}
-	.control-summary {
-		display: grid;
-		align-content: center;
-		gap: 3px;
-		min-width: 0;
-		padding: 3px 0 3px 3px;
-		font-family: system-ui, sans-serif;
-		text-transform: uppercase;
-	}
-	.control-summary div {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-	}
-	.control-summary span,
-	.control-summary small {
-		color: #838d83;
-		font-size: 0.48rem;
-		letter-spacing: 0.1em;
-	}
-	.control-summary strong {
-		color: #f1cf82;
-		font-size: 0.75rem;
-	}
-	.control-summary small {
-		display: block;
-	}
 	.fly-button {
 		min-height: 56px;
 		margin: 0;
@@ -2951,20 +2148,10 @@
 			--game-panel-height: clamp(390px, 58dvh, 560px);
 			grid-template-columns: 1fr;
 		}
-		.control-panel {
-			display: flex;
-			height: clamp(440px, 70dvh, 580px);
-		}
+
 		.world {
 			height: var(--game-panel-height);
 			min-height: 0;
-		}
-		.control-tab-body {
-			overflow: auto;
-		}
-		.weather-section,
-		.time-section {
-			grid-column: auto;
 		}
 	}
 
@@ -2976,9 +2163,7 @@
 			flex-wrap: nowrap;
 			gap: 8px;
 		}
-		.prototype-header .eyebrow {
-			display: none;
-		}
+
 		.prototype-header h1 {
 			margin: 0;
 			font-size: clamp(1.15rem, 5.8vw, 1.65rem);
@@ -2986,11 +2171,7 @@
 		.header-actions {
 			flex: 0 0 auto;
 		}
-		.status-chip {
-			min-width: 98px;
-			padding: 7px 8px;
-			font-size: 0.5rem;
-		}
+
 		.help-button {
 			width: 34px;
 			min-height: 34px;
@@ -3000,11 +2181,7 @@
 			--game-panel-height: clamp(340px, 55dvh, 470px);
 			gap: 10px;
 		}
-		.control-panel {
-			height: min(540px, calc(100dvh - 18px));
-			min-height: 430px;
-			padding: 10px;
-		}
+
 		.flight-hud {
 			top: 6px;
 			right: 6px;
@@ -3036,49 +2213,13 @@
 		.flight-hud .multiplier-readout {
 			min-width: 54px;
 		}
-		.control-tabs button {
-			min-height: 34px;
-		}
-		.control-footer {
-			grid-template-columns: minmax(0, 1fr) minmax(132px, 1.25fr);
-		}
-		.creature-options {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-		.weather-options,
-		.time-options {
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-		}
-		.weather-options button,
-		.time-options button {
-			min-height: 39px;
-		}
+
 		footer {
 			display: none;
 		}
 	}
 
 	@media (max-width: 390px) {
-		.control-panel {
-			min-height: 420px;
-		}
-		.creature-options {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-		.control-footer {
-			grid-template-columns: 1fr;
-			gap: 5px;
-		}
-		.control-summary {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			gap: 7px;
-			padding-inline: 2px;
-		}
-		.control-summary small {
-			display: none;
-		}
 		.fly-button {
 			min-height: 50px;
 		}
@@ -3090,7 +2231,8 @@
 		height: 100dvh;
 		min-height: 0;
 		flex-direction: column;
-		overflow: hidden;
+		overflow-x: hidden;
+		overflow-y: auto;
 		padding: clamp(8px, 1.2vw, 18px);
 	}
 	.prototype-header {
@@ -3108,9 +2250,9 @@
 	.header-button {
 		min-height: 36px;
 		padding: 7px 13px;
-		border-color: #856328;
+		border-color: #627e81;
 		background: rgba(4, 20, 14, 0.82);
-		color: #e4c26f;
+		color: #d8e5e0;
 		font-size: 0.58rem;
 		letter-spacing: 0.13em;
 	}
@@ -3122,9 +2264,11 @@
 
 	.game-layout {
 		display: grid;
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: minmax(280px, 1fr) auto;
-		flex: 1 1 auto;
+		/* Preserve the playable world height; short windows scroll the shell. */
+		flex: 1 0 auto;
+		min-width: 0;
 		min-height: 0;
 		gap: 9px;
 	}
@@ -3154,7 +2298,7 @@
 	.control-dock {
 		position: relative;
 		display: grid;
-		grid-template-columns: minmax(150px, 0.8fr) minmax(330px, 1.55fr) minmax(220px, 1fr) minmax(
+		grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1fr) minmax(330px, 1.55fr) minmax(
 				170px,
 				0.8fr
 			);
@@ -3162,8 +2306,9 @@
 		gap: clamp(8px, 1.2vw, 16px);
 		flex: 0 0 auto;
 		padding: 10px clamp(10px, 1.5vw, 18px);
-		border: 1px solid #8f6927;
-		background: linear-gradient(145deg, rgba(8, 31, 22, 0.98), rgba(4, 13, 9, 0.99));
+		border: 1px solid #526e73;
+		border-radius: 10px;
+		background: linear-gradient(145deg, rgba(25, 46, 51, 0.98), rgba(15, 31, 36, 0.99));
 		box-shadow:
 			inset 0 0 28px rgba(26, 177, 108, 0.08),
 			0 12px 28px rgba(0, 0, 0, 0.32);
@@ -3209,9 +2354,9 @@
 		text-transform: uppercase;
 	}
 	.risk-selector button.active {
-		border-color: #4be0a0;
-		background: linear-gradient(#176745, #0b3b29);
-		color: #86f2bd;
+		border-color: #9dc5ad;
+		background: linear-gradient(#456857, #304d40);
+		color: #d0e5d7;
 		box-shadow:
 			inset 0 0 13px rgba(45, 232, 151, 0.16),
 			0 0 10px rgba(35, 207, 132, 0.12);
@@ -3248,8 +2393,8 @@
 		width: 100%;
 		min-height: 58px;
 		margin: 0;
-		border-color: #42e29c;
-		background: linear-gradient(#1a8a5b, #0a4b32);
+		border-color: #9dc5ad;
+		background: linear-gradient(#537c69, #365948);
 		font-size: clamp(0.95rem, 1.5vw, 1.2rem);
 		box-shadow:
 			inset 0 0 22px rgba(92, 255, 177, 0.18),
@@ -3274,9 +2419,9 @@
 		}
 	}
 
-	@media (max-width: 900px) {
+	@media (max-width: 1000px) {
 		.control-dock {
-			grid-template-columns: minmax(140px, 0.8fr) minmax(270px, 1.45fr) minmax(205px, 1fr);
+			grid-template-columns: minmax(140px, 0.8fr) minmax(205px, 1fr) minmax(270px, 1.45fr);
 		}
 		.control-dock .fly-button {
 			grid-column: 1 / -1;
@@ -3286,7 +2431,6 @@
 
 	@media (max-width: 700px) {
 		.prototype-shell {
-			overflow: hidden;
 			padding: 7px;
 		}
 		.prototype-header {
@@ -3306,7 +2450,7 @@
 			padding: 6px;
 		}
 		.game-layout {
-			grid-template-rows: minmax(250px, 1fr) auto;
+			grid-template-rows: minmax(262px, 1fr) auto;
 			gap: 7px;
 		}
 		.control-dock {

@@ -4,7 +4,9 @@ import type { CreatureId, CreatureProfile } from './types';
 
 const decodedFlightFrameCache = new Map<string, Promise<readonly ImageBitmap[]>>();
 
-async function fetchAndDecodeFlightFrames(frames: readonly string[]): Promise<readonly ImageBitmap[]> {
+async function fetchAndDecodeFlightFrames(
+	frames: readonly string[],
+): Promise<readonly ImageBitmap[]> {
 	return Promise.all(
 		frames.map(async (source) => {
 			const response = await fetch(source, { cache: 'force-cache' });
@@ -14,7 +16,9 @@ async function fetchAndDecodeFlightFrames(frames: readonly string[]): Promise<re
 	);
 }
 
-export function loadDecodedFlightFrames(frames: readonly string[]): Promise<readonly ImageBitmap[]> {
+export function loadDecodedFlightFrames(
+	frames: readonly string[],
+): Promise<readonly ImageBitmap[]> {
 	const cacheKey = frames.join('\n');
 	const cachedFrames = decodedFlightFrameCache.get(cacheKey);
 	if (cachedFrames) return cachedFrames;
@@ -55,7 +59,7 @@ export const CREATURES: CreatureProfile[] = [
 		flapDuration: 145,
 		hoverDuration: 1150,
 		hoverLift: 6,
-		description: 'Bright, nimble and sweeping',
+		description: 'A bright-plumed bird of open valleys',
 	},
 	{
 		id: 'wyvern',
@@ -70,7 +74,7 @@ export const CREATURES: CreatureProfile[] = [
 		flapDuration: 165,
 		hoverDuration: 1350,
 		hoverLift: 5,
-		description: 'Lean and responsive',
+		description: 'A lean cliff-dweller with quick turns',
 	},
 	{
 		id: 'dragon',
@@ -85,7 +89,7 @@ export const CREATURES: CreatureProfile[] = [
 		flapDuration: 180,
 		hoverDuration: 1500,
 		hoverLift: 4,
-		description: 'Balanced and powerful',
+		description: 'A powerful mountain flyer',
 	},
 	{
 		id: 'azure-swift',
@@ -110,7 +114,7 @@ export const CREATURES: CreatureProfile[] = [
 		flapDuration: 145,
 		hoverDuration: 1150,
 		hoverLift: 5,
-		description: 'Fast, light and vividly animated',
+		description: 'A swift blue flyer of high ridges',
 	},
 	{
 		id: 'archaeopteryx',
@@ -135,7 +139,7 @@ export const CREATURES: CreatureProfile[] = [
 		flapDuration: 165,
 		hoverDuration: 1350,
 		hoverLift: 5,
-		description: 'Broad-winged, steady and vividly animated',
+		description: 'A rare prehistoric flyer with broad feathered wings',
 	},
 ];
 

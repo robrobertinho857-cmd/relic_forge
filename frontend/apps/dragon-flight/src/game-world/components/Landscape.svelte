@@ -1,0 +1,103 @@
+<script lang="ts">
+	import { fade } from 'svelte/transition';
+	import {
+		getLandscapeBackground,
+		getFinishBackground,
+		LANDING_ANCHOR,
+		type SuccessfulEnding,
+	} from '../backgrounds';
+	import type { FlightStageId, TimeOfDay, WeatherCondition } from '../types';
+
+	type Props = {
+		stage: FlightStageId;
+		weather: WeatherCondition;
+		timeOfDay: TimeOfDay;
+		parallaxOffset: number;
+		ending?: SuccessfulEnding;
+	};
+	let { stage, weather, timeOfDay, parallaxOffset, ending }: Props = $props();
+	const requestedSrc = $derived(
+		ending
+			? getFinishBackground(ending, weather, timeOfDay)
+			: getLandscapeBackground(weather, timeOfDay),
+	);
+	let displayedSrc = $state(getLandscapeBackground('clear', 'day'));
+	let reducedMotion = $state(false);
+	const drift = $derived(Math.sin((parallaxOffset / 1800) * Math.PI * 2) * 0.6);
+
+	$effect(() => {
+		const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const update = () => (reducedMotion = preference.matches);
+		update();
+		preference.addEventListener('change', update);
+		return () => preference.removeEventListener('change', update);
+	});
+
+	$effect(() => {
+		const nextSrc = requestedSrc;
+		if (nextSrc === displayedSrc) return;
+		let cancelled = false;
+		const nextImage = new Image();
+		nextImage.src = nextSrc;
+		void nextImage
+			.decode()
+			.then(() => {
+				if (!cancelled) displayedSrc = nextSrc;
+			})
+			.catch(() => {
+				// Keep the last valid scene if a background cannot be downloaded.
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
+</script>
+
+<div class="landscape" data-stage={stage} aria-hidden="true">
+	{#key displayedSrc}
+		<img
+			class="landscape-image"
+			class:finish-scene={displayedSrc.includes('/finishes/')}
+			src={displayedSrc}
+			alt=""
+			width="1672"
+			height="941"
+			decoding="async"
+			fetchpriority="high"
+			draggable="false"
+			style={`--landscape-drift:${drift}%;--landing-x:${LANDING_ANCHOR.x * 100}%;--landing-y:${LANDING_ANCHOR.y * 100}%;`}
+			transition:fade={{ duration: reducedMotion ? 0 : 220 }}
+		/>
+	{/key}
+</div>
+
+<style>
+	.landscape {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		background: #477a94;
+		pointer-events: none;
+	}
+	.landscape-image {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		object-position: center;
+		transform: translateX(var(--landscape-drift)) scale(1.04);
+		user-select: none;
+	}
+	.finish-scene {
+		/* Keep the landing anchor visible with any cover crop. */
+		object-position: var(--landing-x) var(--landing-y);
+		transform: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.landscape-image {
+			transform: none;
+		}
+	}
+</style>

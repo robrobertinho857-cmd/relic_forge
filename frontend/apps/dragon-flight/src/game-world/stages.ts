@@ -1,9 +1,4 @@
-import type {
-	FlightEnding,
-	FlightEvent,
-	FlightStageId,
-	FlightStageMilestone,
-} from './types';
+import type { FlightEnding, FlightEvent, FlightStageId, FlightStageMilestone } from './types';
 
 export type FlightStageDefinition = {
 	id: FlightStageId;
@@ -16,82 +11,77 @@ export type FlightStageDefinition = {
 
 export const FLIGHT_STAGES: readonly FlightStageDefinition[] = [
 	{
-		id: 'FORGE_OUTSKIRTS',
-		name: 'Forge Outskirts',
-		className: 'stage-forge-outskirts',
+		id: 'MOUNTAIN_VALLEY',
+		name: 'Mountain Valley',
+		className: 'stage-mountain-valley',
 		order: 1,
 		intensity: 0.12,
 		parallaxSpeed: 1,
 	},
 	{
-		id: 'LAVA_CHAMBER',
-		name: 'Lava Chamber',
-		className: 'stage-lava-chamber',
+		id: 'FOREST_GORGE',
+		name: 'Forest Gorge',
+		className: 'stage-forest-gorge',
 		order: 2,
 		intensity: 0.34,
 		parallaxSpeed: 1.08,
 	},
 	{
-		id: 'ANCIENT_TUNNELS',
-		name: 'Ancient Tunnels',
-		className: 'stage-ancient-tunnels',
+		id: 'VOLCANIC_CANYON',
+		name: 'Volcanic Canyon',
+		className: 'stage-volcanic-canyon',
 		order: 3,
 		intensity: 0.52,
 		parallaxSpeed: 1.14,
 	},
 	{
-		id: 'DRAGON_TERRITORY',
-		name: 'Dragon Territory',
-		className: 'stage-dragon-territory',
+		id: 'STORM_HIGHLANDS',
+		name: 'Storm Highlands',
+		className: 'stage-storm-highlands',
 		order: 4,
 		intensity: 0.76,
 		parallaxSpeed: 1.22,
 	},
 	{
-		id: 'VAULT_APPROACH',
-		name: 'Vault Approach',
-		className: 'stage-vault-approach',
+		id: 'SKY_PEAKS',
+		name: 'Sky Peaks',
+		className: 'stage-sky-peaks',
 		order: 5,
 		intensity: 1,
 		parallaxSpeed: 1.3,
 	},
 ];
 
-const stageById = Object.fromEntries(
-	FLIGHT_STAGES.map((stage) => [stage.id, stage]),
-) as Record<FlightStageId, FlightStageDefinition>;
+const stageById = Object.fromEntries(FLIGHT_STAGES.map((stage) => [stage.id, stage])) as Record<
+	FlightStageId,
+	FlightStageDefinition
+>;
 
 export const getFlightStage = (stage: FlightStageId) => stageById[stage];
 
-const targetStageCount = (
-	ending: FlightEnding,
-	passedGates: number,
-): number => {
+const targetStageCount = (ending: FlightEnding, passedGates: number): number => {
 	switch (ending) {
 		case 'crash':
 			return Math.min(3, 1 + Math.floor(passedGates / 2));
 		case 'safeLanding':
 			return Math.min(3, 2 + Math.floor(passedGates / 3));
-		case 'forgeVault':
+		case 'meadowLanding':
 			return passedGates >= 4 ? 4 : 3;
-		case 'dragonVault':
-		case 'ancientVault':
-		case 'mythicRealm':
+		case 'ridgeLanding':
+		case 'hiddenValley':
+		case 'summitLanding':
 			return 5;
 	}
 };
 
-const findLastStageEventIndex = (
-	events: readonly FlightEvent[],
-	ending: FlightEnding,
-): number => {
+const findLastStageEventIndex = (events: readonly FlightEvent[], ending: FlightEnding): number => {
 	const terminalIndex = events.findIndex(
 		(event) => event.type === 'ending' || (event.type === 'gate' && event.result === 'crash'),
 	);
 
 	if (terminalIndex < 0) return Math.max(0, events.length - 2);
 	if (ending === 'crash') return terminalIndex;
-	if (ending === 'dragonVault' || ending === 'ancientVault' || ending === 'mythicRealm') {
+	if (ending === 'ridgeLanding' || ending === 'hiddenValley' || ending === 'summitLanding') {
 		return terminalIndex;
 	}
 	return Math.max(0, terminalIndex - 1);
@@ -105,13 +95,10 @@ export const createFlightStagePlan = (
 		(event) => event.type === 'gate' && event.result === 'pass',
 	).length;
 	const lastStageEventIndex = findLastStageEventIndex(events, ending);
-	const stageCount = Math.min(
-		targetStageCount(ending, passedGates),
-		lastStageEventIndex + 1,
-	);
+	const stageCount = Math.min(targetStageCount(ending, passedGates), lastStageEventIndex + 1);
 
 	if (stageCount <= 1) {
-		return [{ stage: 'FORGE_OUTSKIRTS', eventIndex: 0 }];
+		return [{ stage: 'MOUNTAIN_VALLEY', eventIndex: 0 }];
 	}
 
 	return FLIGHT_STAGES.slice(0, stageCount).map((stage, index) => ({
@@ -124,7 +111,7 @@ export const stageForEventIndex = (
 	stagePlan: readonly FlightStageMilestone[],
 	eventIndex: number,
 ): FlightStageId => {
-	let activeStage: FlightStageId = 'FORGE_OUTSKIRTS';
+	let activeStage: FlightStageId = 'MOUNTAIN_VALLEY';
 
 	for (const milestone of stagePlan) {
 		if (milestone.eventIndex > eventIndex) break;

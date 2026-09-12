@@ -62,16 +62,6 @@ export const WEATHER_OPTIONS: readonly WeatherPresentation[] = [
 		fogIntensity: 0.2,
 		lightning: false,
 	},
-	{
-		id: 'inferno',
-		name: 'INFERNO',
-		description: 'Ash, embers and forge heat',
-		className: 'weather-inferno',
-		particleIntensity: 0.84,
-		windIntensity: 0.24,
-		fogIntensity: 0.16,
-		lightning: false,
-	},
 ] as const;
 
 export function getWeather(condition: WeatherCondition): WeatherPresentation {

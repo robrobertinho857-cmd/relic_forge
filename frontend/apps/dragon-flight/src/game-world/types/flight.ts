@@ -4,32 +4,43 @@ export type FlightRisk = 'safe' | 'balanced' | 'danger';
 
 export type LaunchStyle = 'glide' | 'boost' | 'dive';
 
-export type WeatherCondition = 'clear' | 'rain' | 'storm' | 'fog' | 'snow' | 'inferno';
+export type WeatherCondition = 'clear' | 'rain' | 'storm' | 'fog' | 'snow';
 
 export type TimeOfDay = 'dawn' | 'day' | 'sunset' | 'night' | 'eclipse';
 
 export type HazardType =
-	| 'fireGate'
-	| 'forgeHammer'
-	| 'chainTunnel'
+	| 'cliffGap'
+	| 'rockfall'
+	| 'forestPass'
 	| 'lavaColumn'
-	| 'spikeGate'
-	| 'windTunnel';
+	| 'rockSpires'
+	| 'windPass';
 
-export type RelicEventType = 'commonRelic' | 'fireRelic' | 'emeraldRelic' | 'ancientRelic' | 'mythicRelic';
+export type PickupType =
+	| 'feather'
+	| 'amberCrystal'
+	| 'greenCrystal'
+	| 'goldenFeather'
+	| 'skyCrystal';
 
-export type PortalType = 'multiplierPortal' | 'relicPortal' | 'vaultPortal' | 'chaosPortal';
+export type CurrentType = 'risingCurrent' | 'ridgeCurrent' | 'valleyCurrent' | 'crosswind';
 
-export type BossType = 'ancientWyrm' | 'forgeGuardian';
+export type EncounterType = 'ridgeDragon' | 'mountainRaptor';
 
-export type FlightEnding = 'crash' | 'safeLanding' | 'forgeVault' | 'dragonVault' | 'ancientVault' | 'mythicRealm';
+export type FlightEnding =
+	| 'crash'
+	| 'safeLanding'
+	| 'meadowLanding'
+	| 'ridgeLanding'
+	| 'hiddenValley'
+	| 'summitLanding';
 
 export type FlightStageId =
-	| 'FORGE_OUTSKIRTS'
-	| 'LAVA_CHAMBER'
-	| 'ANCIENT_TUNNELS'
-	| 'DRAGON_TERRITORY'
-	| 'VAULT_APPROACH';
+	| 'MOUNTAIN_VALLEY'
+	| 'FOREST_GORGE'
+	| 'VOLCANIC_CANYON'
+	| 'STORM_HIGHLANDS'
+	| 'SKY_PEAKS';
 
 export type FlightStageMilestone = {
 	stage: FlightStageId;
@@ -47,9 +58,14 @@ export type FlightEvent =
 	| { type: 'launch'; path: FlightRisk }
 	| (GateEventBase & { result: 'pass' })
 	| (GateEventBase & { result: 'crash'; crashSide: 'upper' | 'lower' })
-	| { type: 'relic'; relicType: RelicEventType; multiplier: number }
-	| { type: 'portal'; portalType: PortalType; multiplier: number }
-	| { type: 'boss'; bossType: BossType; result: 'pass' | 'crash'; multiplier: number }
+	| { type: 'pickup'; pickupType: PickupType; multiplier: number }
+	| { type: 'current'; currentType: CurrentType; multiplier: number }
+	| {
+			type: 'encounter';
+			encounterType: EncounterType;
+			result: 'pass' | 'crash';
+			multiplier: number;
+	  }
 	| { type: 'ending'; ending: Exclude<FlightEnding, 'crash'>; multiplier: number }
 	| { type: 'finalWin'; multiplier: number; win: number };
 

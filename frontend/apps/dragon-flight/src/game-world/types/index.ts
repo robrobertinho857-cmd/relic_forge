@@ -5,7 +5,7 @@ export type {
 	CreatureProfile,
 } from './creature';
 export type {
-	BossType,
+	EncounterType,
 	FlightEnding,
 	FlightEvent,
 	FlightRisk,
@@ -14,21 +14,21 @@ export type {
 	FlightStageMilestone,
 	HazardType,
 	LaunchStyle,
-	PortalType,
+	CurrentType,
 	PrototypeStatus,
-	RelicEventType,
+	PickupType,
 	TimeOfDay,
 	WeatherCondition,
 } from './flight';
 export type {
-	ActiveBossPresentation,
+	ActiveEncounterPresentation,
 	ActiveGate,
-	ActivePortalPresentation,
-	ActiveRelicPresentation,
+	ActiveCurrentPresentation,
+	ActivePickupPresentation,
 	ComboPresentation,
 	StageAnnouncement,
 	WarningPresentation,
 	WinTier,
 	WinTierId,
 } from './presentation';
-export type { EmberParticle, PlayerBody, Vector2, WorldBounds } from './world';
+export type { FlightParticle, PlayerBody, Vector2, WorldBounds } from './world';

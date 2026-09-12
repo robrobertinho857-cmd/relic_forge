@@ -1,6 +1,6 @@
-import type { BossType, FlightEvent, PortalType, RelicEventType } from './flight';
+import type { EncounterType, FlightEvent, CurrentType, PickupType } from './flight';
 
-export type WinTierId = 'normal' | 'win' | 'big' | 'epic' | 'mythic';
+export type WinTierId = 'normal' | 'win' | 'big' | 'great' | 'record';
 
 export type WinTier = {
 	id: WinTierId;
@@ -15,20 +15,20 @@ export type StageAnnouncement = {
 	order: number;
 };
 
-export type ActiveRelicPresentation = {
-	relicType: RelicEventType;
+export type ActivePickupPresentation = {
+	pickupType: PickupType;
 	fromMultiplier: number;
 	toMultiplier: number;
 };
 
-export type ActivePortalPresentation = {
-	portalType: PortalType;
+export type ActiveCurrentPresentation = {
+	currentType: CurrentType;
 	phase: 'approach' | 'enter' | 'release';
 	multiplier: number;
 };
 
-export type ActiveBossPresentation = {
-	bossType: BossType;
+export type ActiveEncounterPresentation = {
+	encounterType: EncounterType;
 	result: 'pass' | 'crash';
 	phase: 'enter' | 'engage' | 'resolve';
 };
@@ -36,7 +36,7 @@ export type ActiveBossPresentation = {
 export type WarningPresentation = {
 	id: number;
 	text: string;
-	tone: 'danger' | 'portal' | 'vault';
+	tone: 'danger' | 'current' | 'reward';
 };
 
 export type ComboPresentation = {
