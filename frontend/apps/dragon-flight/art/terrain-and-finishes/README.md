@@ -2,8 +2,8 @@
 
 Eight assets generated with the built-in image_gen tool; see [the exact prompts](PROMPTS.md).
 
-- `static/finishes/generated/`: meadow, ridge and summit, each with a dedicated moonlit `-night` version.
-- `static/terrain/generated/`: original granite and bark materials, now superseded by [natural terrain sprites](../natural-terrain/README.md).
+- `static/finishes/`: meadow, ridge and summit, each with a dedicated moonlit `-night` version.
+- `static/terrain/`: original granite and bark materials, now superseded by [natural terrain sprites](../natural-terrain/README.md).
 
 Safe and meadow landings and hidden valleys share the meadow scene. Ridge and summit endings have their own scenes. Snow weather selects the snowy summit terrain without changing the ending or payout. Night uses the moonlit asset; dawn, sunset and eclipse use lighting overlays. Weather overlays remain independent, supporting all 25 time/weather combinations.
 

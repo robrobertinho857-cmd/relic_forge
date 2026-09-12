@@ -18,7 +18,7 @@ export function getFinishBackground(
 	time: TimeOfDay,
 ): string {
 	const name = weather === 'snow' ? 'summit' : FINISH_BACKGROUNDS[ending];
-	return `${base}/finishes/generated/${name}${time === 'night' ? '-night' : ''}.png`;
+	return `${base}/finishes/${name}${time === 'night' ? '-night' : ''}.png`;
 }
 
 const TIME_BACKGROUNDS: Record<TimeOfDay, string> = {
@@ -31,5 +31,5 @@ const TIME_BACKGROUNDS: Record<TimeOfDay, string> = {
 
 export function getLandscapeBackground(weather: WeatherCondition, time: TimeOfDay): string {
 	const name = weather === 'clear' ? TIME_BACKGROUNDS[time] : weather;
-	return `${base}/backgrounds/generated/${name}.png`;
+	return `${base}/backgrounds/${name}.png`;
 }

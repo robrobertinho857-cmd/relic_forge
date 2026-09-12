@@ -29,7 +29,7 @@
 		text-shadow: 0 2px 12px #000;
 		transform: translateX(-50%);
 		pointer-events: none;
-		animation: warning-in 0.42s ease-out both;
+		animation: warning-in calc(0.42s / var(--playback-speed, 1)) ease-out both;
 	}
 	.event-warning span {
 		font:

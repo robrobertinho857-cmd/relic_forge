@@ -30,7 +30,7 @@
 		color: #c6d6cb;
 		text-align: center;
 		pointer-events: none;
-		animation: pickup-approach 0.62s ease-in forwards;
+		animation: pickup-approach calc(0.62s / var(--playback-speed, 1)) ease-in forwards;
 	}
 	.pickup-object {
 		position: relative;

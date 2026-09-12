@@ -196,6 +196,10 @@
 			</section>
 
 			<section aria-labelledby="help-info">
+				<p>
+					Choose Speed before a flight: 1× for a relaxed pace, 1.5× for the default faster playback,
+					or 2× for a quick flight. Speed changes animation timing only, not odds or payouts.
+				</p>
 				<h3 id="help-info">DEMO INFORMATION</h3>
 				<p>
 					This is a local demo with no real-money bets or wallet connection. Results are generated

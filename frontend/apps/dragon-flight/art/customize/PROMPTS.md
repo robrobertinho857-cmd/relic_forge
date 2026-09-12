@@ -1,6 +1,6 @@
 # Customize button artwork
 
-Twelve illustrations generated with the built-in image_gen tool and saved in `static/customize/generated/`.
+Twelve illustrations generated with the built-in image_gen tool and saved in `static/customize/`.
 
 Time and weather use nine dedicated symbols; Clear shares the Day sun. Glide, Boost and Dive use three bird illustrations solely to explain the takeoff animation. These menu pictures do not replace the in-game creature sprites.
 

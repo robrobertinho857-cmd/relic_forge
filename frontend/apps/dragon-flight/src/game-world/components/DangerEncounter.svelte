@@ -46,7 +46,7 @@
 		opacity: 0.96;
 		filter: drop-shadow(0 8px 8px #16242a55);
 		transform: translateX(115%);
-		animation: encounter-enter 0.38s ease-out forwards;
+		animation: encounter-enter calc(0.38s / var(--playback-speed, 1)) ease-out forwards;
 	}
 	.wings {
 		fill: #405652;
@@ -92,13 +92,13 @@
 	}
 	.engage .encounter-silhouette {
 		transform: translateX(0);
-		animation: encounter-swoop 0.32s ease-in-out infinite alternate;
+		animation: encounter-swoop calc(0.32s / var(--playback-speed, 1)) ease-in-out infinite alternate;
 	}
 	.resolve.pass .encounter-silhouette {
-		animation: encounter-pass 0.48s ease-in forwards;
+		animation: encounter-pass calc(0.48s / var(--playback-speed, 1)) ease-in forwards;
 	}
 	.resolve.crash .encounter-silhouette {
-		animation: encounter-crash 0.42s ease-in forwards;
+		animation: encounter-crash calc(0.42s / var(--playback-speed, 1)) ease-in forwards;
 	}
 	.resolve.pass .encounter-label {
 		color: #b3d7b5;

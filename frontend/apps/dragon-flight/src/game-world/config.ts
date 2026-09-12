@@ -11,6 +11,8 @@ export const INITIAL_BOUNDS: WorldBounds = {
 };
 
 export const WORLD_SPEED = 285;
+// Shorter obstacle approaches; columns still enter smoothly from offscreen.
+export const GATE_APPROACH_RATE = 1.3;
 
 export const PATHS: readonly { risk: FlightRisk; note: string }[] = [
 	{ risk: 'safe', note: 'Lower volatility · shorter flights · smaller potential' },

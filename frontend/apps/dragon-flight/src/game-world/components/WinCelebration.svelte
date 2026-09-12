@@ -62,7 +62,7 @@
 		height: 5px;
 		border: 1px solid #f4cb67;
 		transform: rotate(45deg);
-		animation: celebration-particle 0.8s ease-out infinite;
+		animation: celebration-particle calc(0.8s / var(--playback-speed, 1)) ease-out infinite;
 	}
 	.win-celebration i:nth-child(1) {
 		left: 18%;

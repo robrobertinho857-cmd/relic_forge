@@ -16,7 +16,7 @@ Constraints: BACKGROUND ONLY. No birds, no dragons, no animals, no humans, no si
 
 ## dawn
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -27,7 +27,7 @@ Variant: DAWN. Quiet early morning just before sunrise, pale peach and soft lave
 
 ## sunset
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -38,7 +38,7 @@ Variant: SUNSET. Warm late-evening landscape, honey-gold light on mountain ridge
 
 ## night
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -49,7 +49,7 @@ Variant: NIGHT. Peaceful moonlit blue-hour-dark night, deep blue sky with a spar
 
 ## eclipse
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -60,7 +60,7 @@ Variant: SOLAR ECLIPSE. A natural total solar eclipse high in the open sky, a sm
 
 ## rain
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -71,7 +71,7 @@ Variant: RAIN. Overcast daylight with soft cool gray rain clouds, distant mounta
 
 ## storm
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -82,7 +82,7 @@ Variant: STORM. Heavy slate-blue rain clouds, strong atmospheric depth, wind-dri
 
 ## fog
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.
@@ -93,7 +93,7 @@ Variant: FOG. A calm foggy morning with layered soft silver-gray mist filling th
 
 ## snow
 
-Edit target: `static/backgrounds/generated/clear-day.png`.
+Edit target: `static/backgrounds/clear-day.png`.
 
 ```text
 Use case: lighting-weather. Asset type: a single production wide 16:9 Dragon Flight landscape background.

@@ -8,6 +8,7 @@
 		PATHS,
 		PROTOTYPE_BET_STEP,
 		WORLD_SPEED,
+		GATE_APPROACH_RATE,
 	} from './config';
 	import { clamp, createPlayer, steerPlayer } from './physics';
 	import { generateMockRound } from './mockRound';
@@ -72,6 +73,7 @@
 	let selectedLaunchStyle = $state<LaunchStyle>('glide');
 	let selectedWeather = $state<WeatherCondition>('clear');
 	let selectedTimeOfDay = $state<TimeOfDay>('day');
+	let playbackSpeed = $state(1.5);
 	let creaturePickerOpen = $state(false);
 	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
@@ -220,7 +222,7 @@
 				pendingDelays = pendingDelays.filter((cancelDelay) => cancelDelay !== finish);
 				resolve();
 			};
-			timer = setTimeout(finish, milliseconds);
+			timer = setTimeout(finish, milliseconds / playbackSpeed);
 			pendingDelays = [...pendingDelays, finish];
 		});
 	}
@@ -254,7 +256,7 @@
 					finish();
 					return;
 				}
-				const linearProgress = Math.min(1, (now - startedAt) / duration);
+				const linearProgress = Math.min(1, ((now - startedAt) * playbackSpeed) / duration);
 				const easedProgress = 1 - Math.pow(1 - linearProgress, 3);
 				update(easedProgress);
 				if (linearProgress >= 1) finish();
@@ -301,7 +303,7 @@
 		comboTimer = setTimeout(() => {
 			comboFeedback = undefined;
 			comboTimer = undefined;
-		}, 720);
+		}, 720 / playbackSpeed);
 		emitParticles(Math.min(24, 7 + count * 3));
 	}
 
@@ -349,7 +351,7 @@
 		stageAnnouncementTimer = setTimeout(() => {
 			stageAnnouncement = undefined;
 			stageAnnouncementTimer = undefined;
-		}, 1050);
+		}, 1050 / playbackSpeed);
 		if (changed) emitParticles(6 + Math.round(stage.intensity * 12));
 	}
 
@@ -671,7 +673,7 @@
 						comboCount = 0;
 						eventCallout = 'CRASH';
 					}
-					await delay(event.result === 'crash' ? 420 : 140);
+					if (event.result === 'crash') await delay(420);
 					break;
 				case 'pickup':
 					await presentPickup(event, token);
@@ -830,20 +832,28 @@
 			const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
 			lastTime = now;
 			const moving = status === 'flying' || status === 'ending' || status === 'collided';
+			const flightDelta = deltaSeconds * playbackSpeed * (activeGate ? GATE_APPROACH_RATE : 1);
 			const environmentSpeed = WORLD_SPEED * currentStage.parallaxSpeed;
 			const presentationSpeed = status === 'collided' ? environmentSpeed * 0.22 : environmentSpeed;
-			parallaxOffset = (parallaxOffset + deltaSeconds * (moving ? presentationSpeed : 30)) % 1800;
-			updateParticles(deltaSeconds);
+			parallaxOffset =
+				(parallaxOffset + (moving ? flightDelta * presentationSpeed : deltaSeconds * 30)) % 1800;
+			updateParticles(moving ? flightDelta : deltaSeconds);
 
 			if (status === 'flying') {
-				player = steerPlayer(player, flightTargetY, deltaSeconds, bounds, {
-					agility: activeCreature.agility,
-					damping: activeCreature.damping,
-					maxVerticalSpeed: activeCreature.maxVerticalSpeed,
-				});
-				distanceTravelled += WORLD_SPEED * deltaSeconds;
+				// Small simulation steps keep steering coordinated with faster gate travel,
+				// including at lower frame rates. Do not exceed steerPlayer's delta cap.
+				const steps = Math.ceil(flightDelta / (1 / 60));
+				for (let step = 0; step < steps; step += 1) {
+					player = steerPlayer(player, flightTargetY, flightDelta / steps, bounds, {
+						agility: activeCreature.agility,
+						damping: activeCreature.damping,
+						maxVerticalSpeed: activeCreature.maxVerticalSpeed,
+					});
+					updateActiveGate(flightDelta / steps);
+					if (status !== 'flying') break;
+				}
+				distanceTravelled += WORLD_SPEED * flightDelta;
 			}
-			updateActiveGate(deltaSeconds);
 			animationFrame = requestAnimationFrame(update);
 		};
 
@@ -860,10 +870,22 @@
 
 <svelte:head><title>Dragon Flight - Local Round Prototype</title></svelte:head>
 
-<main class="prototype-shell">
+<main class="prototype-shell" style={`--playback-speed:${playbackSpeed};`}>
 	<header class="prototype-header">
 		<h1>Dragon Flight</h1>
 		<div class="header-actions">
+			<label class="playback-control" title="Animation speed only. Odds and payouts stay the same.">
+				<span>Speed</span>
+				<select
+					aria-label="Flight playback speed"
+					bind:value={playbackSpeed}
+					disabled={controlsLocked}
+				>
+					<option value={1}>1×</option>
+					<option value={1.5}>1.5×</option>
+					<option value={2}>2×</option>
+				</select>
+			</label>
 			<button
 				class="header-button"
 				type="button"
@@ -1258,7 +1280,7 @@
 		background: linear-gradient(#07100f, #0d1913 64%, #17100a);
 	}
 	.world.has-impact {
-		animation: impact-shake 0.4s ease-out;
+		animation: impact-shake calc(0.4s / var(--playback-speed, 1)) ease-out;
 	}
 
 	.flight-hud {
@@ -1750,7 +1772,7 @@
 		pointer-events: none;
 	}
 	.world:has(.event-callout) .event-callout {
-		animation: event-callout-in 0.24s ease-out;
+		animation: event-callout-in calc(0.24s / var(--playback-speed, 1)) ease-out;
 	}
 	@keyframes event-callout-in {
 		from {
@@ -1786,7 +1808,7 @@
 		text-align: center;
 		pointer-events: none;
 		transform: translateX(-50%);
-		animation: stage-transition-in 1.05s ease both;
+		animation: stage-transition-in calc(1.05s / var(--playback-speed, 1)) ease both;
 	}
 	.stage-transition span {
 		color: #67e8ac;
@@ -1939,7 +1961,7 @@
 		}
 	}
 	.multiplier-readout.pulse {
-		animation: multiplier-hud-pulse 0.46s ease-out;
+		animation: multiplier-hud-pulse calc(0.46s / var(--playback-speed, 1)) ease-out;
 	}
 	.multiplier-readout.pulse strong {
 		text-shadow: 0 0 14px #70ffba;
@@ -1958,7 +1980,7 @@
 		color: #7af2b5;
 		text-shadow: 0 2px 9px #000;
 		pointer-events: none;
-		animation: combo-pop 0.68s ease-out both;
+		animation: combo-pop calc(0.68s / var(--playback-speed, 1)) ease-out both;
 	}
 	.combo-feedback strong {
 		color: #e2e9df;
@@ -1974,7 +1996,7 @@
 		letter-spacing: 0.16em;
 	}
 	.creature-flight.is-hit {
-		animation: creature-hit 0.52s ease-out both;
+		animation: creature-hit calc(0.52s / var(--playback-speed, 1)) ease-out both;
 		filter: sepia(0.8) saturate(2) drop-shadow(0 0 17px #ff6533);
 	}
 	@keyframes multiplier-hud-pulse {
@@ -2526,6 +2548,44 @@
 		}
 		.control-dock .fly-button {
 			min-height: 44px;
+		}
+	}
+	.playback-control {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.65rem;
+		color: #d8e5e0;
+	}
+	.playback-control select {
+		min-height: 36px;
+		padding: 4px 6px;
+		border: 1px solid #627e81;
+		border-radius: 6px;
+		background: #102725;
+		color: #d8e5e0;
+		font: inherit;
+	}
+	.playback-control select:focus-visible {
+		outline: 2px solid #64efbd;
+		outline-offset: 2px;
+	}
+	.playback-control select:disabled {
+		opacity: 0.55;
+	}
+	@media (max-width: 480px) {
+		.prototype-header {
+			flex-wrap: wrap;
+			gap: 6px;
+		}
+		.prototype-header h1 {
+			flex-basis: 100%;
+		}
+		.header-actions {
+			width: 100%;
+		}
+		.playback-control {
+			margin-right: auto;
 		}
 	}
 </style>

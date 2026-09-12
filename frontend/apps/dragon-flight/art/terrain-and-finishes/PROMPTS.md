@@ -4,7 +4,7 @@ Generated with the built-in image_gen tool on 2026-09-11. Original outputs remai
 
 ## finishes/meadow.png
 
-Reference/edit target: static/backgrounds/generated/clear-day.png
+Reference/edit target: static/backgrounds/clear-day.png
 
 Use case: lighting-weather and precise-object-edit. Asset type: full landscape finish background for a side-view flying-creature game. Image 1 is the edit target and style reference. Preserve the same mountain-valley geography, distant mountain silhouettes, river winding through the center-left, wide 16:9 framing, natural painterly illustration style, and crisp production quality. Keep the original image dimensions.
 Change the foreground to create a clearly readable LANDING PLACE on the RIGHT. The center of the flat landing surface must be at approximately 73 percent of image width and 68 percent of image height. Make a broad, gently level shelf covering the rightmost third, open and unobstructed, connected to the terrain at the lower/right edge rather than a floating island. Show a narrow top surface and visible rocky side face, suitable for a small flying creature to settle on. Keep the upper half and center-left open for the approach. Midday neutral lighting; later time and weather grading will be applied in the game.
@@ -13,7 +13,7 @@ Landing variant: A quiet green meadow shelf with short grass, a few tiny natural
 
 ## finishes/ridge.png
 
-Reference/edit target: static/backgrounds/generated/clear-day.png
+Reference/edit target: static/backgrounds/clear-day.png
 
 Use case: lighting-weather and precise-object-edit. Asset type: full landscape finish background for a side-view flying-creature game. Image 1 is the edit target and style reference. Preserve the same mountain-valley geography, distant mountain silhouettes, river winding through the center-left, wide 16:9 framing, natural painterly illustration style, and crisp production quality. Keep the original image dimensions.
 Change the foreground to create a clearly readable LANDING PLACE on the RIGHT. The center of the flat landing surface must be at approximately 73 percent of image width and 68 percent of image height. Make a broad, gently level shelf covering the rightmost third, open and unobstructed, connected to the terrain at the lower/right edge rather than a floating island. Show a narrow top surface and visible rocky side face, suitable for a small flying creature to settle on. Keep the upper half and center-left open for the approach. Midday neutral lighting; later time and weather grading will be applied in the game.
@@ -22,7 +22,7 @@ Landing variant: An exposed mountain ridge with a broad level gray granite ledge
 
 ## finishes/summit.png
 
-Reference/edit target: static/backgrounds/generated/clear-day.png
+Reference/edit target: static/backgrounds/clear-day.png
 
 Use case: lighting-weather and precise-object-edit. Asset type: full landscape finish background for a side-view flying-creature game. Image 1 is the edit target and style reference. Preserve the same mountain-valley geography, distant mountain silhouettes, river winding through the center-left, wide 16:9 framing, natural painterly illustration style, and crisp production quality. Keep the original image dimensions.
 Change the foreground to create a clearly readable LANDING PLACE on the RIGHT. The center of the flat landing surface must be at approximately 73 percent of image width and 68 percent of image height. Make a broad, gently level shelf covering the rightmost third, open and unobstructed, connected to the terrain at the lower/right edge rather than a floating island. Show a narrow top surface and visible rocky side face, suitable for a small flying creature to settle on. Keep the upper half and center-left open for the approach. Midday neutral lighting; later time and weather grading will be applied in the game.
@@ -39,18 +39,18 @@ Use case: stylized-concept. Asset type: reusable opaque square bark surface text
 
 ## finishes/meadow-night.png
 
-Reference/edit target: static/finishes/generated/meadow.png
+Reference/edit target: static/finishes/meadow.png
 
 Use case: lighting-weather. Asset type: moonlit finish background for a 2D mountain flight game. Image 1 is the edit target. Change ONLY the time from day to NIGHT. Preserve the exact landscape composition, mountain shapes, foreground landing shelf silhouette, its position and flat upper surface, trees, river, and 1672 by 941 framing. Paint a deep midnight blue sky, a few delicate distant stars between soft dark clouds, subtle cool moonlight from the upper left, pale blue highlights along the landing ledge and mountain ridges, dark blue valley shadows. Keep the foreground landing surface readable and naturally textured. Preserve natural vegetation and stone. No birds, creatures, humans, buildings, lettering, logos, UI, extra platforms or reward objects. One complete matching background image.
 
 ## finishes/ridge-night.png
 
-Reference/edit target: static/finishes/generated/ridge.png
+Reference/edit target: static/finishes/ridge.png
 
 Use case: lighting-weather. Asset type: moonlit finish background for a 2D mountain flight game. Image 1 is the edit target. Change ONLY the time from day to NIGHT. Preserve the exact landscape composition, mountain shapes, foreground landing shelf silhouette, its position and flat upper surface, trees, river, and 1672 by 941 framing. Paint a deep midnight blue sky, a few delicate distant stars between soft dark clouds, subtle cool moonlight from the upper left, pale blue highlights along the landing ledge and mountain ridges, dark blue valley shadows. Keep the foreground landing surface readable and naturally textured. Preserve natural vegetation and stone. No birds, creatures, humans, buildings, lettering, logos, UI, extra platforms or reward objects. One complete matching background image.
 
 ## finishes/summit-night.png
 
-Reference/edit target: static/finishes/generated/summit.png
+Reference/edit target: static/finishes/summit.png
 
 Use case: lighting-weather. Asset type: moonlit finish background for a 2D mountain flight game. Image 1 is the edit target. Change ONLY the time from day to NIGHT. Preserve the exact landscape composition, mountain shapes, foreground landing shelf silhouette, its position and flat upper surface, trees, river, and 1672 by 941 framing. Paint a deep midnight blue sky, a few delicate distant stars between soft dark clouds, subtle cool moonlight from the upper left, pale blue highlights along the landing ledge and mountain ridges, dark blue valley shadows. Keep the foreground landing surface readable and naturally textured. Preserve all existing snow cover with soft blue moonlit snow. No birds, creatures, humans, buildings, lettering, logos, UI, extra platforms or reward objects. One complete matching background image.

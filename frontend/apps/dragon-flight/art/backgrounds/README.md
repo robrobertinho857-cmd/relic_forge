@@ -11,15 +11,15 @@ files are preserved without resizing. The game uses these images in
 
 | Background | File |
 | --- | --- |
-| Clear day | [clear-day.png](../../static/backgrounds/generated/clear-day.png) |
-| Dawn | [dawn.png](../../static/backgrounds/generated/dawn.png) |
-| Sunset | [sunset.png](../../static/backgrounds/generated/sunset.png) |
-| Night | [night.png](../../static/backgrounds/generated/night.png) |
-| Eclipse | [eclipse.png](../../static/backgrounds/generated/eclipse.png) |
-| Rain | [rain.png](../../static/backgrounds/generated/rain.png) |
-| Storm | [storm.png](../../static/backgrounds/generated/storm.png) |
-| Fog | [fog.png](../../static/backgrounds/generated/fog.png) |
-| Snow | [snow.png](../../static/backgrounds/generated/snow.png) |
+| Clear day | [clear-day.png](../../static/backgrounds/clear-day.png) |
+| Dawn | [dawn.png](../../static/backgrounds/dawn.png) |
+| Sunset | [sunset.png](../../static/backgrounds/sunset.png) |
+| Night | [night.png](../../static/backgrounds/night.png) |
+| Eclipse | [eclipse.png](../../static/backgrounds/eclipse.png) |
+| Rain | [rain.png](../../static/backgrounds/rain.png) |
+| Storm | [storm.png](../../static/backgrounds/storm.png) |
+| Fog | [fog.png](../../static/backgrounds/fog.png) |
+| Snow | [snow.png](../../static/backgrounds/snow.png) |
 
 Clear day serves both the Day and Clear reference. Dawn, sunset, night and
 eclipse use calm weather; rain, storm, fog and snow use daylight. These are nine

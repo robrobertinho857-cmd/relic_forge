@@ -27,7 +27,7 @@
 		color: #d0e6eb;
 		transform: translate(-50%, -50%);
 		pointer-events: none;
-		animation: current-approach 0.34s ease-out both;
+		animation: current-approach calc(0.34s / var(--playback-speed, 1)) ease-out both;
 	}
 	.current-ring {
 		position: relative;
@@ -53,12 +53,12 @@
 	.current-ring::before {
 		inset: -12%;
 		opacity: 0.45;
-		animation: current-spin 1.2s linear infinite;
+		animation: current-spin calc(1.2s / var(--playback-speed, 1)) linear infinite;
 	}
 	.current-ring::after {
 		inset: 13%;
 		opacity: 0.65;
-		animation: current-spin 0.8s linear infinite reverse;
+		animation: current-spin calc(0.8s / var(--playback-speed, 1)) linear infinite reverse;
 	}
 	.current-ring i {
 		inset: 25%;
@@ -89,10 +89,10 @@
 		letter-spacing: 0.1em;
 	}
 	.current-event.enter {
-		animation: current-enter 0.38s ease-in both;
+		animation: current-enter calc(0.38s / var(--playback-speed, 1)) ease-in both;
 	}
 	.current-event.release {
-		animation: current-release 0.3s ease-out both;
+		animation: current-release calc(0.3s / var(--playback-speed, 1)) ease-out both;
 	}
 	.ridgeCurrent {
 		color: #c5ddce;
