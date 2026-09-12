@@ -196,13 +196,14 @@
 
 <style>
 	.customize-dialog {
-		width: min(460px, 100vw);
-		max-width: 100vw;
-		height: 100dvh;
-		max-height: none;
-		margin: 0 0 0 auto;
+		width: min(540px, calc(100vw - 24px));
+		max-width: calc(100vw - 24px);
+		height: min(740px, 90dvh);
+		max-height: 90dvh;
+		margin: auto;
 		padding: 0;
-		border: 0;
+		border: 1px solid #698985;
+		border-radius: 18px;
 		background: transparent;
 		color: #edf3ef;
 		font-family: system-ui, sans-serif;
@@ -218,9 +219,8 @@
 		height: 100%;
 		overflow: hidden;
 		padding: 24px;
-		border-left: 1px solid #718b8a40;
 		background: radial-gradient(ellipse at 95% 0%, #2d53534d, transparent 50%), #14262d;
-		box-shadow: -24px 0 80px #0005;
+		box-shadow: 0 24px 80px #0005;
 	}
 	header {
 		display: flex;
@@ -533,15 +533,7 @@
 		outline-offset: 2px;
 	}
 	@media (max-width: 620px) {
-		.customize-dialog {
-			width: 100vw;
-			height: min(94dvh, 740px);
-			margin: auto 0 0;
-		}
 		.customize-drawer {
-			border-top: 1px solid #718b8a60;
-			border-left: 0;
-			border-radius: 18px 18px 0 0;
 			padding: 20px 18px 16px;
 		}
 	}
@@ -560,9 +552,6 @@
 		}
 	}
 	@media (max-height: 450px) {
-		.customize-dialog {
-			height: 100dvh;
-		}
 		.customize-drawer {
 			padding-block: 12px;
 		}

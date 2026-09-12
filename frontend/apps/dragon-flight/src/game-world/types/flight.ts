@@ -1,6 +1,7 @@
 import type { CreatureId } from './creature';
 
 export type FlightRisk = 'safe' | 'balanced' | 'danger';
+export type BonusFlightId = 'storm-run' | 'summit-expedition';
 
 export type LaunchStyle = 'glide' | 'boost' | 'dive';
 
@@ -70,6 +71,8 @@ export type FlightEvent =
 	| { type: 'finalWin'; multiplier: number; win: number };
 
 export type FlightRound = {
+	bonusFlight?: BonusFlightId;
+	entryCost?: number;
 	id: number;
 	seed: number;
 	bet: number;

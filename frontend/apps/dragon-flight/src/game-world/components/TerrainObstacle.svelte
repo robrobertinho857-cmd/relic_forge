@@ -40,7 +40,8 @@
 		position: absolute;
 		left: 0;
 		width: 100%;
-		overflow: hidden;
+		/* Let the full silhouette extend sideways beyond the narrow gate anchor. */
+		overflow: visible;
 		--light: 1;
 		--saturation: 1;
 		filter: brightness(var(--light)) saturate(var(--saturation));

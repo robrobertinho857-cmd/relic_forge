@@ -9,7 +9,8 @@
 <svg
 	class="terrain-art"
 	viewBox={art.viewBox}
-	preserveAspectRatio={side === 'upper' ? 'xMidYMax slice' : 'xMidYMin slice'}
+	preserveAspectRatio="xMidYMid meet"
+	style={`aspect-ratio:${art.width} / ${art.cropHeight};`}
 	aria-hidden="true"
 >
 	<defs>
@@ -44,9 +45,14 @@
 
 <style>
 	.terrain-art {
+		position: absolute;
+		left: 50%;
+		top: 0;
 		display: block;
-		width: 100%;
+		width: auto;
+		max-width: none;
 		height: 100%;
+		transform: translateX(-50%);
 		overflow: hidden;
 	}
 </style>

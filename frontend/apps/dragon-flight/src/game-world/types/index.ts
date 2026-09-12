@@ -5,6 +5,7 @@ export type {
 	CreatureProfile,
 } from './creature';
 export type {
+	BonusFlightId,
 	EncounterType,
 	FlightEnding,
 	FlightEvent,

@@ -12,6 +12,9 @@
 	} from './config';
 	import { clamp, createPlayer, steerPlayer } from './physics';
 	import { generateMockRound } from './mockRound';
+	import { createBonusRound, drawBonusTicket, getBonusFlight } from './bonusFlights';
+	import BonusFlightsDialog from './components/BonusFlightsDialog.svelte';
+	import FlightHistory from './components/FlightHistory.svelte';
 	import { CREATURES, getCreature, loadDecodedFlightFrames } from './creatures';
 	import { getFlightStage, stageForEventIndex } from './stages';
 	import {
@@ -34,6 +37,7 @@
 	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
 	import TerrainObstacle from './components/TerrainObstacle.svelte';
+	import { getTerrainVisualWidth } from './terrainArtwork';
 	import ResultScenery from './components/ResultScenery.svelte';
 	import EventWarning from './components/EventWarning.svelte';
 	import HelpDialog from './components/HelpDialog.svelte';
@@ -41,6 +45,7 @@
 	import CollectiblePickup from './components/CollectiblePickup.svelte';
 	import WinCelebration from './components/WinCelebration.svelte';
 	import type {
+		BonusFlightId,
 		ActiveEncounterPresentation,
 		ActiveGate,
 		ActiveCurrentPresentation,
@@ -77,6 +82,11 @@
 	let creaturePickerOpen = $state(false);
 	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
+	let bonusOpen = $state(false);
+	let historyOpen = $state(false);
+	let flightHistory = $state<FlightRound[]>([]);
+	let isReplay = $state(false);
+	let flightError = $state('');
 	let currentStageId = $state<FlightStageId>('MOUNTAIN_VALLEY');
 	let flightProgress = $state(0);
 	let stageAnnouncement = $state<StageAnnouncement>();
@@ -131,7 +141,11 @@
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
 	const selectedPathNote = $derived(PATHS.find((path) => path.risk === selectedRisk)?.note ?? '');
 	const currentStage = $derived(getFlightStage(currentStageId));
-	const resultWinTier = $derived(getWinTier(currentRound?.finalMultiplier ?? 0));
+	const resultWinTier = $derived(
+		getWinTier(
+			currentRound ? currentRound.finalWin / (currentRound.entryCost ?? currentRound.bet) : 0,
+		),
+	);
 	const activeWeather = $derived(currentRound?.weather ?? selectedWeather);
 	const activeWeatherConfig = $derived(getWeather(activeWeather));
 	const activeTimeOfDay = $derived(currentRound?.timeOfDay ?? selectedTimeOfDay);
@@ -424,10 +438,17 @@
 		const gapHeight = clamp(bounds.height * 0.35, 145, 215);
 		const margin = gapHeight / 2 + 36;
 		const gapCenterY = clamp(event.gapRatio * bounds.floorY, margin, bounds.floorY - margin);
+		const width = clamp(bounds.width * 0.19, 95, 210);
+		const visualWidth = getTerrainVisualWidth(
+			event.hazard === 'forestPass' ? 'tree' : 'rock',
+			gapCenterY - gapHeight / 2,
+			bounds.height - gapCenterY - gapHeight / 2,
+		);
 		return {
 			...event,
-			x: bounds.width + 45,
-			width: clamp(bounds.width * 0.19, 95, 210),
+			// Keep the entire wider silhouette offscreen until it scrolls into view.
+			x: bounds.width + 45 + Math.max(0, visualWidth - width) / 2,
+			width,
 			gapCenterY,
 			gapHeight,
 		};
@@ -608,7 +629,10 @@
 
 	async function presentFinalResult(round: FlightRound, token: number) {
 		status = 'complete';
-		const tier = getWinTier(round.finalMultiplier);
+		if (!isReplay && !flightHistory.some((item) => item.id === round.id)) {
+			flightHistory = [round, ...flightHistory].slice(0, 20);
+		}
+		const tier = getWinTier(round.finalWin / (round.entryCost ?? round.bet));
 		eventLabel = tier.label;
 		eventCallout = round.ending === 'crash' ? 'CRASH' : tier.label;
 
@@ -696,19 +720,40 @@
 		}
 	}
 
-	function startFlight() {
+	function startFlight(bonusId?: BonusFlightId) {
 		if (controlsLocked || !betInputIsValid) return;
+		flightError = '';
 		roundSequence += 1;
-		const generatedRound = generateMockRound(selectedBet, selectedRisk, roundSequence, {
+		const options = {
 			creature: selectedCreatureId,
 			launchStyle: selectedLaunchStyle,
-		});
-		// Presentation metadata is attached only after the authoritative local outcome is complete.
-		const roundWithWeather: FlightRound = { ...generatedRound, weather: selectedWeather };
-		const round: FlightRound = { ...roundWithWeather, timeOfDay: selectedTimeOfDay };
+		};
+		try {
+			const round: FlightRound = bonusId
+				? createBonusRound(bonusId, selectedBet, roundSequence, drawBonusTicket(), options)
+				: {
+						...generateMockRound(selectedBet, selectedRisk, roundSequence, options),
+						weather: selectedWeather,
+						timeOfDay: selectedTimeOfDay,
+					};
+			bonusOpen = false;
+			beginFlight(round);
+		} catch {
+			bonusOpen = false;
+			flightError = 'Could not start this demo flight. Please try again.';
+		}
+	}
+
+	function beginFlight(round: FlightRound, replay = false) {
+		if (status !== 'ready') return;
+		isReplay = replay;
 		if (round.ending !== 'crash') {
 			const finishImage = new Image();
-			finishImage.src = getFinishBackground(round.ending, selectedWeather, selectedTimeOfDay);
+			finishImage.src = getFinishBackground(
+				round.ending,
+				round.weather ?? selectedWeather,
+				round.timeOfDay ?? selectedTimeOfDay,
+			);
 			void finishImage.decode().catch(() => undefined);
 		}
 		const token = ++presentationToken;
@@ -741,6 +786,29 @@
 		// Short windows may have scrolled down to the controls.
 		worldElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 		void presentRound(round, token);
+	}
+
+	function flyAgain() {
+		if (status !== 'complete' || !currentRound) return;
+		const previous = currentRound;
+		resetPresentation();
+		selectedBet = previous.bet;
+		betInput = previous.bet.toFixed(2);
+		selectedCreatureId = previous.creature;
+		selectedLaunchStyle = previous.launchStyle;
+		if (!previous.bonusFlight) {
+			selectedRisk = previous.risk;
+			selectedWeather = previous.weather ?? selectedWeather;
+			selectedTimeOfDay = previous.timeOfDay ?? selectedTimeOfDay;
+		}
+		startFlight(previous.bonusFlight);
+	}
+
+	function replayFlight(round: FlightRound) {
+		if (status !== 'ready' && status !== 'complete') return;
+		historyOpen = false;
+		resetPresentation();
+		beginFlight(round, true);
 	}
 
 	function updateParticles(deltaSeconds: number) {
@@ -873,7 +941,11 @@
 <main class="prototype-shell" style={`--playback-speed:${playbackSpeed};`}>
 	<header class="prototype-header">
 		<h1>Dragon Flight</h1>
-		<div class="header-actions">
+		<div
+			class="control-tools header-actions flight-extras"
+			role="group"
+			aria-label="Flight options"
+		>
 			<label class="playback-control" title="Animation speed only. Odds and payouts stay the same.">
 				<span>Speed</span>
 				<select
@@ -907,6 +979,15 @@
 					/><path d="M12 16.8h.01" /></svg
 				>
 			</button>
+			<button
+				class="bonus-button"
+				disabled={controlsLocked || !betInputIsValid}
+				onclick={() => (bonusOpen = true)}>BONUS FLIGHTS <span>2 routes</span></button
+			>
+			<button
+				disabled={status !== 'ready' && status !== 'complete'}
+				onclick={() => (historyOpen = true)}>HISTORY <span>{flightHistory.length}</span></button
+			>
 		</div>
 	</header>
 
@@ -937,7 +1018,8 @@
 			<div class="flight-hud">
 				<div class="hud-selection">
 					<span
-						class:danger={status === 'collided' || currentRound?.ending === 'crash'}
+						class:danger={status === 'collided' ||
+							(status === 'complete' && currentRound?.ending === 'crash')}
 						class="round-status"
 						>{status === 'ready'
 							? 'READY'
@@ -945,8 +1027,22 @@
 								? ENDING_LABELS[currentRound.ending]
 								: 'IN FLIGHT'}</span
 					>
-					<span>BET <strong>{formatLocalAmount(currentRound?.bet ?? selectedBet)}</strong></span>
-					<span>RISK <strong>{(currentRound?.risk ?? selectedRisk).toUpperCase()}</strong></span>
+					<span
+						>{currentRound?.bonusFlight ? 'ENTRY' : 'BET'}
+						<strong
+							>{formatLocalAmount(
+								currentRound?.entryCost ?? currentRound?.bet ?? selectedBet,
+							)}</strong
+						></span
+					>
+					<span
+						>{currentRound?.bonusFlight ? 'ROUTE' : 'RISK'}
+						<strong
+							>{currentRound?.bonusFlight
+								? getBonusFlight(currentRound.bonusFlight).name
+								: (currentRound?.risk ?? selectedRisk).toUpperCase()}</strong
+						></span
+					>
 					<span>CREATURE <strong>{activeCreature.name}</strong></span>
 					<span>RUN <strong>{gatesPassed} · {distanceMetres}m</strong></span>
 				</div>
@@ -957,6 +1053,7 @@
 					>CURRENT<strong>x{currentMultiplier.toFixed(2)}</strong></span
 				>
 			</div>
+			{#if isReplay && status !== 'ready'}<div class="replay-label">REPLAY · NO COST</div>{/if}
 
 			{#if stageAnnouncement}
 				{#key stageAnnouncement.id}
@@ -1108,22 +1205,38 @@
 						/>
 					{/if}
 					<strong id="flight-result-title">{ENDING_LABELS[currentRound.ending]}</strong>
-					{#if currentRound.ending !== 'crash'}
+					{#if currentRound.ending !== 'crash' && currentRound.finalWin > (currentRound.entryCost ?? currentRound.bet)}
 						<WinCelebration
 							tier={resultWinTier}
 							multiplier={`x${finalMultiplier.toFixed(2)}`}
 							win={formatLocalAmount(finalWin)}
 						/>
 					{/if}
-					<div><span>BET</span><b>{formatLocalAmount(currentRound.bet)}</b></div>
-					<div><span>MULTIPLIER</span><b>x{finalMultiplier.toFixed(2)}</b></div>
-					<div><span>WIN</span><b>{formatLocalAmount(finalWin)}</b></div>
+					<div>
+						<span>ENTRY COST</span><b
+							>{formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}</b
+						>
+					</div>
+					<div><span>BASE-BET MULTIPLIER</span><b>x{finalMultiplier.toFixed(2)}</b></div>
+					<div><span>PAYOUT</span><b>{formatLocalAmount(finalWin)}</b></div>
+					<div>
+						<span>NET RESULT</span><b
+							>{formatLocalAmount(
+								currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
+							)}</b
+						>
+					</div>
 					<div class="result-creature"><span>CREATURE</span><b>{activeCreature.name}</b></div>
 					<div><span>LAUNCH</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
 					<div><span>WEATHER</span><b>{activeWeatherConfig.name}</b></div>
 					<div><span>TIME</span><b>{activeTimeConfig.name}</b></div>
 					<small>DEMO RESULT · NO REAL MONEY</small>
-					<button onclick={resetPresentation}>TRY AGAIN</button>
+					<button onclick={flyAgain}
+						>{currentRound.bonusFlight ? 'BUY AGAIN' : 'FLY AGAIN'} · {formatLocalAmount(
+							currentRound.entryCost ?? currentRound.bet,
+						)}</button
+					>
+					<button onclick={resetPresentation}>CHANGE SETTINGS</button>
 				</div>
 			{/if}
 		</div>
@@ -1187,11 +1300,16 @@
 				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
 			</div>
 
-			<button class="fly-button" disabled={controlsLocked || !betInputIsValid} onclick={startFlight}
+			<button
+				class="fly-button"
+				disabled={controlsLocked || !betInputIsValid}
+				onclick={() => startFlight()}
 				>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button
 			>
 		</section>
 	</section>
+
+	{#if flightError}<p role="alert">{flightError}</p>{/if}
 	<footer>
 		<span>Explore the peaks. Find your next landing.</span><span
 			>Local demo · No real-money bets.</span
@@ -1200,6 +1318,20 @@
 </main>
 
 <HelpDialog open={helpOpen} onClose={() => (helpOpen = false)} />
+<BonusFlightsDialog
+	open={bonusOpen}
+	bet={selectedBet}
+	disabled={controlsLocked || !betInputIsValid}
+	onClose={() => (bonusOpen = false)}
+	onBuy={startFlight}
+/>
+<FlightHistory
+	open={historyOpen}
+	rounds={flightHistory}
+	disabled={status !== 'ready' && status !== 'complete'}
+	onClose={() => (historyOpen = false)}
+	onReplay={replayFlight}
+/>
 <CreaturePicker
 	open={creaturePickerOpen}
 	selected={selectedCreatureId}
@@ -2586,6 +2718,82 @@
 		}
 		.playback-control {
 			margin-right: auto;
+		}
+	}
+	.flight-extras {
+		display: flex;
+		flex: 0 0 auto;
+		gap: 8px;
+		padding-top: 8px;
+	}
+	.flight-extras button {
+		padding: 10px 16px;
+		font-size: 0.65rem;
+		letter-spacing: 0.07em;
+	}
+	.flight-extras span {
+		margin-left: 8px;
+		font-size: 0.65rem;
+		color: #afc9c3;
+	}
+	.flight-extras .bonus-button {
+		border-color: #d8ba75;
+		color: #ffe2a2;
+		background: #2b342b;
+	}
+	.replay-label {
+		position: absolute;
+		top: 84px;
+		left: 12px;
+		z-index: 20;
+		padding: 7px 10px;
+		border-radius: 6px;
+		background: #0d292deb;
+		color: #b9eadb;
+		font-size: 0.65rem;
+	}
+	@media (max-width: 480px) {
+		.flight-extras button {
+			flex: 1;
+			padding-inline: 8px;
+		}
+	}
+	.prototype-header {
+		flex-wrap: wrap;
+		gap: 12px 20px;
+	}
+	.prototype-header .control-tools {
+		flex: 1 1 550px;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: flex-end;
+		gap: 10px;
+		width: auto;
+		margin: 0 0 0 auto;
+		padding: 0;
+	}
+	.control-tools button {
+		min-height: 40px;
+		flex: 0 0 auto;
+	}
+	.control-tools .playback-control {
+		order: 1;
+		margin: 0;
+	}
+	.control-tools .help-button {
+		order: 2;
+		padding: 8px;
+		width: 40px;
+	}
+	@media (max-width: 480px) {
+		.prototype-header .control-tools {
+			gap: 8px;
+			justify-content: flex-start;
+		}
+		.control-tools .header-button,
+		.control-tools .bonus-button {
+			flex: 1 1 auto;
 		}
 	}
 </style>

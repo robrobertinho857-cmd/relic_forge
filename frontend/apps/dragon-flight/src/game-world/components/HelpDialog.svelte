@@ -196,6 +196,19 @@
 			</section>
 
 			<section aria-labelledby="help-info">
+				<h3>BONUS FLIGHTS &amp; REPLAYS</h3>
+				<p>
+					Bonus Flights offers two direct-entry demo routes: Storm Run costs 20× your base bet and
+					Summit Expedition costs 50×. Open Payouts &amp; chances in the route menu to see every
+					possible result. A purchased flight can return zero; entry does not guarantee a payout.
+					Risk settings apply to normal flights only.
+				</p>
+				<p>
+					Bonus multipliers use the base bet. Results show the full entry cost, payout and net
+					result. History keeps 20 completed flights for this session. Its Replay button shows a
+					previous result at no cost. Fly Again or Buy Again starts a new independent flight at the
+					displayed price.
+				</p>
 				<p>
 					Choose Speed before a flight: 1× for a relaxed pace, 1.5× for the default faster playback,
 					or 2× for a quick flight. Speed changes animation timing only, not odds or payouts.

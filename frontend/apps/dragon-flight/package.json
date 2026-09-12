@@ -4,6 +4,7 @@
 	"private": true,
 	"license": "MIT",
 	"scripts": {
+		"test": "node --test tests/bonusFlights.test.mjs tests/flightActions.test.mjs",
 		"format": "prettier --write --ignore-path=../../.prettierignore .",
 		"lint": "eslint \"src\"",
 		"dev": "vite dev --host --port 3007",
