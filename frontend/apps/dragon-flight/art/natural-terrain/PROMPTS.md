@@ -1,5 +1,7 @@
 # Natural terrain generation prompts
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Generated using the built-in image generation tool. Base sprites are original generations; snow variants are edits referencing the corresponding base sprite. PNG originals are preserved without raster post-processing.
 
 ## rock-upper.png

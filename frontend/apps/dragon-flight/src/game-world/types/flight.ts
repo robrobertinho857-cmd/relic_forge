@@ -85,6 +85,7 @@ export type FlightRound = {
 	stagePlan: FlightStageMilestone[];
 	ending: FlightEnding;
 	finalMultiplier: number;
+	// Preserve up to four decimal places; two-decimal formatting is display-only.
 	finalWin: number;
 };
 

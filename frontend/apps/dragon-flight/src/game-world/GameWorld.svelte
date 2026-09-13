@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { PICKUP_ARTWORK } from './pickupArtwork';
 	// Standalone local Dragon Flight prototype.
 	import {
 		INITIAL_BOUNDS,
@@ -936,7 +937,12 @@
 	});
 </script>
 
-<svelte:head><title>Dragon Flight - Local Round Prototype</title></svelte:head>
+<svelte:head>
+	<title>Dragon Flight - Local Round Prototype</title>
+	{#each Object.values(PICKUP_ARTWORK) as src (src)}
+		<link rel="preload" as="image" href={src} type="image/webp" />
+	{/each}
+</svelte:head>
 
 <main class="prototype-shell" style={`--playback-speed:${playbackSpeed};`}>
 	<header class="prototype-header">

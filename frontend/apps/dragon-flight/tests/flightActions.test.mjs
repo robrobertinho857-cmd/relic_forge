@@ -46,7 +46,7 @@ function setup(ticket = 9999) {
 		createPlayer,
 		createBonusRound,
 		drawBonusTicket: () => ticket,
-		getFinishBackground: () => '/finish.png',
+		getFinishBackground: () => '/finish.webp',
 		cancelPresentation: () => {},
 		Image: class {
 			decode() {

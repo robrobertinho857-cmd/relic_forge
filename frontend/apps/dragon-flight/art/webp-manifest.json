@@ -1,0 +1,436 @@
+[
+	{
+		"file": "backgrounds/clear-day.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2273804,
+		"after": 1774372
+	},
+	{
+		"file": "backgrounds/dawn.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2188921,
+		"after": 1701506
+	},
+	{
+		"file": "backgrounds/eclipse.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2195097,
+		"after": 1626184
+	},
+	{
+		"file": "backgrounds/fog.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 1883233,
+		"after": 1378996
+	},
+	{
+		"file": "backgrounds/night.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2175693,
+		"after": 1585636
+	},
+	{
+		"file": "backgrounds/rain.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2190549,
+		"after": 1566944
+	},
+	{
+		"file": "backgrounds/snow.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2491563,
+		"after": 1737104
+	},
+	{
+		"file": "backgrounds/storm.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2440842,
+		"after": 1713496
+	},
+	{
+		"file": "backgrounds/sunset.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2381183,
+		"after": 1922420
+	},
+	{
+		"file": "bonuses/storm-run.webp",
+		"width": 1536,
+		"height": 1024,
+		"before": 2536172,
+		"after": 1650024
+	},
+	{
+		"file": "bonuses/summit-expedition.webp",
+		"width": 1536,
+		"height": 1024,
+		"before": 2553910,
+		"after": 1844320
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-01.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 524389,
+		"after": 141488
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-02.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 676889,
+		"after": 201030
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-03.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 724599,
+		"after": 218986
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-04.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 559629,
+		"after": 154442
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-05.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 462259,
+		"after": 115956
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-06.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 540038,
+		"after": 146880
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-07.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 760443,
+		"after": 231032
+	},
+	{
+		"file": "creatures/archaeopteryx/fly-08.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 754136,
+		"after": 234150
+	},
+	{
+		"file": "creatures/azure-swift/fly-01.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 805442,
+		"after": 265450
+	},
+	{
+		"file": "creatures/azure-swift/fly-02.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 785107,
+		"after": 251176
+	},
+	{
+		"file": "creatures/azure-swift/fly-03.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 602024,
+		"after": 181558
+	},
+	{
+		"file": "creatures/azure-swift/fly-04.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 486762,
+		"after": 139652
+	},
+	{
+		"file": "creatures/azure-swift/fly-05.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 576996,
+		"after": 182466
+	},
+	{
+		"file": "creatures/azure-swift/fly-06.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 757978,
+		"after": 252630
+	},
+	{
+		"file": "creatures/azure-swift/fly-07.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 713147,
+		"after": 243366
+	},
+	{
+		"file": "creatures/azure-swift/fly-08.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 710737,
+		"after": 234906
+	},
+	{
+		"file": "creatures/azure-swift/fly-09.webp",
+		"width": 4093,
+		"height": 2894,
+		"before": 565622,
+		"after": 170550
+	},
+	{
+		"file": "customize/boost.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 2155856,
+		"after": 1561270
+	},
+	{
+		"file": "customize/dawn.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1245760,
+		"after": 917002
+	},
+	{
+		"file": "customize/day.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1228956,
+		"after": 918454
+	},
+	{
+		"file": "customize/dive.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1906194,
+		"after": 1319424
+	},
+	{
+		"file": "customize/eclipse.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1342359,
+		"after": 984354
+	},
+	{
+		"file": "customize/fog.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1299133,
+		"after": 956788
+	},
+	{
+		"file": "customize/glide.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1718963,
+		"after": 1287700
+	},
+	{
+		"file": "customize/night.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1177571,
+		"after": 875900
+	},
+	{
+		"file": "customize/rain.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1188527,
+		"after": 894254
+	},
+	{
+		"file": "customize/snow.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1293686,
+		"after": 957548
+	},
+	{
+		"file": "customize/storm.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1232172,
+		"after": 926870
+	},
+	{
+		"file": "customize/sunset.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 1128343,
+		"after": 830114
+	},
+	{
+		"file": "finishes/meadow-night.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2147552,
+		"after": 1567982
+	},
+	{
+		"file": "finishes/meadow.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2274409,
+		"after": 1761584
+	},
+	{
+		"file": "finishes/ridge-night.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2076263,
+		"after": 1540312
+	},
+	{
+		"file": "finishes/ridge.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2269307,
+		"after": 1747104
+	},
+	{
+		"file": "finishes/summit-night.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2294521,
+		"after": 1666980
+	},
+	{
+		"file": "finishes/summit.webp",
+		"width": 1672,
+		"height": 941,
+		"before": 2503133,
+		"after": 1885244
+	},
+	{
+		"file": "terrain/bark.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 3299112,
+		"after": 2285178
+	},
+	{
+		"file": "terrain/granite.webp",
+		"width": 1254,
+		"height": 1254,
+		"before": 3102766,
+		"after": 2097550
+	},
+	{
+		"file": "terrain/natural/rock-lower-rounded-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2797359,
+		"after": 1832204
+	},
+	{
+		"file": "terrain/natural/rock-lower-rounded.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 3011700,
+		"after": 1667364
+	},
+	{
+		"file": "terrain/natural/rock-lower-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2833353,
+		"after": 1940748
+	},
+	{
+		"file": "terrain/natural/rock-lower.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 3135318,
+		"after": 1907382
+	},
+	{
+		"file": "terrain/natural/rock-upper-rounded-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2475995,
+		"after": 1682218
+	},
+	{
+		"file": "terrain/natural/rock-upper-rounded.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2252884,
+		"after": 1083784
+	},
+	{
+		"file": "terrain/natural/rock-upper-sharp-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2194167,
+		"after": 1314226
+	},
+	{
+		"file": "terrain/natural/rock-upper-sharp.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2301553,
+		"after": 1104852
+	},
+	{
+		"file": "terrain/natural/rock-upper-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2631099,
+		"after": 1719034
+	},
+	{
+		"file": "terrain/natural/rock-upper.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2393067,
+		"after": 1313424
+	},
+	{
+		"file": "terrain/natural/tree-lower-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2903165,
+		"after": 1985426
+	},
+	{
+		"file": "terrain/natural/tree-lower.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2610826,
+		"after": 1415596
+	},
+	{
+		"file": "terrain/natural/tree-upper-snow.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 3128288,
+		"after": 2092762
+	},
+	{
+		"file": "terrain/natural/tree-upper.webp",
+		"width": 1024,
+		"height": 1536,
+		"before": 2850891,
+		"after": 1668664
+	}
+]

@@ -1,0 +1,30 @@
+{
+  "tool": "Built-in image_gen",
+  "assets": [
+    {
+      "name": "feather",
+      "prompt": "Use case: stylized-concept. Asset type: individual collectible sprite for Dragon Flight, a painted alpine fantasy flying game. Create exactly ONE isolated object on a genuinely transparent alpha background. Square canvas, object centered occupying 80% of canvas height, whole silhouette visible with clear padding. Polished hand-painted game illustration, crisp readable silhouette at 64px, rich natural textures, subtle luminous edges, light from upper left, dimensional shading, elegant rather than cartoonish. No text, no border, no floor or cast shadow, no scenery, no checkerboard baked into image, no surrounding particles or broad glow. Subject: A single graceful silver-white flight feather with subtle icy blue shadows, delicately separated barbs and ivory central quill, curved diagonally from lower left to upper right.",
+      "source": "C:\\Users\\user\\.codex\\generated_images\\01a089c0-7d9f-7a00-ba3f-9400e244b54d\\exec-bf700028-5435-4d2b-9d4e-1d7c03d10777.png"
+    },
+    {
+      "name": "golden-feather",
+      "prompt": "Use case: stylized-concept. Asset type: individual collectible sprite for Dragon Flight, a painted alpine fantasy flying game. Create exactly ONE isolated object on a genuinely transparent alpha background. Square canvas, object centered occupying 80% of canvas height, whole silhouette visible with clear padding. Polished hand-painted game illustration, crisp readable silhouette at 64px, rich natural textures, subtle luminous edges, light from upper left, dimensional shading, elegant rather than cartoonish. No text, no border, no floor or cast shadow, no scenery, no checkerboard baked into image, no surrounding particles or broad glow. Subject: A single graceful golden flight feather with warm amber shaded barbs, bright pale gold highlights and slender gold quill, curved diagonally from lower left to upper right. Precious radiant golden material while retaining natural feather detail.",
+      "source": "C:\\Users\\user\\.codex\\generated_images\\01a089c0-7d9f-7a00-ba3f-9400e244b54d\\exec-6205a622-fdb3-41ab-babc-6d7e0ba17308.png"
+    },
+    {
+      "name": "green-crystal",
+      "prompt": "Use case: stylized-concept. Asset type: individual collectible sprite for Dragon Flight, a painted alpine fantasy flying game. Create exactly ONE isolated object on a genuinely transparent alpha background. Square canvas, object centered occupying 80% of canvas height, whole silhouette visible with clear padding. Polished hand-painted game illustration, crisp readable silhouette at 64px, rich natural textures, subtle luminous edges, light from upper left, dimensional shading, elegant rather than cartoonish. No text, no border, no floor or cast shadow, no scenery, no checkerboard baked into image, no surrounding particles or broad glow. Subject: A single emerald-green crystal, upright tall sharp hexagonal quartz-like point with slightly irregular naturally fractured lower termination. Broad clean translucent facets, deep forest-green shaded face, mint-green lit edges, jewel-like interior. One crystal only, no cluster or rock base.",
+      "source": "C:\\Users\\user\\.codex\\generated_images\\01a089c0-7d9f-7a00-ba3f-9400e244b54d\\exec-fad8e858-806b-4083-b328-1cb2c31b0a25.png"
+    },
+    {
+      "name": "amber-crystal",
+      "prompt": "Use case: stylized-concept. Asset type: individual collectible sprite for Dragon Flight, a painted alpine fantasy flying game. Create exactly ONE isolated object on a genuinely transparent alpha background. Square canvas, object centered occupying 80% of canvas height, whole silhouette visible with clear padding. Polished hand-painted game illustration, crisp readable silhouette at 64px, rich natural textures, subtle luminous edges, light from upper left, dimensional shading, elegant rather than cartoonish. No text, no border, no floor or cast shadow, no scenery, no checkerboard baked into image, no surrounding particles or broad glow. Subject: A single amber-orange crystal, upright tall sharp hexagonal quartz-like point with slightly irregular naturally fractured lower termination. Broad clean translucent facets, deep burnt-orange shaded face, honey-gold lit edges, jewel-like interior. One crystal only, no cluster or rock base.",
+      "source": "C:\\Users\\user\\.codex\\generated_images\\01a089c0-7d9f-7a00-ba3f-9400e244b54d\\exec-c3349573-7ce7-48fc-ac75-84e1a665b2d2.png"
+    },
+    {
+      "name": "sky-crystal",
+      "prompt": "Use case: stylized-concept. Asset type: individual collectible sprite for Dragon Flight, a painted alpine fantasy flying game. Create exactly ONE isolated object on a genuinely transparent alpha background. Square canvas, object centered occupying 80% of canvas height, whole silhouette visible with clear padding. Polished hand-painted game illustration, crisp readable silhouette at 64px, rich natural textures, subtle luminous edges, light from upper left, dimensional shading, elegant rather than cartoonish. No text, no border, no floor or cast shadow, no scenery, no checkerboard baked into image, no surrounding particles or broad glow. Subject: A single sky-blue crystal, upright tall sharp hexagonal quartz-like point with slightly irregular naturally fractured lower termination. Broad clean translucent facets, deep azure shaded face, pale cyan lit edges, jewel-like interior. One crystal only, no cluster or rock base.",
+      "source": "C:\\Users\\user\\.codex\\generated_images\\01a089c0-7d9f-7a00-ba3f-9400e244b54d\\exec-9a2414e2-73f5-4f87-acc5-435b00624efa.png"
+    }
+  ]
+}

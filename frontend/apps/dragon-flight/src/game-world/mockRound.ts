@@ -10,7 +10,8 @@ import type {
 	PickupType,
 } from './types';
 import { createFlightStagePlan } from './stages';
-import { roundToTwoDecimals } from './utils/number';
+import { payoutForMultiplier, roundToTwoDecimals } from './utils/number';
+import { isBetInputValid } from './utils/bet';
 
 // This is deliberately local prototype behavior. Replace this module with an
 // authoritative game result later without moving selection or presentation code.
@@ -31,10 +32,11 @@ type RiskProfile = {
 	endings: Exclude<FlightEnding, 'crash'>[];
 };
 
-const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
+export const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	safe: {
 		gateCount: [2, 3],
-		passChance: 0.86,
+		// Calibrated against the full reward distribution; see tests/calibrateBaseMath.mjs.
+		passChance: 0.7854086290121938,
 		pickupChance: 0.3,
 		currentChance: 0.06,
 		encounterChance: 0.015,
@@ -49,7 +51,7 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	},
 	balanced: {
 		gateCount: [3, 5],
-		passChance: 0.72,
+		passChance: 0.6795107974442285,
 		pickupChance: 0.42,
 		currentChance: 0.2,
 		encounterChance: 0.1,
@@ -64,7 +66,7 @@ const RISK_PROFILES: Record<FlightRisk, RiskProfile> = {
 	},
 	danger: {
 		gateCount: [5, 7],
-		passChance: 0.56,
+		passChance: 0.5995773581787542,
 		pickupChance: 0.36,
 		currentChance: 0.34,
 		encounterChance: 0.2,
@@ -115,6 +117,10 @@ export const generateMockRound = (
 		launchStyle: LaunchStyle;
 	},
 ): FlightRound => {
+	if (!Number.isFinite(bet) || !isBetInputValid(String(bet)))
+		throw new RangeError('Invalid base bet');
+	if (!Number.isSafeInteger(roundId) || roundId < 1) throw new RangeError('Invalid round id');
+	if (!Object.hasOwn(RISK_PROFILES, risk)) throw new RangeError('Invalid risk');
 	const seed = hashSeed(risk, bet, roundId);
 	const random = createRandom(seed);
 	const profile = RISK_PROFILES[risk];
@@ -184,7 +190,7 @@ export const generateMockRound = (
 	}
 
 	const finalMultiplier = crashed ? 0 : currentMultiplier;
-	const finalWin = roundToTwoDecimals(bet * finalMultiplier);
+	const finalWin = payoutForMultiplier(bet, finalMultiplier);
 	events.push({ type: 'finalWin', multiplier: finalMultiplier, win: finalWin });
 	// Stage milestones are attached after the outcome and financial summary are final.
 	const stagePlan = createFlightStagePlan(events, ending);

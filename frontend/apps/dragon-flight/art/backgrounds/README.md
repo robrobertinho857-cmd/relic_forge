@@ -5,21 +5,21 @@ generation tool. The clear-day image is the composition reference for every
 variant. Artwork contains scenery only, with open space above the valley for
 the flying creatures.
 
-All images are PNG, 1672 x 941 pixels (approximately 16:9). Original generated
+All images are lossless WebP, 1672 x 941 pixels (approximately 16:9). Original generated
 files are preserved without resizing. The game uses these images in
 `src/game-world/components/Landscape.svelte`, selected by `backgrounds.ts`.
 
 | Background | File |
 | --- | --- |
-| Clear day | [clear-day.png](../../static/backgrounds/clear-day.png) |
-| Dawn | [dawn.png](../../static/backgrounds/dawn.png) |
-| Sunset | [sunset.png](../../static/backgrounds/sunset.png) |
-| Night | [night.png](../../static/backgrounds/night.png) |
-| Eclipse | [eclipse.png](../../static/backgrounds/eclipse.png) |
-| Rain | [rain.png](../../static/backgrounds/rain.png) |
-| Storm | [storm.png](../../static/backgrounds/storm.png) |
-| Fog | [fog.png](../../static/backgrounds/fog.png) |
-| Snow | [snow.png](../../static/backgrounds/snow.png) |
+| Clear day | [clear-day.webp](../../static/backgrounds/clear-day.webp) |
+| Dawn | [dawn.webp](../../static/backgrounds/dawn.webp) |
+| Sunset | [sunset.webp](../../static/backgrounds/sunset.webp) |
+| Night | [night.webp](../../static/backgrounds/night.webp) |
+| Eclipse | [eclipse.webp](../../static/backgrounds/eclipse.webp) |
+| Rain | [rain.webp](../../static/backgrounds/rain.webp) |
+| Storm | [storm.webp](../../static/backgrounds/storm.webp) |
+| Fog | [fog.webp](../../static/backgrounds/fog.webp) |
+| Snow | [snow.webp](../../static/backgrounds/snow.webp) |
 
 Clear day serves both the Day and Clear reference. Dawn, sunset, night and
 eclipse use calm weather; rain, storm, fog and snow use daylight. These are nine

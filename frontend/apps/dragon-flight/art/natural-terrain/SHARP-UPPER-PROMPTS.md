@@ -1,5 +1,7 @@
 # Sharp upper cliff
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Final assets generated using the built-in image generation tool and copied without raster edits to `static/terrain/natural/rock-upper-sharp.png` and `rock-upper-sharp-snow.png`. The snow variant references the final base sprite and uses its alpha silhouette at display time. The upper viewBox trims transparent padding below row 1426, maintaining the existing flight opening. Lower mountain and tree assets are unchanged.
 
 ## Base asset

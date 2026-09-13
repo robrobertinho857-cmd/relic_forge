@@ -83,7 +83,7 @@
 					<li>Choose Safe, Balanced or Danger.</li>
 					<li>Adjust weather, time and launch in Customize.</li>
 					<li>Press <strong>FLY</strong> and watch the flight.</li>
-					<li>See your result, then choose Try Again.</li>
+					<li>See your result, then choose Fly Again or Change Settings.</li>
 				</ol>
 				<p>
 					Collect feathers and crystals, ride air currents and pass natural obstacles. A flight ends
@@ -129,7 +129,7 @@
 				<div class="formula">Final win = bet × final multiplier</div>
 				<p class="note">
 					A crash ends at x0, including when you collected items earlier. Setup stays locked until
-					you choose Try Again.
+						you choose Change Settings.
 				</p>
 			</section>
 

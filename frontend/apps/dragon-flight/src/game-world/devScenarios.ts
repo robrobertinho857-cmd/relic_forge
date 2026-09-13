@@ -1,5 +1,5 @@
 import { createFlightStagePlan } from './stages';
-import { roundToTwoDecimals } from './utils/number';
+import { payoutForMultiplier } from './utils/number';
 import type {
 	CreatureId,
 	FlightEnding,
@@ -273,7 +273,7 @@ export function createDevFlightRound(
 	selections: DevRoundSelections,
 ): FlightRound {
 	const blueprint = createBlueprint(scenario, selections.risk);
-	const finalWin = roundToTwoDecimals(selections.bet * blueprint.finalMultiplier);
+	const finalWin = payoutForMultiplier(selections.bet, blueprint.finalMultiplier);
 	const events: FlightEvent[] = [
 		...blueprint.events,
 		{ type: 'finalWin', multiplier: blueprint.finalMultiplier, win: finalWin },

@@ -1,5 +1,7 @@
 # Terrain and finish image prompts
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Generated with the built-in image_gen tool on 2026-09-11. Original outputs remain in Codex generated_images; the selected PNGs are copied into the app.
 
 ## finishes/meadow.png

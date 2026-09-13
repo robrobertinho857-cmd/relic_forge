@@ -8,6 +8,7 @@
 
 <svg
 	class="terrain-art"
+	class:flipped={art.flipVertical}
 	viewBox={art.viewBox}
 	preserveAspectRatio="xMidYMid meet"
 	style={`aspect-ratio:${art.width} / ${art.cropHeight};`}
@@ -54,5 +55,8 @@
 		height: 100%;
 		transform: translateX(-50%);
 		overflow: hidden;
+	}
+	.terrain-art.flipped {
+		transform: translateX(-50%) scaleY(-1);
 	}
 </style>

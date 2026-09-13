@@ -101,7 +101,7 @@
 							<span class="option-content"
 								><span class="preview"
 									><img
-										src={`${base}/customize/${option.id}.png`}
+										src={`${base}/customize/${option.id}.webp`}
 										alt=""
 										loading="lazy"
 										decoding="async"
@@ -130,7 +130,7 @@
 							<span class="option-content"
 								><span class="preview"
 									><img
-										src={`${base}/customize/${option.id === 'clear' ? 'day' : option.id}.png`}
+										src={`${base}/customize/${option.id === 'clear' ? 'day' : option.id}.webp`}
 										alt=""
 										loading="lazy"
 										decoding="async"
@@ -161,7 +161,7 @@
 							<span class="option-content"
 								><span class="preview"
 									><img
-										src={`${base}/customize/${option.id}.png`}
+										src={`${base}/customize/${option.id}.webp`}
 										alt=""
 										loading="lazy"
 										decoding="async"

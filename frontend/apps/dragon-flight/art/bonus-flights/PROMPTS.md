@@ -1,5 +1,7 @@
 # Bonus flight artwork
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Generated with the built-in image generation tool. Original PNGs were copied without raster editing to `static/bonuses/`. No folder named `generated` is used in the app.
 
 ## storm-run.png

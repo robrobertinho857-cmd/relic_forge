@@ -1,5 +1,7 @@
 # Background generation prompts
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Generated with the built-in image generation tool. See README.md for the current game integration.
 
 ## Clear day

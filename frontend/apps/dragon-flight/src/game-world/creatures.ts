@@ -1,3 +1,4 @@
+import { base } from '$app/paths';
 import type { CreatureId, CreatureProfile } from './types';
 
 // Presentational creature profiles for the local prototype.
@@ -33,14 +34,14 @@ export function loadDecodedFlightFrames(
 
 const AZURE_SWIFT_FRAMES = Array.from(
 	{ length: 9 },
-	(_, index) => `/creatures/azure-swift/fly-${String(index + 1).padStart(2, '0')}.png`,
+	(_, index) => `${base}/creatures/azure-swift/fly-${String(index + 1).padStart(2, '0')}.webp`,
 );
 
 const AZURE_SWIFT_FRAME_ORDER = [1, 2, 3, 4, 5, 6, 7, 9, 2, 1] as const;
 
 const ARCHAEOPTERYX_FRAMES = Array.from(
 	{ length: 8 },
-	(_, index) => `/creatures/archaeopteryx/fly-${String(index + 1).padStart(2, '0')}.png`,
+	(_, index) => `${base}/creatures/archaeopteryx/fly-${String(index + 1).padStart(2, '0')}.webp`,
 );
 
 const ARCHAEOPTERYX_FRAME_ORDER = [8, 7, 6, 5, 4, 3, 2, 1, 7, 8] as const;

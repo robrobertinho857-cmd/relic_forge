@@ -1,5 +1,7 @@
 # Full mountain silhouettes
 
+> Runtime assets now use lossless `.webp` files with the same basenames. PNG references below record the original generation inputs and outputs.
+
 Four replacement rock assets generated with the built-in image generation tool. Saved without raster editing in `static/terrain/natural/` as `rock-upper-rounded.png`, `rock-lower-rounded.png`, and their `-snow` variants. Snow edits reference their corresponding base PNG and share that alpha mask at display time.
 
 ## rock-upper

@@ -6,7 +6,7 @@ export type TerrainSide = 'upper' | 'lower';
 // Display crops align the painted silhouette with the existing flight opening.
 // Snow uses the same base silhouette, so weather cannot move the obstacle edge.
 const CROPS = {
-	'rock-upper': { top: 0, bottom: 1427 },
+	'rock-upper': { top: 109, bottom: 1536 },
 	'rock-lower': { top: 109, bottom: 1536 },
 	'tree-upper': { top: 0, bottom: 1520 },
 	'tree-lower': { top: 0, bottom: 1536 },
@@ -29,11 +29,12 @@ export function getTerrainVisualWidth(
 export function getTerrainArtwork(material: TerrainMaterial, side: TerrainSide, snowy: boolean) {
 	const name = `${material}-${side}` as const;
 	const crop = CROPS[name];
-	const assetName =
-		material === 'rock' ? `${name}-${side === 'upper' ? 'sharp' : 'rounded'}` : name;
+	// Reuse the lower mountain for a matching, rounded upper overhang.
+	const assetName = material === 'rock' ? 'rock-lower-rounded' : name;
 	return {
-		src: `${base}/terrain/natural/${assetName}${snowy ? '-snow' : ''}.png`,
-		silhouette: `${base}/terrain/natural/${assetName}.png`,
+		flipVertical: material === 'rock' && side === 'upper',
+		src: `${base}/terrain/natural/${assetName}${snowy ? '-snow' : ''}.webp`,
+		silhouette: `${base}/terrain/natural/${assetName}.webp`,
 		width: 1024,
 		height: 1536,
 		cropHeight: crop.bottom - crop.top,

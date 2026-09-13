@@ -33,7 +33,7 @@
 			{#each BONUS_FLIGHTS as route (route.id)}
 				<label class:selected={selected === route.id}>
 					<input type="radio" name="bonus-flight" value={route.id} bind:group={selected} />
-					<img src={`${base}/bonuses/${route.id}.png`} alt="" />
+					<img src={`${base}/bonuses/${route.id}.webp`} alt="" />
 					<div class="caption">
 						<span>{route.gateCount} GATES · {route.costMultiplier}× BASE BET</span><strong
 							>{route.name}</strong

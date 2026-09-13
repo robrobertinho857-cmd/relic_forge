@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PickupType } from '../types';
 	import { PICKUP_LABELS } from '../presentation';
+	import { PICKUP_ARTWORK } from '../pickupArtwork';
 
 	type Props = {
 		pickupType: PickupType;
@@ -12,7 +13,14 @@
 </script>
 
 <div class={`collectible-event ${pickupType}`}>
-	<div class="pickup-object"><i></i></div>
+	<img
+		class="pickup-object"
+		src={PICKUP_ARTWORK[pickupType]}
+		alt=""
+		width="256"
+		height="256"
+		draggable="false"
+	/>
 	<div class="pickup-copy">
 		<strong>{PICKUP_LABELS[pickupType]}</strong>
 		<span>x{fromMultiplier.toFixed(2)} → x{toMultiplier.toFixed(2)}</span>
@@ -34,45 +42,12 @@
 	}
 	.pickup-object {
 		position: relative;
-		width: clamp(42px, 6vw, 68px);
-		aspect-ratio: 0.8;
-		background: linear-gradient(125deg, #f4ede0, currentColor 42%, #687e7a);
-		clip-path: polygon(50% 0, 94% 30%, 80% 78%, 42% 100%, 4% 68%, 12% 24%);
+		display: block;
+		width: clamp(64px, 8vw, 96px);
+		height: auto;
+		aspect-ratio: 1;
+		object-fit: contain;
 		filter: drop-shadow(0 4px 5px #15262966);
-	}
-	.pickup-object i {
-		position: absolute;
-		inset: 0 35% 0 25%;
-		background: #f8f5e344;
-		clip-path: polygon(60% 0, 100% 35%, 45% 100%, 0 30%);
-	}
-	.feather .pickup-object,
-	.goldenFeather .pickup-object {
-		aspect-ratio: 0.55;
-		border-radius: 85% 15% 65% 35%;
-		clip-path: polygon(
-			55% 0,
-			85% 8%,
-			100% 32%,
-			82% 52%,
-			92% 50%,
-			70% 72%,
-			74% 80%,
-			30% 96%,
-			18% 100%,
-			28% 80%,
-			0 54%,
-			12% 55%,
-			0 30%,
-			20% 10%
-		);
-		transform: rotate(25deg);
-	}
-	.feather .pickup-object i,
-	.goldenFeather .pickup-object i {
-		inset: 5% 47% 0;
-		clip-path: none;
-		background: #f7f4deaa;
 	}
 	.pickup-copy {
 		position: absolute;
