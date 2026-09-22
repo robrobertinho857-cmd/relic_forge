@@ -2,14 +2,19 @@
 	import FlightDialog from './FlightDialog.svelte';
 	import type { FlightRound } from '../types';
 	import { getBonusFlight } from '../bonusFlights';
-	import { formatLocalAmount } from '../utils/format';
+	import { formatLocalAmount as formatAmount } from '../utils/format';
+	function formatLocalAmount(value: number) {
+		return formatAmount(value, currency);
+	}
 	let {
+		currency = 'USD',
 		open,
 		rounds,
 		disabled,
 		onClose,
 		onReplay,
 	}: {
+		currency?: string;
 		open: boolean;
 		rounds: FlightRound[];
 		disabled: boolean;

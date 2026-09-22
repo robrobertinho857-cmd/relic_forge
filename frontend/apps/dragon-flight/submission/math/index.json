@@ -1,0 +1,34 @@
+{
+  "modes": [
+    {
+      "name": "safe",
+      "cost": 1.0,
+      "events": "books_safe.jsonl.zst",
+      "weights": "lookUpTable_safe_0.csv"
+    },
+    {
+      "name": "balanced",
+      "cost": 1.0,
+      "events": "books_balanced.jsonl.zst",
+      "weights": "lookUpTable_balanced_0.csv"
+    },
+    {
+      "name": "danger",
+      "cost": 1.0,
+      "events": "books_danger.jsonl.zst",
+      "weights": "lookUpTable_danger_0.csv"
+    },
+    {
+      "name": "storm-run",
+      "cost": 20,
+      "events": "books_storm-run.jsonl.zst",
+      "weights": "lookUpTable_storm-run_0.csv"
+    },
+    {
+      "name": "summit-expedition",
+      "cost": 50,
+      "events": "books_summit-expedition.jsonl.zst",
+      "weights": "lookUpTable_summit-expedition_0.csv"
+    }
+  ]
+}

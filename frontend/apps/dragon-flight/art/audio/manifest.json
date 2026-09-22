@@ -1,0 +1,250 @@
+[
+  {
+    "name": "air-current",
+    "duration": 1.48,
+    "bytes": 284238,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 24620
+  },
+  {
+    "name": "bonus-start",
+    "duration": 2.0,
+    "bytes": 384078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 33068
+  },
+  {
+    "name": "button-click",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "crash",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "crystal-pickup",
+    "duration": 2.0,
+    "bytes": 384078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 33068
+  },
+  {
+    "name": "eagle-flight",
+    "duration": 3.0,
+    "bytes": 576078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 48812
+  },
+  {
+    "name": "encounter-warning",
+    "duration": 0.88,
+    "bytes": 169038,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 15020
+  },
+  {
+    "name": "feather-pickup",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "gate-pass",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "golden-feather-pickup",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "landing",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "option-select",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "panel-open-close",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "perfect-pass",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "predator-pass",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "rain-loop",
+    "duration": 4.8,
+    "bytes": 921678,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 77612
+  },
+  {
+    "name": "raptor-call",
+    "duration": 0.88,
+    "bytes": 169038,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 15020
+  },
+  {
+    "name": "result-big-win",
+    "duration": 2.4,
+    "bytes": 460878,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 39212
+  },
+  {
+    "name": "result-loss",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "result-outstanding",
+    "duration": 4.8,
+    "bytes": 921678,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 77612
+  },
+  {
+    "name": "result-return",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "result-win",
+    "duration": 1.48,
+    "bytes": 284238,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 24620
+  },
+  {
+    "name": "ridge-dragon-call",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "snow-loop",
+    "duration": 4.8,
+    "bytes": 921678,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 77612
+  },
+  {
+    "name": "storm-loop",
+    "duration": 4.8,
+    "bytes": 921678,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 77612
+  },
+  {
+    "name": "takeoff-boost",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "takeoff-dive",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "takeoff-glide",
+    "duration": 1.0,
+    "bytes": 192078,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 16940
+  },
+  {
+    "name": "thunder",
+    "duration": 4.8,
+    "bytes": 921678,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 77612
+  },
+  {
+    "name": "unavailable",
+    "duration": 0.6,
+    "bytes": 115278,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 10412
+  },
+  {
+    "name": "wind",
+    "duration": 0.48,
+    "bytes": 92238,
+    "sample_rate": "48000",
+    "channels": 2,
+    "runtimeBytes": 8492
+  }
+]

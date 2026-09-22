@@ -4,6 +4,8 @@ const amountFormat = new Intl.NumberFormat('en-US', {
 	useGrouping: false,
 });
 
-export function formatLocalAmount(value: number) {
-	return `$${amountFormat.format(value)}`;
+export function formatLocalAmount(value: number, currency = 'USD') {
+	return currency === 'USD'
+		? '$' + amountFormat.format(value)
+		: `${amountFormat.format(value)} ${currency}`;
 }

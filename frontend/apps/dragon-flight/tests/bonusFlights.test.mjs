@@ -4,7 +4,7 @@ import { loadTypescript } from './typescript.mjs';
 const { BONUS_FLIGHTS, BONUS_TICKETS, bonusEntryCost, createBonusRound, drawBonusTicket } =
 	await loadTypescript(new URL('../src/game-world/bonusFlights.ts', import.meta.url));
 
-const appearance = { creature: 'dragon', launchStyle: 'glide' };
+const appearance = { creature: 'archaeopteryx', launchStyle: 'glide' };
 for (const feature of BONUS_FLIGHTS) {
 	test(`${feature.name}: exhaust all 10,000 tickets, accounting and terminal events`, () => {
 		assert.equal(
@@ -53,7 +53,7 @@ for (const feature of BONUS_FLIGHTS) {
 			for (const ticket of [0, 3999, 4999, 7000, 9990, 9999]) {
 				const a = createBonusRound(feature.id, bet, 1, ticket, appearance);
 				const b = createBonusRound(feature.id, bet, 99, ticket, {
-					creature: 'archaeopteryx',
+					creature: 'azure-swift',
 					launchStyle: 'dive',
 				});
 				assert.equal(a.finalWin, b.finalWin);

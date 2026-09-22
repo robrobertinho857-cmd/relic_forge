@@ -1,16 +1,23 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import FlightDialog from './FlightDialog.svelte';
-	import { BONUS_FLIGHTS, BONUS_TICKETS, bonusEntryCost, getBonusFlight } from '../bonusFlights';
-	import { formatLocalAmount } from '../utils/format';
+	import { BONUS_FLIGHTS, BONUS_TICKETS, getBonusFlight } from '../bonusFlights';
+	import { formatLocalAmount as formatAmount } from '../utils/format';
 	import type { BonusFlightId } from '../types';
+	function formatLocalAmount(value: number) {
+		return formatAmount(value, currency);
+	}
 	let {
+		currency = 'USD',
+		live = false,
 		open,
 		bet,
 		disabled,
 		onClose,
 		onBuy,
 	}: {
+		currency?: string;
+		live?: boolean;
 		open: boolean;
 		bet: number;
 		disabled: boolean;
@@ -19,7 +26,7 @@
 	} = $props();
 	let selected = $state<BonusFlightId>('storm-run');
 	const feature = $derived(getBonusFlight(selected));
-	const cost = $derived(bonusEntryCost(bet, selected));
+	const cost = $derived(bet * feature.costMultiplier);
 </script>
 
 <FlightDialog {open} title="Bonus Flights" {onClose}>
@@ -33,11 +40,11 @@
 			{#each BONUS_FLIGHTS as route (route.id)}
 				<label class:selected={selected === route.id}>
 					<input type="radio" name="bonus-flight" value={route.id} bind:group={selected} />
-					<img src={`${base}/bonuses/${route.id}.webp`} alt="" />
+					<img src={`${base || '.'}/bonuses/${route.id}.webp`} alt="" />
 					<div class="caption">
 						<span>{route.gateCount} GATES · {route.costMultiplier}× BASE BET</span><strong
 							>{route.name}</strong
-						><b>{formatLocalAmount(bonusEntryCost(bet, route.id))} entry</b>
+						><b>{formatLocalAmount(bet * route.costMultiplier)} entry</b>
 					</div>
 				</label>
 			{/each}
@@ -67,18 +74,20 @@
 			>
 		</table>
 		<p>
-			Local demo table: 96% theoretical return on entry cost over many flights. This does not
-			predict an individual result.
+			96% theoretical return on entry cost over many flights. This does not predict an individual
+			result.
 		</p>
 	</details>
 	<div class="purchase">
 		<div><span>Total entry</span><strong>{formatLocalAmount(cost)}</strong></div>
 		<button type="button" {disabled} onclick={() => onBuy(selected)}
-			>Buy demo flight · {formatLocalAmount(cost)}</button
+			>Buy flight · {formatLocalAmount(cost)}</button
 		>
 	</div>
 	<p class="demo-note">
-		Local demo · No wallet or real-money purchase. Route weather is fixed; your appearance settings
+		{live
+			? 'The full entry cost is charged when you buy.'
+			: 'Local demo - No wallet or real-money purchase.'} Route weather is fixed; your appearance settings
 		are kept for normal flights.
 	</p>
 </FlightDialog>

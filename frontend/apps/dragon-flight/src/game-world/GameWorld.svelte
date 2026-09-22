@@ -1,5 +1,109 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
+	import { StakeSession, initialWallet, decodeStakeRound, loadStakeReplay } from './stake';
+	let wallet = $state(initialWallet());
+	let sessionSeconds = $state(0);
+	let sessionNet = $state(0);
+	const settledRounds = new SvelteSet<number>();
+	let stakeSession: StakeSession;
+	let replayMode = $state(false);
+	let sharedReplay = $state<FlightRound>();
+	function formatLocalAmount(value: number) {
+		return formatAmount(value, wallet.live ? wallet.currency : 'USD');
+	}
+	async function connectStake() {
+		flightError = '';
+		if (new URLSearchParams(window.location.search).get('replay') === 'true') {
+			replayMode = true;
+			wallet = { ...wallet, busy: true };
+			try {
+				const loaded = await loadStakeReplay(window.location.search);
+				sharedReplay = loaded.round;
+				wallet = { ...wallet, live: true, ready: true, currency: loaded.currency, error: '' };
+			} catch (error) {
+				wallet = {
+					...wallet,
+					ready: false,
+					error: error instanceof Error ? error.message : 'Replay failed',
+				};
+			}
+			wallet = { ...wallet, busy: false };
+			return;
+		}
+		const recovered = await stakeSession.connect(window.location.search, import.meta.env.DEV);
+		if (!wallet.ready) return;
+		if (wallet.live) {
+			selectedBet = wallet.levels.includes(1000000) ? 1 : wallet.levels[0] / 1e6;
+			betInput = String(selectedBet);
+			if (wallet.turboDisabled) playbackSpeed = 1;
+		}
+		if (recovered) {
+			try {
+				const round = decodeStakeRound(recovered, {
+					creature: selectedCreatureId,
+					launchStyle: selectedLaunchStyle,
+				});
+				resetPresentation();
+				beginFlight(round);
+			} catch {
+				stakeSession.block();
+			}
+		} else if (currentRound && !isReplay && status !== 'ready' && status !== 'complete') {
+			await presentFinalResult(currentRound, presentationToken);
+		}
+	}
+	async function startStakeFlight(bonusId?: BonusFlightId) {
+		try {
+			const response = await stakeSession.play(
+				bonusId ?? selectedRisk,
+				Math.round(selectedBet * 1e6),
+			);
+			let round: FlightRound;
+			try {
+				round = decodeStakeRound(response, {
+					creature: selectedCreatureId,
+					launchStyle: selectedLaunchStyle,
+				});
+			} catch {
+				stakeSession.block();
+				return;
+			}
+			if (!bonusId) {
+				round.weather = selectedWeather;
+				round.timeOfDay = selectedTimeOfDay;
+			}
+			bonusOpen = false;
+			beginFlight(round);
+		} catch (error) {
+			flightError = error instanceof Error ? error.message : 'Could not start flight';
+		}
+	}
+	import { FlightAudio, resultSound } from './audio';
+	const flightAudio = new FlightAudio();
+	let soundMuted = $state(false);
+	let previousPanels = '';
+
+	function toggleSound() {
+		soundMuted = !soundMuted;
+		flightAudio.setMuted(soundMuted);
+		if (!soundMuted) flightAudio.unlock();
+		try {
+			localStorage.setItem('dragon-flight-muted', String(soundMuted));
+		} catch {
+			/* Optional preference. */
+		}
+	}
+	$effect(() => {
+		flightAudio.setWeather(activeWeather);
+	});
+	$effect(() => {
+		const panels = [customizeOpen, helpOpen, bonusOpen, historyOpen, creaturePickerOpen].join(',');
+		if (previousPanels && panels !== previousPanels)
+			void flightAudio.play('panel-open-close', 0.22, 'ui');
+		previousPanels = panels;
+	});
+	import { ENCOUNTER_ARTWORK } from './encounterArtwork';
 	import { PICKUP_ARTWORK } from './pickupArtwork';
 	// Standalone local Dragon Flight prototype.
 	import {
@@ -30,7 +134,7 @@
 	import { getTimeOfDay } from './timeOfDay';
 	import { getFinishBackground, LANDING_ANCHOR } from './backgrounds';
 	import { clampBet, isBetInputValid, roundBet, sanitizeBetInput } from './utils/bet';
-	import { formatLocalAmount } from './utils/format';
+	import { formatLocalAmount as formatAmount } from './utils/format';
 	import Atmosphere from './components/Atmosphere.svelte';
 	import Landscape from './components/Landscape.svelte';
 	import DangerEncounter from './components/DangerEncounter.svelte';
@@ -75,7 +179,7 @@
 	let selectedBet = $state(1);
 	let betInput = $state('1.00');
 	let selectedRisk = $state<FlightRisk>('balanced');
-	let selectedCreatureId = $state<CreatureId>('dragon');
+	let selectedCreatureId = $state<CreatureId>('archaeopteryx');
 	let selectedLaunchStyle = $state<LaunchStyle>('glide');
 	let selectedWeather = $state<WeatherCondition>('clear');
 	let selectedTimeOfDay = $state<TimeOfDay>('day');
@@ -135,9 +239,13 @@
 	let cancelValueAnimation: (() => void) | undefined;
 	let pendingDelays: Array<() => void> = [];
 
-	const controlsLocked = $derived(status !== 'ready');
+	const controlsLocked = $derived(
+		replayMode || status !== 'ready' || wallet.busy || !wallet.ready || wallet.active,
+	);
 	const landed = $derived(Boolean(activeEnding) && landingProgress === 1);
-	const betInputIsValid = $derived(isBetInputValid(betInput));
+	const betInputIsValid = $derived(
+		wallet.live ? wallet.levels.includes(Math.round(selectedBet * 1e6)) : isBetInputValid(betInput),
+	);
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
 	const selectedPathNote = $derived(PATHS.find((path) => path.risk === selectedRisk)?.note ?? '');
@@ -216,6 +324,7 @@
 	}
 
 	function normalizeBetInput() {
+		if (!betInputIsValid) void flightAudio.play('unavailable', 0.3, 'ui');
 		const numericValue = Number(betInput);
 		selectedBet = Number.isFinite(numericValue) ? clampBet(numericValue) : selectedBet;
 		betInput = selectedBet.toFixed(2);
@@ -313,6 +422,7 @@
 	}
 
 	function showCombo(count: number) {
+		void flightAudio.play('perfect-pass', 0.2);
 		comboFeedback = { id: ++comboSequence, count };
 		if (comboTimer) clearTimeout(comboTimer);
 		comboTimer = setTimeout(() => {
@@ -323,6 +433,7 @@
 	}
 
 	function cancelPresentation() {
+		flightAudio.stopEffects();
 		presentationToken += 1;
 		const resolveGate = gateResolver;
 		gateResolver = undefined;
@@ -377,6 +488,7 @@
 	}
 
 	function triggerFlap() {
+		void flightAudio.play('eagle-flight', 0.12, 'wings');
 		flapActive = false;
 		if (flapFrame) cancelAnimationFrame(flapFrame);
 		flapFrame = requestAnimationFrame(() => {
@@ -491,6 +603,15 @@
 		triggerFlap();
 		await delay(300);
 		if (token !== presentationToken) return;
+		void flightAudio.play(
+			event.pickupType === 'feather'
+				? 'feather-pickup'
+				: event.pickupType === 'goldenFeather'
+					? 'golden-feather-pickup'
+					: 'crystal-pickup',
+			0.4,
+			'pickup',
+		);
 		await animateCurrentMultiplier(event.multiplier, 340, token);
 		if (token !== presentationToken) return;
 		emitParticles(event.pickupType === 'skyCrystal' ? 28 : 18);
@@ -499,6 +620,7 @@
 	}
 
 	async function presentCurrent(event: Extract<FlightEvent, { type: 'current' }>, token: number) {
+		void flightAudio.play('air-current', 0.3);
 		const currentLabel = CURRENT_LABELS[event.currentType];
 		if (event.currentType === 'crosswind' || event.currentType === 'valleyCurrent') {
 			const warningShown = await showWarning(
@@ -545,9 +667,15 @@
 		token: number,
 	) {
 		const encounterLabel = ENCOUNTER_LABELS[event.encounterType];
+		void flightAudio.play('encounter-warning', 0.3);
 		const warningShown = await showWarning(encounterLabel, 'danger', token, 430);
 		if (!warningShown) return;
 		eventLabel = encounterLabel;
+		void flightAudio.play(
+			event.encounterType === 'ridgeDragon' ? 'ridge-dragon-call' : 'raptor-call',
+			0.3,
+			'predator',
+		);
 		eventCallout = 'DANGER AHEAD';
 		activeEncounter = { encounterType: event.encounterType, result: event.result, phase: 'enter' };
 		flightTargetY = bounds.floorY * 0.38;
@@ -567,9 +695,11 @@
 		if (token !== presentationToken) return;
 		if (event.result === 'pass') {
 			eventCallout = 'PREDATOR AVOIDED';
+			void flightAudio.play('predator-pass', 0.3, 'predator');
 			emitParticles(30, true);
 		} else {
 			eventCallout = 'PREDATOR STRIKE';
+			void flightAudio.play('crash', 0.4);
 			status = 'collided';
 			player = { ...player, velocity: { x: 0, y: 0 } };
 			emitParticles(38, true);
@@ -618,6 +748,8 @@
 			hiddenValley: 34,
 			summitLanding: 42,
 		}[event.ending];
+		flightAudio.stop('wings');
+		void flightAudio.play('landing', 0.4);
 		emitParticles(endingIntensity);
 		await delay(300 + endingIntensity * 10);
 	}
@@ -629,6 +761,24 @@
 	}
 
 	async function presentFinalResult(round: FlightRound, token: number) {
+		if (wallet.live && !isReplay) {
+			try {
+				await stakeSession.settle();
+			} catch {
+				return;
+			}
+			if (token !== presentationToken) return;
+			if (!settledRounds.has(round.id)) {
+				settledRounds.add(round.id);
+				sessionNet += round.finalWin - (round.entryCost ?? round.bet);
+			}
+		}
+		flightAudio.stop('wings');
+		void flightAudio.play(
+			resultSound(round.finalWin, round.entryCost ?? round.bet),
+			0.35,
+			'result',
+		);
 		status = 'complete';
 		if (!isReplay && !flightHistory.some((item) => item.id === round.id)) {
 			flightHistory = [round, ...flightHistory].slice(0, 20);
@@ -668,6 +818,7 @@
 
 			switch (event.type) {
 				case 'launch':
+					void flightAudio.play(`takeoff-${round.launchStyle}`, 0.35, 'takeoff');
 					eventLabel = 'LAUNCH';
 					eventCallout = `${round.launchStyle.toUpperCase()} LAUNCH`;
 					status = 'flying';
@@ -692,11 +843,14 @@
 					await presentGate(event);
 					if (token !== presentationToken) return;
 					if (event.result === 'pass') {
+						void flightAudio.play('gate-pass', 0.3);
 						comboCount += 1;
 						showCombo(comboCount);
 					} else {
 						comboCount = 0;
 						eventCallout = 'CRASH';
+						flightAudio.stop('wings');
+						void flightAudio.play('crash', 0.4);
 					}
 					if (event.result === 'crash') await delay(420);
 					break;
@@ -722,8 +876,15 @@
 	}
 
 	function startFlight(bonusId?: BonusFlightId) {
-		if (controlsLocked || !betInputIsValid) return;
+		if (controlsLocked || !betInputIsValid) {
+			void flightAudio.play('unavailable', 0.25, 'ui');
+			return;
+		}
 		flightError = '';
+		if (wallet.live) {
+			void startStakeFlight(bonusId);
+			return;
+		}
 		roundSequence += 1;
 		const options = {
 			creature: selectedCreatureId,
@@ -742,11 +903,14 @@
 		} catch {
 			bonusOpen = false;
 			flightError = 'Could not start this demo flight. Please try again.';
+			void flightAudio.play('unavailable', 0.3, 'ui');
 		}
 	}
 
 	function beginFlight(round: FlightRound, replay = false) {
 		if (status !== 'ready') return;
+		flightAudio.stopEffects();
+		if (round.bonusFlight) void flightAudio.play('bonus-start', 0.3);
 		isReplay = replay;
 		if (round.ending !== 'crash') {
 			const finishImage = new Image();
@@ -790,7 +954,12 @@
 	}
 
 	function flyAgain() {
-		if (status !== 'complete' || !currentRound) return;
+		if (replayMode) {
+			if (sharedReplay && status === 'complete') replayFlight(sharedReplay);
+			return;
+		}
+		if (status !== 'complete' || !currentRound || wallet.busy || !wallet.ready || wallet.active)
+			return;
 		const previous = currentRound;
 		resetPresentation();
 		selectedBet = previous.bet;
@@ -806,7 +975,13 @@
 	}
 
 	function replayFlight(round: FlightRound) {
-		if (status !== 'ready' && status !== 'complete') return;
+		if (
+			(status !== 'ready' && status !== 'complete') ||
+			wallet.busy ||
+			!wallet.ready ||
+			wallet.active
+		)
+			return;
 		historyOpen = false;
 		resetPresentation();
 		beginFlight(round, true);
@@ -881,6 +1056,42 @@
 	}
 
 	onMount(() => {
+		stakeSession = new StakeSession((state) => {
+			wallet = state;
+		});
+		void connectStake();
+		try {
+			soundMuted = localStorage.getItem('dragon-flight-muted') === 'true';
+		} catch {
+			/* Optional preference. */
+		}
+		flightAudio.setMuted(soundMuted);
+		flightAudio.setHidden(document.hidden);
+		const visibility = () => flightAudio.setHidden(document.hidden);
+		const unlock = () => flightAudio.unlock();
+		const click = (event: MouseEvent) => {
+			const target = event.target instanceof Element ? event.target : undefined;
+			const button = target?.closest('button');
+			if (!button || button.disabled || button.hasAttribute('data-audio-toggle')) return;
+			if (!button.closest('.prototype-shell, dialog')) return;
+			void flightAudio.play(
+				button.hasAttribute('aria-pressed') ? 'option-select' : 'button-click',
+				0.18,
+				'ui',
+			);
+		};
+		const change = (event: Event) => {
+			if (
+				event.target instanceof HTMLSelectElement ||
+				(event.target instanceof HTMLInputElement && event.target.type === 'radio')
+			)
+				void flightAudio.play('option-select', 0.22, 'ui');
+		};
+		document.addEventListener('pointerdown', unlock, true);
+		document.addEventListener('keydown', unlock, true);
+		document.addEventListener('click', click, true);
+		document.addEventListener('change', change);
+		document.addEventListener('visibilitychange', visibility);
 		let disposed = false;
 		for (const creature of CREATURES) {
 			if (!creature.flightAnimation) continue;
@@ -896,8 +1107,10 @@
 		resizeWorld();
 		let animationFrame = 0;
 		let lastTime = performance.now();
+		const sessionStart = Date.now();
 
 		const update = (now: number) => {
+			sessionSeconds = Math.floor((Date.now() - sessionStart) / 1000);
 			const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
 			lastTime = now;
 			const moving = status === 'flying' || status === 'ending' || status === 'collided';
@@ -928,6 +1141,12 @@
 
 		animationFrame = requestAnimationFrame(update);
 		return () => {
+			document.removeEventListener('pointerdown', unlock, true);
+			document.removeEventListener('keydown', unlock, true);
+			document.removeEventListener('click', click, true);
+			document.removeEventListener('change', change);
+			document.removeEventListener('visibilitychange', visibility);
+			flightAudio.dispose();
 			disposed = true;
 			loadedCreatureFrames = {};
 			cancelPresentation();
@@ -939,7 +1158,7 @@
 
 <svelte:head>
 	<title>Dragon Flight - Local Round Prototype</title>
-	{#each Object.values(PICKUP_ARTWORK) as src (src)}
+	{#each [...Object.values(PICKUP_ARTWORK), ...Object.values(ENCOUNTER_ARTWORK)] as src (src)}
 		<link rel="preload" as="image" href={src} type="image/webp" />
 	{/each}
 </svelte:head>
@@ -952,12 +1171,20 @@
 			role="group"
 			aria-label="Flight options"
 		>
+			<button
+				type="button"
+				class="header-button"
+				data-audio-toggle
+				aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
+				aria-pressed={!soundMuted}
+				onclick={toggleSound}>SOUND {soundMuted ? 'OFF' : 'ON'}</button
+			>
 			<label class="playback-control" title="Animation speed only. Odds and payouts stay the same.">
 				<span>Speed</span>
 				<select
 					aria-label="Flight playback speed"
 					bind:value={playbackSpeed}
-					disabled={controlsLocked}
+					disabled={controlsLocked || wallet.turboDisabled}
 				>
 					<option value={1}>1×</option>
 					<option value={1.5}>1.5×</option>
@@ -987,7 +1214,7 @@
 			</button>
 			<button
 				class="bonus-button"
-				disabled={controlsLocked || !betInputIsValid}
+				disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
 				onclick={() => (bonusOpen = true)}>BONUS FLIGHTS <span>2 routes</span></button
 			>
 			<button
@@ -1013,6 +1240,9 @@
 				{parallaxOffset}
 			/>
 			<Atmosphere
+				onThunder={() => {
+					void flightAudio.play('thunder', 0.18, 'thunder');
+				}}
 				finishScene={Boolean(activeEnding)}
 				weather={activeWeather}
 				timeOfDay={activeTimeOfDay}
@@ -1183,6 +1413,13 @@
 							height="600"
 							aria-hidden="true"
 						></canvas>
+					{:else if activeCreature.assets?.flight}
+						<img
+							class="creature-frame"
+							src={activeCreature.assets.flight}
+							alt=""
+							draggable="false"
+						/>
 					{:else}
 						<span class="wing wing-top"></span><span class="dragon-body"></span><span
 							class="dragon-head"><i></i></span
@@ -1236,13 +1473,16 @@
 					<div><span>LAUNCH</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
 					<div><span>WEATHER</span><b>{activeWeatherConfig.name}</b></div>
 					<div><span>TIME</span><b>{activeTimeConfig.name}</b></div>
-					<small>DEMO RESULT · NO REAL MONEY</small>
+					<small>{wallet.live ? 'SERVER RESULT' : 'DEMO RESULT - NO REAL MONEY'}</small>
 					<button onclick={flyAgain}
-						>{currentRound.bonusFlight ? 'BUY AGAIN' : 'FLY AGAIN'} · {formatLocalAmount(
+						>{replayMode ? 'PLAY AGAIN' : currentRound.bonusFlight ? 'BUY AGAIN' : 'FLY AGAIN'} · {formatLocalAmount(
 							currentRound.entryCost ?? currentRound.bet,
 						)}</button
 					>
-					<button onclick={resetPresentation}>CHANGE SETTINGS</button>
+					<button
+						disabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
+						onclick={resetPresentation}>CHANGE SETTINGS</button
+					>
 				</div>
 			{/if}
 		</div>
@@ -1262,32 +1502,40 @@
 
 			<div class="bet-control">
 				<span class="dock-label">BET</span>
-				<div class="bet-stepper">
-					<button
-						aria-label="Decrease bet"
-						disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET}
-						onclick={() => moveBet(-1)}>−</button
-					>
-					<input
-						aria-label="Prototype bet amount"
-						aria-invalid={!betInputIsValid}
-						class="bet-input"
-						disabled={controlsLocked}
-						inputmode="decimal"
-						min={MIN_PROTOTYPE_BET}
-						max={MAX_PROTOTYPE_BET}
-						step="0.01"
-						type="number"
-						value={betInput}
-						oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
-						onblur={normalizeBetInput}
-					/>
-					<button
-						aria-label="Increase bet"
-						disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET}
-						onclick={() => moveBet(1)}>+</button
-					>
-				</div>
+				{#if wallet.live}
+					<select aria-label="Bet amount" disabled={controlsLocked} bind:value={selectedBet}>
+						{#each wallet.levels as amount (amount)}<option value={amount / 1e6}
+								>{formatLocalAmount(amount / 1e6)}</option
+							>{/each}
+					</select>
+				{:else}
+					<div class="bet-stepper">
+						<button
+							aria-label="Decrease bet"
+							disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET}
+							onclick={() => moveBet(-1)}>−</button
+						>
+						<input
+							aria-label="Prototype bet amount"
+							aria-invalid={!betInputIsValid}
+							class="bet-input"
+							disabled={controlsLocked}
+							inputmode="decimal"
+							min={MIN_PROTOTYPE_BET}
+							max={MAX_PROTOTYPE_BET}
+							step="0.01"
+							type="number"
+							value={betInput}
+							oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
+							onblur={normalizeBetInput}
+						/>
+						<button
+							aria-label="Increase bet"
+							disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET}
+							onclick={() => moveBet(1)}>+</button
+						>
+					</div>
+				{/if}
 			</div>
 
 			<div class="risk-control">
@@ -1306,32 +1554,51 @@
 				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
 			</div>
 
-			<button
-				class="fly-button"
-				disabled={controlsLocked || !betInputIsValid}
-				onclick={() => startFlight()}
-				>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button
-			>
+			{#if replayMode}
+				<button
+					class="fly-button"
+					disabled={!sharedReplay || (status !== 'ready' && status !== 'complete')}
+					onclick={() => sharedReplay && replayFlight(sharedReplay)}
+					>{status === 'complete' ? 'PLAY AGAIN' : 'PLAY REPLAY'}</button
+				>
+			{:else}
+				<button
+					class="fly-button"
+					disabled={controlsLocked || !betInputIsValid}
+					onclick={() => startFlight()}
+					>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button
+				>
+			{/if}
 		</section>
 	</section>
 
+	{#if wallet.busy}<p role="status">Contacting wallet...</p>{/if}
+	{#if wallet.error}<p role="alert">{wallet.error}</p>
+		<button disabled={wallet.busy} onclick={connectStake}>Reconnect</button>{/if}
 	{#if flightError}<p role="alert">{flightError}</p>{/if}
 	<footer>
 		<span>Explore the peaks. Find your next landing.</span><span
-			>Local demo · No real-money bets.</span
+			>{replayMode
+				? 'Replay - no bet is placed'
+				: wallet.live
+					? `Balance ${formatLocalAmount(wallet.amount / 1e6)} | Net ${formatLocalAmount(sessionNet)} | Session ${Math.floor(sessionSeconds / 60)}m ${sessionSeconds % 60}s`
+					: 'Local demo - No real-money bets.'}</span
 		>
 	</footer>
 </main>
 
-<HelpDialog open={helpOpen} onClose={() => (helpOpen = false)} />
+<HelpDialog live={wallet.live} open={helpOpen} onClose={() => (helpOpen = false)} />
 <BonusFlightsDialog
+	live={wallet.live}
+	currency={wallet.currency}
 	open={bonusOpen}
 	bet={selectedBet}
-	disabled={controlsLocked || !betInputIsValid}
+	disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
 	onClose={() => (bonusOpen = false)}
 	onBuy={startFlight}
 />
 <FlightHistory
+	currency={wallet.currency}
 	open={historyOpen}
 	rounds={flightHistory}
 	disabled={status !== 'ready' && status !== 'complete'}
@@ -1574,50 +1841,6 @@
 		border-top: 2px solid #7a927b;
 		background: repeating-linear-gradient(165deg, #293e36 0 22px, #31473e 23px 43px);
 		background-position-x: var(--floor-scroll);
-	}
-	.firebird .dragon-body {
-		border-color: #ffd167;
-		background: radial-gradient(circle at 65% 28%, #fff09a, #f47e23 40%, #7a160d 76%);
-		box-shadow: 0 4px 10px #28373155;
-	}
-	.firebird .dragon-head {
-		border-color: #ffe078;
-		background: #e65d20;
-	}
-	.firebird .wing {
-		border-color: #ffc34f;
-		background: linear-gradient(145deg, #7e190c, #ffad2e 50%, #e93018);
-	}
-	.firebird .tail {
-		width: 39%;
-		border-top: 6px double #ff8d24;
-		box-shadow: none;
-	}
-	.firebird .creature-detail {
-		right: 8%;
-		top: 4%;
-		border-left: 6px solid transparent;
-		border-right: 2px solid transparent;
-		border-bottom: 18px solid #ffd660;
-		transform: rotate(24deg);
-	}
-	.wyvern .dragon-body {
-		border-color: #a7d7d2;
-		background: radial-gradient(circle, #74e0c4, #2b766e 44%, #15343b 76%);
-	}
-	.wyvern .dragon-head {
-		border-color: #a8d8cf;
-		background: #397d75;
-	}
-	.wyvern .wing {
-		left: 16%;
-		width: 49%;
-		border-color: #76bdb1;
-		background: linear-gradient(145deg, #17343a, #5aa99b 52%, #12262d);
-	}
-	.wyvern .tail {
-		width: 38%;
-		border-color: #7abcb2;
 	}
 	.start-hint {
 		position: absolute;

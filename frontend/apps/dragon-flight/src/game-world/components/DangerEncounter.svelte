@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { EncounterType } from '../types';
+	import { ENCOUNTER_ARTWORK } from '../encounterArtwork';
 	import { ENCOUNTER_LABELS } from '../presentation';
 
 	type Props = {
@@ -12,15 +13,7 @@
 </script>
 
 <div class={`encounter-event ${encounterType} ${phase} ${result}`}>
-	<svg class="encounter-silhouette" viewBox="0 0 400 260" aria-hidden="true">
-		<path
-			class="wings"
-			d="m185 130-44-54L0 20l58 105 91 31 37 17 22-8 42-3 70 32 80-50-132-29-56 15Z"
-		/>
-		<path class="body" d="m90 151 89-26 54 8 21-28 35-9 28 18-39 6-23 32-45 17-84-8-62 16Z" />
-		<path class="tail" d="m173 143-47 22-57 28 27-32-43 9 42-27Z" />
-		<circle cx="281" cy="106" r="3" fill="#e0d5a4" />
-	</svg>
+	<img class="encounter-artwork" src={ENCOUNTER_ARTWORK[encounterType]} alt="" draggable="false" />
 	<div class="encounter-label">
 		<strong>{ENCOUNTER_LABELS[encounterType]}</strong><span
 			>{phase === 'resolve' ? result.toUpperCase() : 'ENCOUNTER'}</span
@@ -37,34 +30,17 @@
 		color: #aaae9a;
 		pointer-events: none;
 	}
-	.encounter-silhouette {
+	.encounter-artwork {
 		position: absolute;
 		right: -2%;
 		top: 18%;
 		width: clamp(190px, 38%, 410px);
 		height: 55%;
+		object-fit: contain;
 		opacity: 0.96;
 		filter: drop-shadow(0 8px 8px #16242a55);
 		transform: translateX(115%);
 		animation: encounter-enter calc(0.38s / var(--playback-speed, 1)) ease-out forwards;
-	}
-	.wings {
-		fill: #405652;
-	}
-	.body {
-		fill: #718276;
-	}
-	.tail {
-		fill: #52675c;
-	}
-	.mountainRaptor .wings {
-		fill: #665d4d;
-	}
-	.mountainRaptor .body {
-		fill: #9b8c70;
-	}
-	.mountainRaptor .tail {
-		fill: #7b715c;
 	}
 	.encounter-label {
 		position: absolute;
@@ -90,14 +66,14 @@
 			sans-serif;
 		letter-spacing: 0.12em;
 	}
-	.engage .encounter-silhouette {
+	.engage .encounter-artwork {
 		transform: translateX(0);
 		animation: encounter-swoop calc(0.32s / var(--playback-speed, 1)) ease-in-out infinite alternate;
 	}
-	.resolve.pass .encounter-silhouette {
+	.resolve.pass .encounter-artwork {
 		animation: encounter-pass calc(0.48s / var(--playback-speed, 1)) ease-in forwards;
 	}
-	.resolve.crash .encounter-silhouette {
+	.resolve.crash .encounter-artwork {
 		animation: encounter-crash calc(0.42s / var(--playback-speed, 1)) ease-in forwards;
 	}
 	.resolve.pass .encounter-label {
@@ -129,15 +105,15 @@
 			top: 42%;
 			left: 32%;
 		}
-		.encounter-silhouette {
+		.encounter-artwork {
 			width: 58%;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.encounter-silhouette,
-		.engage .encounter-silhouette,
-		.resolve.pass .encounter-silhouette,
-		.resolve.crash .encounter-silhouette {
+		.encounter-artwork,
+		.engage .encounter-artwork,
+		.resolve.pass .encounter-artwork,
+		.resolve.crash .encounter-artwork {
 			animation: none;
 			transform: none;
 		}

@@ -1,0 +1,85 @@
+{
+  "game": "dragon_flight",
+  "schemaVersion": 1,
+  "seed": 20260910,
+  "variantsPerPayout": 1024,
+  "modes": {
+    "safe": {
+      "rtp": 0.96,
+      "rtpExact": "24/25",
+      "cost": 1,
+      "maxWin": 20.0,
+      "paidRoundRate": 0.6006356885092865,
+      "profitRoundRate": 0.5471321843084254,
+      "breakEvenRate": 0.05350350420086107,
+      "crashRate": 0.3993643114907135,
+      "standardDeviation": 0.9134504342383802,
+      "maxWinOneIn": 186903.64583333334,
+      "uniquePayouts": 102,
+      "weightTotal": 8971375,
+      "books": 104448,
+      "publishedWeightTotal": 9186688000,
+      "predatorCrashRate": 0.09984107787267837,
+      "obstacleCrashRate": 0.2995232336180351
+    },
+    "balanced": {
+      "rtp": 0.96,
+      "rtpExact": "24/25",
+      "cost": 1,
+      "maxWin": 100.0,
+      "paidRoundRate": 0.34486462259346035,
+      "profitRoundRate": 0.3253067128450647,
+      "breakEvenRate": 0.01955790974839564,
+      "crashRate": 0.6551353774065397,
+      "standardDeviation": 2.050339609183726,
+      "maxWinOneIn": 51130.208333333336,
+      "uniquePayouts": 134,
+      "weightTotal": 1227125,
+      "books": 137216,
+      "publishedWeightTotal": 1256576000,
+      "predatorCrashRate": 0.16378384435163493,
+      "obstacleCrashRate": 0.49135153305490475
+    },
+    "danger": {
+      "rtp": 0.96,
+      "rtpExact": "24/25",
+      "cost": 1,
+      "maxWin": 1000.0,
+      "paidRoundRate": 0.17528211797491872,
+      "profitRoundRate": 0.16933692522062238,
+      "breakEvenRate": 0.0059451927542963304,
+      "crashRate": 0.8247178820250812,
+      "standardDeviation": 5.583328112338779,
+      "maxWinOneIn": 168203.125,
+      "uniquePayouts": 199,
+      "weightTotal": 1345625,
+      "books": 203776,
+      "publishedWeightTotal": 1377920000,
+      "predatorCrashRate": 0.2061794705062703,
+      "obstacleCrashRate": 0.618538411518811
+    },
+    "storm-run": {
+      "rtp": "24/25",
+      "books": 10,
+      "cost": 20
+    },
+    "summit-expedition": {
+      "rtp": "24/25",
+      "books": 12,
+      "cost": 50
+    }
+  },
+  "sha256": {
+    "books_balanced.jsonl.zst": "1da07e7ff39371855884ba8292ab38458b8fb5d2e7b12e13c5529466f9655276",
+    "books_danger.jsonl.zst": "9047cd9bf7aaa69242232fe6be48243636ce8913fb82ba1393a0c6ce474bb0b2",
+    "books_safe.jsonl.zst": "235a887a3d8ee8c808ca90ca5da818e09010537f43654527f504e2fe7cdaffac",
+    "books_storm-run.jsonl.zst": "c8513f84358f1a61c4f091a6bd2050408e206875d1b49ef9c62be9b92ee46f49",
+    "books_summit-expedition.jsonl.zst": "8b878cf3b8cc3e804bc6ad7593604044a4bd062fc5fd08b320fdb72022cab8fb",
+    "index.json": "7d0696e58aa6b01f59c5d1f66d79bdade56c97e319cf1e1e088db5100080c712",
+    "lookUpTable_balanced_0.csv": "8c7eefb8d520f4c5386eaa10ffb7c3ad87a5e153586ee9d615b22bf8325c8b56",
+    "lookUpTable_danger_0.csv": "cdab99d915d2ddc54b1ea1d47eae48b0090ed4f3e1ac412eb7b07657f53cdbda",
+    "lookUpTable_safe_0.csv": "2b1c1345d4a193909f7f42730950a476373038995366885b4e57de2c27f23532",
+    "lookUpTable_storm-run_0.csv": "93a3d18b131603b6240d36f8cd169de08ea1a7fd9f97b64fba0816ba3a672eb3",
+    "lookUpTable_summit-expedition_0.csv": "0ceb0e4617d3c36b50349a9ce2c2113dae1c9854a9209a9476eac58bc188449a"
+  }
+}

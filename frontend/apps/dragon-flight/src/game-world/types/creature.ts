@@ -1,4 +1,4 @@
-export type CreatureId = 'firebird' | 'wyvern' | 'dragon' | 'azure-swift' | 'archaeopteryx';
+export type CreatureId = 'woodpecker' | 'azure-swift' | 'eagle' | 'archaeopteryx';
 
 export type CreatureAssets = {
 	portrait?: string;

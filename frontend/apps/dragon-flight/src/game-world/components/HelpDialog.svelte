@@ -13,10 +13,11 @@
 	} from '../presentation';
 	type Props = {
 		open: boolean;
+		live?: boolean;
 		onClose: () => void;
 	};
 
-	let { open, onClose }: Props = $props();
+	let { open, onClose, live = false }: Props = $props();
 	let dialogElement = $state<HTMLDialogElement>();
 
 	$effect(() => {
@@ -108,8 +109,8 @@
 			<section aria-labelledby="help-bet">
 				<h3 id="help-bet">BET &amp; RISK</h3>
 				<p>
-					Set a demo bet from <strong>$0.10</strong> to <strong>$100.00</strong>. Use + or − for
-					$0.10 steps, or enter an amount.
+					Choose your base bet from the available amounts. Connected play uses the wallet’s
+					permitted bet levels.
 				</p>
 				<div class="guide-grid three-grid">
 					<article class="guide-card">
@@ -129,7 +130,7 @@
 				<div class="formula">Final win = bet × final multiplier</div>
 				<p class="note">
 					A crash ends at x0, including when you collected items earlier. Setup stays locked until
-						you choose Change Settings.
+					you choose Change Settings.
 				</p>
 			</section>
 
@@ -198,10 +199,10 @@
 			<section aria-labelledby="help-info">
 				<h3>BONUS FLIGHTS &amp; REPLAYS</h3>
 				<p>
-					Bonus Flights offers two direct-entry demo routes: Storm Run costs 20× your base bet and
-					Summit Expedition costs 50×. Open Payouts &amp; chances in the route menu to see every
-					possible result. A purchased flight can return zero; entry does not guarantee a payout.
-					Risk settings apply to normal flights only.
+					Bonus Flights offers two direct-entry routes: Storm Run costs 20× your base bet and Summit
+					Expedition costs 50×. Open Payouts &amp; chances in the route menu to see every possible
+					result. A purchased flight can return zero; entry does not guarantee a payout. Risk
+					settings apply to normal flights only.
 				</p>
 				<p>
 					Bonus multipliers use the base bet. Results show the full entry cost, payout and net
@@ -213,12 +214,18 @@
 					Choose Speed before a flight: 1× for a relaxed pace, 1.5× for the default faster playback,
 					or 2× for a quick flight. Speed changes animation timing only, not odds or payouts.
 				</p>
-				<h3 id="help-info">DEMO INFORMATION</h3>
+				<h3 id="help-info">GAME INFORMATION</h3>
 				<p>
-					This is a local demo with no real-money bets or wallet connection. Results are generated
+					{live
+						? 'The server selects each result.'
+						: 'This is a local demo with no real-money bets or wallet connection.'} Results are selected
 					before the animation; timing and on-screen collisions do not determine payouts.
 				</p>
-				<p class="note">Demo risk settings are not final game probabilities or certified RTP.</p>
+				<p class="note">
+					{live
+						? 'Theoretical RTP is 96% in each mode. Normal maximum payouts: Safe 20x, Balanced 100x, Danger 1000x base bet. Rewards shown during flight are potential only and are lost on a crash. There is no cashout or timing advantage.'
+						: 'Demo risk settings are not certified RTP.'}
+				</p>
 			</section>
 		</div>
 	</div>

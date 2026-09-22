@@ -9,6 +9,7 @@
 		launchStyle: LaunchStyle;
 		active: boolean;
 		finishScene?: boolean;
+		onThunder?: () => void;
 	};
 
 	let {
@@ -18,6 +19,7 @@
 		launchStyle,
 		active,
 		finishScene = false,
+		onThunder,
 	}: Props = $props();
 	const presentation = $derived(getWeather(weather));
 	let lightningVisible = $state(false);
@@ -37,6 +39,7 @@
 			flashTimer = setTimeout(() => {
 				if (cancelled) return;
 				lightningVisible = true;
+				onThunder?.();
 				hideTimer = setTimeout(
 					() => {
 						lightningVisible = false;

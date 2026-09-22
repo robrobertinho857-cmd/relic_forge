@@ -1,0 +1,27 @@
+{
+  "safe": {
+    "loss": 1,
+    "maximumWin": 103425,
+    "win": 2049
+  },
+  "balanced": {
+    "loss": 1,
+    "maximumWin": 136193,
+    "win": 2049
+  },
+  "danger": {
+    "loss": 1,
+    "maximumWin": 202753,
+    "win": 2049
+  },
+  "storm-run": {
+    "loss": 1,
+    "maximumWin": 9,
+    "win": 5
+  },
+  "summit-expedition": {
+    "loss": 1,
+    "maximumWin": 11,
+    "win": 5
+  }
+}

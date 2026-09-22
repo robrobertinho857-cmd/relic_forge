@@ -201,12 +201,6 @@
 		left: 55%;
 		clip-path: polygon(0 50%, 100% 0, 82% 100%);
 	}
-	.preview i.firebird {
-		background: #e77b25;
-	}
-	.preview i.wyvern {
-		background: #4c9c8f;
-	}
 	.copy {
 		min-width: 0;
 	}

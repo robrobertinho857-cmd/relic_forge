@@ -33,8 +33,8 @@ export function getTerrainArtwork(material: TerrainMaterial, side: TerrainSide, 
 	const assetName = material === 'rock' ? 'rock-lower-rounded' : name;
 	return {
 		flipVertical: material === 'rock' && side === 'upper',
-		src: `${base}/terrain/natural/${assetName}${snowy ? '-snow' : ''}.webp`,
-		silhouette: `${base}/terrain/natural/${assetName}.webp`,
+		src: `${base || '.'}/terrain/natural/${assetName}${snowy ? '-snow' : ''}.webp`,
+		silhouette: `${base || '.'}/terrain/natural/${assetName}.webp`,
 		width: 1024,
 		height: 1536,
 		cropHeight: crop.bottom - crop.top,

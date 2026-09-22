@@ -28,12 +28,15 @@ for (const name of [
 }
 function setup(ticket = 9999) {
 	const ctx = {
+		flightAudio: { play: () => {}, stop: () => {}, stopEffects: () => {} },
+		resultSound: () => 'result-return',
+		wallet: { live: false, ready: true, busy: false, active: false },
 		status: 'ready',
 		selectedBet: 1,
 		betInput: '1.00',
 		betInputIsValid: true,
 		selectedRisk: 'safe',
-		selectedCreatureId: 'dragon',
+		selectedCreatureId: 'archaeopteryx',
 		selectedLaunchStyle: 'glide',
 		selectedWeather: 'clear',
 		selectedTimeOfDay: 'night',

@@ -11,6 +11,7 @@
 		launchStyle: LaunchStyle;
 		active: boolean;
 		finishScene?: boolean;
+		onThunder?: () => void;
 	};
 
 	let {
@@ -21,9 +22,18 @@
 		launchStyle,
 		active,
 		finishScene = false,
+		onThunder,
 	}: Props = $props();
 </script>
 
 <!-- Clear scenes already contain their generated time-of-day lighting. -->
 {#if finishScene ? timeOfDay !== 'night' : weather !== 'clear'}<TimeOfDayEffect {timeOfDay} />{/if}
-<WeatherEffect {weather} {stageIntensity} {parallaxOffset} {launchStyle} {active} {finishScene} />
+<WeatherEffect
+	{weather}
+	{stageIntensity}
+	{parallaxOffset}
+	{launchStyle}
+	{active}
+	{finishScene}
+	{onThunder}
+/>

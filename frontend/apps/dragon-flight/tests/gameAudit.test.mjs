@@ -13,7 +13,7 @@ const { isBetInputValid, sanitizeBetInput } = await load('utils/bet');
 const { CREATURES } = await load('creatures');
 const { createPlayer, steerPlayer } = await load('physics');
 const { DEV_SCENARIOS, createDevFlightRound } = await load('devScenarios');
-const appearance = { creature: 'dragon', launchStyle: 'glide' };
+const appearance = { creature: 'archaeopteryx', launchStyle: 'glide' };
 
 test('normal profiles target 96% and retain increasing volatility across risks', () => {
 	const profiles = ['safe', 'balanced', 'danger'].map((risk) =>
@@ -159,7 +159,9 @@ test('all live artwork URLs resolve at root and under a deployment subpath', asy
 		const { getLandscapeBackground, getFinishBackground } = await load('backgrounds', { base });
 		const { getTerrainArtwork } = await load('terrainArtwork', { base });
 		const { PICKUP_ARTWORK } = await load('pickupArtwork', { base });
+		const { ENCOUNTER_ARTWORK } = await load('encounterArtwork', { base });
 		const paths = new Set();
+		for (const file of Object.values(ENCOUNTER_ARTWORK)) paths.add(file);
 		for (const file of Object.values(PICKUP_ARTWORK)) paths.add(file);
 		for (const creature of CREATURES)
 			for (const file of creature.flightAnimation?.frames ?? []) paths.add(file);
@@ -196,15 +198,15 @@ test('all live artwork URLs resolve at root and under a deployment subpath', asy
 			'boost',
 			'dive',
 		])
-			paths.add(`${base}/customize/${name}.webp`);
+			paths.add(`${base || '.'}/customize/${name}.webp`);
 		for (const name of ['storm-run', 'summit-expedition'])
-			paths.add(`${base}/bonuses/${name}.webp`);
-		assert.equal(paths.size, 57);
+			paths.add(`${base || '.'}/bonuses/${name}.webp`);
+		assert.equal(paths.size, 75);
 		for (const file of paths) {
-			assert(file.startsWith(base + '/'));
+			assert(file.startsWith((base || '.') + '/'));
 			assert(file.endsWith('.webp'));
 			const bytes = fs.readFileSync(
-				new URL('../static' + file.slice(base.length), import.meta.url),
+				new URL('../static' + file.slice((base || '.').length), import.meta.url),
 			);
 			assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
 			assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');

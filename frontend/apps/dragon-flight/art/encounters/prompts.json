@@ -1,0 +1,13 @@
+{
+	"tool": "image_gen.imagegen",
+	"assets": [
+		{
+			"name": "ridge-dragon",
+			"prompt": "Use case: stylized-concept. Create one isolated full-body flying ridge dragon enemy sprite for a painted alpine fantasy game. Real transparent alpha background. Landscape canvas. Facing LEFT, head and snout toward left edge, tail to right. Entire dragon and both wings visible, centered with 10 percent padding. Broad powerful wings spread in a readable three-quarter side flying pose, moss-green and slate scales, pale stone belly, modest backward horns, long tapering tail. Elegant naturalistic hand-painted fantasy illustration, clear silhouette readable at 200 pixels wide, crisp textured shading, daylight from upper left. Not low-poly, not geometric origami, no fire breath, no scenery, no ground, no text, no frame, no checkerboard, no detached particles. A single creature only."
+		},
+		{
+			"name": "mountain-raptor",
+			"prompt": "Use case: stylized-concept. Create one isolated full-body flying mountain raptor enemy sprite for a painted alpine fantasy game. Real transparent alpha background. Landscape canvas. Facing LEFT, hooked beak and head toward left edge, tail to right. Entire bird and both wings visible, centered with 10 percent padding. Powerful alpine bird of prey, broad swept wings in a readable three-quarter side flying pose, warm brown and charcoal feather layers, cream neck accents, amber eye, dark hooked beak, tucked talons. Elegant naturalistic hand-painted illustration, clear silhouette readable at 200 pixels wide, crisp textured shading, daylight from upper left. Distinctly a real feathered raptor, not a dragon, not low-poly, not geometric origami. No scenery, no ground, no text, no frame, no checkerboard, no detached particles. A single creature only."
+		}
+	]
+}
