@@ -1,8 +1,6 @@
 # Current sound profile
 
-Updated 2026-09-22: menu, pickup, gate, bonus-start and result feedback uses the original button-click.mp3 at a restrained volume. Ambience, wingbeats, thunder, takeoff, air currents, landing and creature calls are silent. The original crash recording is restored for gate and predator impacts. A shared voice and 120 ms debounce prevent stacked clicks. Only the click and original crash are shipped and decoded. The other MP3 recordings are retained in art/audio/originals for reference, outside the runtime build.
-
-This is a click-only replacement chosen from the user's preference, not a claim that the original recordings were auditioned here.
+Updated 2026-09-23: all 31 original recordings are restored, including weather ambience, wingbeats, creature calls, takeoffs, pickups, crashes, landings, UI and result effects. Every event plays its own recording at its original configured volume. Click substitutions and the shared click debounce have been removed. Mute, hidden-tab silence, channel replacement and ambience seam smoothing remain enabled.
 
 ## Historical import measurements
 
@@ -58,3 +56,27 @@ All 31 supplied WAV files were measured with ffprobe before import. Each is 48 k
 ## Verification
 
 26 automated tests passed, including sound inventory, result/ambience selection, gesture initialization, mute, visibility, replacement of voices and cancellation during loading. These use a mocked Web Audio context; they do not substitute for listening in a browser. Svelte checks, lint and production build were also run.
+
+## Danger music
+
+Added 2026-09-27: `static/audio/danger-music.mp3`, copied unchanged from the supplied clip-trimmed.mp3. Duration 30 seconds, 48 kHz stereo. Loops quietly during normal Danger flights and their replays; stops at collision/results or reset. Respects mute and hidden tabs. Bonus routes retain their own existing sounds.
+
+## Balanced music
+
+Added 2026-09-27: balanced-music.mp3, copied unchanged from clip2.mp3. 19.9935 seconds, 48 kHz stereo. Loops during normal Balanced flights/replays with the same volume and mute behavior as Danger music. A single music channel prevents overlap when modes change.
+
+## Selection playback update
+
+Balanced and Danger music now follows the selected risk mode immediately after audio is unlocked by interaction. It continues through flights and results without restarting. Switching to Safe stops music; mute and hidden-tab controls still apply. This supersedes the flight-only timing above.
+
+## Safe music
+
+Added 2026-09-27: safe-music.mp3 copied unchanged from clip3.mp3 (11.9935 seconds, 48 kHz stereo). Safe selection now plays this track rather than stopping music. All three modes loop their selected music through flights/results, respect mute and hidden tabs, and use one music channel.
+
+## Menu-only playback
+All three mode tracks now play only while status is ready (menu/setup). Starting any flight or replay stops music. Results remain without music; Change Settings returns to the menu and resumes the selected track. Flight sound effects remain enabled. This supersedes the playback timing above.
+
+Safe music replaced on 2026-09-27 with the user-provided clip5.mp3, copied unchanged to static/audio/safe-music.mp3. Menu-only playback is unchanged.
+
+## Wingbeat loop
+A 600 ms segment of eagle-flight.mp3 (0.6-1.2 s) is saved as wing-loop.mp3 with 12 ms edge fades. During flight, its repetition rate follows the active bird frame sequence length divided by its animation FPS, one sound per wingbeat cycle. It stops on landing/crash/menu and respects mute/hidden tabs. The original recording is preserved.

@@ -34,30 +34,13 @@ export const SOUND_NAMES = [
 	'unavailable',
 	'wind',
 ] as const;
-export type SoundName = (typeof SOUND_NAMES)[number];
-// Keep semantic event names, but use the user's preferred click for all feedback.
-// Ambient/animal recordings are silent in this sound profile.
-const SILENT_SOUNDS: readonly SoundName[] = [
-	'air-current',
-	'encounter-warning',
-	'landing',
-	'predator-pass',
-	'takeoff-boost',
-	'takeoff-dive',
-	'takeoff-glide',
-	'eagle-flight',
-	'raptor-call',
-	'ridge-dragon-call',
-	'wind',
-	'rain-loop',
-	'snow-loop',
-	'storm-loop',
-	'thunder',
-];
-export const soundUrl = (name: SoundName) =>
-	SILENT_SOUNDS.includes(name)
-		? undefined
-		: `${base || '.'}/audio/${name === 'crash' ? 'crash' : 'button-click'}.mp3`;
+export type SoundName =
+	| (typeof SOUND_NAMES)[number]
+	| 'danger-music'
+	| 'balanced-music'
+	| 'safe-music'
+	| 'wing-loop';
+export const soundUrl = (name: SoundName) => `${base || '.'}/audio/${name}.mp3`;
 export const weatherSound = (weather: WeatherCondition): SoundName =>
 	weather === 'rain'
 		? 'rain-loop'
@@ -91,19 +74,92 @@ export class FlightAudio {
 	private disposed = false;
 	private ambience?: SoundName;
 	private ambiencePlaying?: SoundName;
-	private lastClickAt = -Infinity;
+	private music?: 'danger-music' | 'balanced-music' | 'safe-music';
+	private musicPlaying = false;
+	setModeMusic(mode?: 'safe' | 'balanced' | 'danger') {
+		const music =
+			mode === 'danger'
+				? 'danger-music'
+				: mode === 'balanced'
+					? 'balanced-music'
+					: mode === 'safe'
+						? 'safe-music'
+						: undefined;
+		if (music !== this.music) {
+			this.stop('music');
+			this.musicPlaying = false;
+		}
+		this.music = music;
+		this.syncMusic();
+	}
+	private syncMusic() {
+		if (!this.music) {
+			this.stop('music');
+			this.musicPlaying = false;
+			return;
+		}
+		if (
+			!this.context ||
+			this.context.state !== 'running' ||
+			this.muted ||
+			this.hidden ||
+			this.disposed ||
+			this.musicPlaying
+		)
+			return;
+		this.musicPlaying = true;
+		void this.play(this.music, 0.16, 'music', true);
+	}
+
+	private wingsEnabled = false;
+	private wingsPlaying = false;
+	private wingCycleSeconds = 0.8;
+	setWingLoop(enabled: boolean, cycleSeconds = 0.8) {
+		if (
+			Number.isFinite(cycleSeconds) &&
+			cycleSeconds > 0 &&
+			cycleSeconds !== this.wingCycleSeconds
+		) {
+			this.wingCycleSeconds = cycleSeconds;
+			this.stop('wings');
+			this.wingsPlaying = false;
+		}
+		this.wingsEnabled = enabled;
+		this.syncWings();
+	}
+	private syncWings() {
+		if (!this.wingsEnabled) {
+			this.stop('wings');
+			this.wingsPlaying = false;
+			return;
+		}
+		if (
+			!this.context ||
+			this.context.state !== 'running' ||
+			this.muted ||
+			this.hidden ||
+			this.disposed ||
+			this.wingsPlaying
+		)
+			return;
+		this.wingsPlaying = true;
+		void this.play('wing-loop', 0.1, 'wings', true);
+	}
 
 	unlock() {
 		if (this.disposed || this.muted || this.hidden) return;
 		try {
 			if (!this.context) {
 				this.context = new AudioContext();
-				void this.load('button-click').catch(() => {});
-				void this.load('crash').catch(() => {});
+				for (const name of SOUND_NAMES) void this.load(name).catch(() => {});
 			}
 			void this.context
 				.resume()
-				.then(() => this.syncAmbience())
+				.then(() => {
+					this.syncAmbience();
+					this.syncMusic();
+					this.syncWings();
+				})
 				.catch(() => {});
 		} catch {
 			/* Audio is optional on unsupported browsers. */
@@ -117,7 +173,11 @@ export class FlightAudio {
 	setHidden(hidden: boolean) {
 		this.hidden = hidden;
 		if (hidden) this.stopAll();
-		else this.syncAmbience();
+		else {
+			this.syncAmbience();
+			this.syncMusic();
+			this.syncWings();
+		}
 	}
 	setWeather(weather: WeatherCondition) {
 		if (weather !== 'storm') this.stop('thunder');
@@ -142,7 +202,7 @@ export class FlightAudio {
 		let buffer = this.buffers.get(name);
 		if (!buffer) {
 			const context = this.context!;
-			buffer = fetch(soundUrl(name)!)
+			buffer = fetch(soundUrl(name))
 				.then((response) => {
 					if (!response.ok) throw new Error('Audio unavailable');
 					return response.arrayBuffer();
@@ -154,29 +214,20 @@ export class FlightAudio {
 		return buffer;
 	}
 	async play(name: SoundName, volume = 0.4, channel: string = name, loop = false) {
-		if (loop || !soundUrl(name)) return;
 		const context = this.context;
 		if (!context || context.state !== 'running' || this.muted || this.hidden || this.disposed)
 			return;
-		if (name !== 'crash') {
-			const now = Date.now();
-			if (now - this.lastClickAt < 120) return;
-			this.lastClickAt = now;
-			// One shared voice avoids double clicks from button + panel or gate + combo.
-			channel = 'feedback';
-			volume = Math.min(volume, 0.22);
-		}
 		this.stop(channel);
 		const request = ++this.sequence;
 		this.requests.set(channel, request);
 		const requestedAt = Date.now();
 		try {
-			let buffer = await this.load(name === 'crash' ? 'crash' : 'button-click');
+			let buffer = await this.load(name);
 			if (this.requests.get(channel) !== request || this.muted || this.hidden || this.disposed)
 				return;
 			// Do not replay stale event cues after a slow network response.
 			if (!loop && Date.now() - requestedAt > 1200) return;
-			if (loop) {
+			if (loop && name !== 'wing-loop') {
 				// Overlap the head and tail to soften short ambience loop seams.
 				const fade = Math.min(Math.floor(buffer.sampleRate * 0.08), Math.floor(buffer.length / 4));
 				const smooth = context.createBuffer(
@@ -200,6 +251,8 @@ export class FlightAudio {
 				gain = context.createGain();
 			source.buffer = buffer;
 			source.loop = loop;
+			if (name === 'wing-loop')
+				source.playbackRate.value = buffer.length / buffer.sampleRate / this.wingCycleSeconds;
 			gain.gain.setValueAtTime(0, context.currentTime);
 			gain.gain.linearRampToValueAtTime(volume, context.currentTime + 0.015);
 			source.connect(gain).connect(context.destination);
@@ -211,6 +264,8 @@ export class FlightAudio {
 			};
 			source.start();
 		} catch {
+			if (channel === 'wings' && this.requests.get(channel) === request) this.wingsPlaying = false;
+			if (channel === 'music' && this.requests.get(channel) === request) this.musicPlaying = false;
 			if (channel === 'ambience' && this.requests.get(channel) === request)
 				this.ambiencePlaying = undefined;
 		}
@@ -227,12 +282,14 @@ export class FlightAudio {
 	}
 	stopEffects() {
 		for (const channel of new Set([...this.requests.keys(), ...this.voices.keys()]))
-			if (channel !== 'ambience') this.stop(channel);
+			if (channel !== 'ambience' && channel !== 'music') this.stop(channel);
 	}
 	private stopAll() {
 		for (const channel of new Set([...this.requests.keys(), ...this.voices.keys()]))
 			this.stop(channel);
 		this.ambiencePlaying = undefined;
+		this.musicPlaying = false;
+		this.wingsPlaying = false;
 	}
 	dispose() {
 		this.disposed = true;

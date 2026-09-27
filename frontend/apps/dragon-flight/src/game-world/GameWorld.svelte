@@ -98,9 +98,17 @@
 		flightAudio.setWeather(activeWeather);
 	});
 	$effect(() => {
+		const animation = activeCreature.flightAnimation;
+		flightAudio.setWingLoop(
+			status === 'flying' || (status === 'ending' && !landed),
+			animation ? animation.frameOrder.length / animation.fps : 0.8,
+		);
+		flightAudio.setModeMusic(status === 'ready' ? selectedRisk : undefined);
+	});
+	$effect(() => {
 		const panels = [customizeOpen, helpOpen, bonusOpen, historyOpen, creaturePickerOpen].join(',');
 		if (previousPanels && panels !== previousPanels)
-			void flightAudio.play('panel-open-close', 0.22, 'ui');
+			void flightAudio.play('option-select', 0.22, 'ui');
 		previousPanels = panels;
 	});
 	import { ENCOUNTER_ARTWORK } from './encounterArtwork';
@@ -239,6 +247,15 @@
 	let cancelValueAnimation: (() => void) | undefined;
 	let pendingDelays: Array<() => void> = [];
 
+	// Balanced flights reveal 25% faster; server timing restrictions still take priority.
+	const flightPlaybackSpeed = $derived(
+		wallet.turboDisabled
+			? 1
+			: playbackSpeed *
+					((currentRound?.risk ?? selectedRisk) === 'balanced' && !currentRound?.bonusFlight
+						? 1.25
+						: 1),
+	);
 	const controlsLocked = $derived(
 		replayMode || status !== 'ready' || wallet.busy || !wallet.ready || wallet.active,
 	);
@@ -346,7 +363,7 @@
 				pendingDelays = pendingDelays.filter((cancelDelay) => cancelDelay !== finish);
 				resolve();
 			};
-			timer = setTimeout(finish, milliseconds / playbackSpeed);
+			timer = setTimeout(finish, milliseconds / flightPlaybackSpeed);
 			pendingDelays = [...pendingDelays, finish];
 		});
 	}
@@ -380,7 +397,7 @@
 					finish();
 					return;
 				}
-				const linearProgress = Math.min(1, ((now - startedAt) * playbackSpeed) / duration);
+				const linearProgress = Math.min(1, ((now - startedAt) * flightPlaybackSpeed) / duration);
 				const easedProgress = 1 - Math.pow(1 - linearProgress, 3);
 				update(easedProgress);
 				if (linearProgress >= 1) finish();
@@ -428,7 +445,7 @@
 		comboTimer = setTimeout(() => {
 			comboFeedback = undefined;
 			comboTimer = undefined;
-		}, 720 / playbackSpeed);
+		}, 720 / flightPlaybackSpeed);
 		emitParticles(Math.min(24, 7 + count * 3));
 	}
 
@@ -477,7 +494,7 @@
 		stageAnnouncementTimer = setTimeout(() => {
 			stageAnnouncement = undefined;
 			stageAnnouncementTimer = undefined;
-		}, 1050 / playbackSpeed);
+		}, 1050 / flightPlaybackSpeed);
 		if (changed) emitParticles(6 + Math.round(stage.intensity * 12));
 	}
 
@@ -488,7 +505,6 @@
 	}
 
 	function triggerFlap() {
-		void flightAudio.play('eagle-flight', 0.12, 'wings');
 		flapActive = false;
 		if (flapFrame) cancelAnimationFrame(flapFrame);
 		flapFrame = requestAnimationFrame(() => {
@@ -818,7 +834,7 @@
 
 			switch (event.type) {
 				case 'launch':
-					void flightAudio.play(`takeoff-${round.launchStyle}`, 0.35, 'takeoff');
+					void flightAudio.play('button-click', 0.18, 'ui');
 					eventLabel = 'LAUNCH';
 					eventCallout = `${round.launchStyle.toUpperCase()} LAUNCH`;
 					status = 'flying';
@@ -1072,10 +1088,18 @@
 		const click = (event: MouseEvent) => {
 			const target = event.target instanceof Element ? event.target : undefined;
 			const button = target?.closest('button');
-			if (!button || button.disabled || button.hasAttribute('data-audio-toggle')) return;
+			if (
+				!button ||
+				button.disabled ||
+				button.hasAttribute('data-audio-toggle') ||
+				button.hasAttribute('data-audio-panel')
+			)
+				return;
 			if (!button.closest('.prototype-shell, dialog')) return;
 			void flightAudio.play(
-				button.hasAttribute('aria-pressed') ? 'option-select' : 'button-click',
+				button.hasAttribute('aria-pressed') || button.hasAttribute('data-audio-select')
+					? 'option-select'
+					: 'button-click',
 				0.18,
 				'ui',
 			);
@@ -1114,7 +1138,8 @@
 			const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
 			lastTime = now;
 			const moving = status === 'flying' || status === 'ending' || status === 'collided';
-			const flightDelta = deltaSeconds * playbackSpeed * (activeGate ? GATE_APPROACH_RATE : 1);
+			const flightDelta =
+				deltaSeconds * flightPlaybackSpeed * (activeGate ? GATE_APPROACH_RATE : 1);
 			const environmentSpeed = WORLD_SPEED * currentStage.parallaxSpeed;
 			const presentationSpeed = status === 'collided' ? environmentSpeed * 0.22 : environmentSpeed;
 			parallaxOffset =
@@ -1163,7 +1188,7 @@
 	{/each}
 </svelte:head>
 
-<main class="prototype-shell" style={`--playback-speed:${playbackSpeed};`}>
+<main class="prototype-shell" style={`--playback-speed:${flightPlaybackSpeed};`}>
 	<header class="prototype-header">
 		<h1>Dragon Flight</h1>
 		<div
@@ -1196,6 +1221,7 @@
 				type="button"
 				aria-haspopup="dialog"
 				aria-controls="customize-flight"
+				data-audio-panel
 				aria-expanded={customizeOpen}
 				disabled={controlsLocked}
 				onclick={() => (customizeOpen = true)}>CUSTOMIZE</button
@@ -1204,6 +1230,7 @@
 				class="help-button"
 				type="button"
 				aria-label="Open Dragon Flight game guide"
+				data-audio-panel
 				onclick={() => (helpOpen = true)}
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true"
@@ -1215,10 +1242,12 @@
 			<button
 				class="bonus-button"
 				disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
+				data-audio-panel
 				onclick={() => (bonusOpen = true)}>BONUS FLIGHTS <span>2 routes</span></button
 			>
 			<button
 				disabled={status !== 'ready' && status !== 'complete'}
+				data-audio-panel
 				onclick={() => (historyOpen = true)}>HISTORY <span>{flightHistory.length}</span></button
 			>
 		</div>
@@ -1494,6 +1523,7 @@
 					class="creature-button"
 					type="button"
 					disabled={controlsLocked}
+					data-audio-panel
 					onclick={() => (creaturePickerOpen = true)}
 				>
 					<span>{selectedCreature.name}</span><b>▾</b>
@@ -1513,7 +1543,8 @@
 						<button
 							aria-label="Decrease bet"
 							disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET}
-							onclick={() => moveBet(-1)}>−</button
+							onclick={() => moveBet(-1)}
+							><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" /></svg></button
 						>
 						<input
 							aria-label="Prototype bet amount"
@@ -1532,7 +1563,9 @@
 						<button
 							aria-label="Increase bet"
 							disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET}
-							onclick={() => moveBet(1)}>+</button
+							onclick={() => moveBet(1)}
+							><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10M10 5v10" /></svg
+							></button
 						>
 					</div>
 				{/if}
@@ -2763,9 +2796,23 @@
 		gap: 6px;
 	}
 	.bet-control .bet-stepper button {
+		display: grid;
+		place-items: center;
+		padding: 0;
+		line-height: 1;
+		letter-spacing: 0;
 		width: 42px;
 		height: 42px;
 		min-height: 42px;
+	}
+	.bet-stepper button svg {
+		width: 20px;
+		height: 20px;
+		display: block;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linecap: round;
 	}
 	.bet-control .bet-input {
 		height: 42px;

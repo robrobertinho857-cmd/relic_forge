@@ -47,7 +47,9 @@
 				<span>FLIGHT CREATURE</span>
 				<h2 id="creature-picker-title">Choose your flier</h2>
 			</div>
-			<button type="button" aria-label="Close creature picker" onclick={close}>×</button>
+			<button type="button" aria-label="Close creature picker" data-audio-panel onclick={close}
+				>×</button
+			>
 		</header>
 		<div class="creature-grid">
 			{#each CREATURES as creature (creature.id)}
@@ -56,6 +58,7 @@
 					{disabled}
 					class:selected={selected === creature.id}
 					aria-pressed={selected === creature.id}
+					data-audio-panel
 					onclick={() => choose(creature.id)}
 				>
 					<span class="preview">

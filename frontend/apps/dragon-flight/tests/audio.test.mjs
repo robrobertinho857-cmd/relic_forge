@@ -8,27 +8,66 @@ const { FlightAudio, SOUND_NAMES, resultSound, weatherSound, soundUrl } = await 
 );
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-test('all 31 event cues resolve to the preferred click, original crash or silence', () => {
+test('mode music switches without overlap, resumes after mute/hide, and stops when disabled', async () => {
+	const fake = fakeAudio();
+	const audio = new FlightAudio();
+	try {
+		assert.equal(soundUrl('danger-music'), '/dragon-flight/audio/danger-music.mp3');
+		assert(fs.statSync(new URL('../static/audio/danger-music.mp3', import.meta.url)).size > 0);
+		audio.setModeMusic('danger');
+		audio.unlock();
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		assert.equal(fake.sources[0].loop, true);
+		audio.setModeMusic('danger');
+		await flush();
+		assert.equal(fake.sources.length, 1);
+		audio.stopEffects();
+		assert.equal(fake.sources[0].stopped, false);
+		audio.setMuted(true);
+		assert(fake.sources.every((s) => s.stopped));
+		audio.setMuted(false);
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		audio.setHidden(true);
+		assert(fake.sources.every((s) => s.stopped));
+		audio.setHidden(false);
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		audio.setModeMusic('balanced');
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		assert.equal(soundUrl('balanced-music'), '/dragon-flight/audio/balanced-music.mp3');
+		audio.setModeMusic('safe');
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		assert.equal(soundUrl('safe-music'), '/dragon-flight/audio/safe-music.mp3');
+		assert(fs.statSync(new URL('../static/audio/safe-music.mp3', import.meta.url)).size > 0);
+		audio.setModeMusic();
+		assert(fake.sources.every((s) => s.stopped));
+	} finally {
+		audio.dispose();
+		fake.restore();
+	}
+});
+
+test('all 31 original sounds have their own runtime files and deployment-safe URLs', () => {
 	const manifest = JSON.parse(
 		fs.readFileSync(new URL('../art/audio/manifest.json', import.meta.url)),
 	);
 	assert.equal(SOUND_NAMES.length, 31);
-	assert.equal(soundUrl('button-click'), '/dragon-flight/audio/button-click.mp3');
-	assert.equal(soundUrl('crystal-pickup'), soundUrl('button-click'));
-	for (const name of ['eagle-flight', 'wind', 'thunder', 'landing', 'takeoff-glide'])
-		assert.equal(soundUrl(name), undefined);
-	assert.deepEqual(fs.readdirSync(new URL('../static/audio/', import.meta.url)), [
-		'button-click.mp3',
-		'crash.mp3',
-	]);
 	assert.deepEqual([...SOUND_NAMES].sort(), manifest.map((item) => item.name).sort());
+	assert.equal(fs.readdirSync(new URL('../static/audio/', import.meta.url)).length, 35);
 	for (const sound of manifest) {
-		assert(sound.duration > 0 && sound.duration <= 4.8);
-		const url = soundUrl(sound.name);
-		if (url)
-			assert.equal(
-				url,
-				`/dragon-flight/audio/${sound.name === 'crash' ? 'crash' : 'button-click'}.mp3`,
+		assert.equal(soundUrl(sound.name), '/dragon-flight/audio/' + sound.name + '.mp3');
+		const bytes = fs.readFileSync(
+			new URL('../static/audio/' + sound.name + '.mp3', import.meta.url),
+		);
+		assert.equal(bytes.length, sound.runtimeBytes);
+		if (sound.name !== 'button-click')
+			assert.deepEqual(
+				bytes,
+				fs.readFileSync(new URL('../art/audio/originals/' + sound.name + '.mp3', import.meta.url)),
 			);
 	}
 });
@@ -95,6 +134,7 @@ function fakeAudio() {
 		}
 		createBufferSource() {
 			const source = {
+				playbackRate: { value: 1 },
 				started: false,
 				stopped: false,
 				loop: false,
@@ -132,7 +172,7 @@ function fakeAudio() {
 		},
 	};
 }
-test('gesture unlock, silent ambience, deduplicated clicks, mute and disposal control playback', async () => {
+test('gesture unlock, single ambience, mute and disposal control playback', async () => {
 	const fake = fakeAudio();
 	const audio = new FlightAudio();
 	try {
@@ -142,10 +182,10 @@ test('gesture unlock, silent ambience, deduplicated clicks, mute and disposal co
 		assert.equal(fake.contexts, 0);
 		audio.unlock();
 		await flush();
-		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 0);
+		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 1);
 		audio.setWeather('rain');
 		await flush();
-		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 0);
+		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 1);
 		await audio.play('button-click', 0.2, 'ui');
 		await audio.play('option-select', 0.2, 'ui');
 		assert.equal(fake.sources.filter((s) => !s.loop && !s.stopped).length, 1);
@@ -160,7 +200,7 @@ test('gesture unlock, silent ambience, deduplicated clicks, mute and disposal co
 		assert(fake.sources.every((s) => s.stopped));
 		audio.setHidden(false);
 		await flush();
-		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 0);
+		assert.equal(fake.sources.filter((s) => s.loop && !s.stopped).length, 1);
 		audio.dispose();
 		assert(fake.closed);
 		assert(fake.sources.every((s) => s.stopped));
@@ -181,6 +221,32 @@ test('cancelled pending effects never start after decoding', async () => {
 		await pending;
 		await flush();
 		assert.equal(fake.sources.length, 0);
+	} finally {
+		audio.dispose();
+		fake.restore();
+	}
+});
+
+test('wing loop matches the bird cycle and stops after flight', async () => {
+	const fake = fakeAudio();
+	const audio = new FlightAudio();
+	try {
+		audio.setWingLoop(true, 0.8);
+		audio.unlock();
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		assert.equal(fake.sources.at(-1).playbackRate.value, 1 / 0.8);
+		audio.setWingLoop(true, 1);
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		assert.equal(fake.sources.at(-1).playbackRate.value, 1);
+		audio.setHidden(true);
+		assert(fake.sources.every((s) => s.stopped));
+		audio.setHidden(false);
+		await flush();
+		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
+		audio.setWingLoop(false);
+		assert(fake.sources.every((s) => s.stopped));
 	} finally {
 		audio.dispose();
 		fake.restore();

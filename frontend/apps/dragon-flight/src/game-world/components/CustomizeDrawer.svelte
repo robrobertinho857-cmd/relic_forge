@@ -80,7 +80,12 @@
 				<span class="eyebrow">YOUR FLIGHT</span>
 				<h2 id="customize-title">Set the scene</h2>
 			</div>
-			<button class="close-button" type="button" aria-label="Close customization" onclick={close}
+			<button
+				class="close-button"
+				type="button"
+				aria-label="Close customization"
+				data-audio-panel
+				onclick={close}
 				><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button
 			>
 		</header>
@@ -186,7 +191,7 @@
 					disabled={disabled || defaultSettingsSelected}
 					onclick={resetDefaults}>Reset defaults</button
 				>
-				<button class="done-button" type="button" onclick={close}
+				<button class="done-button" type="button" data-audio-panel onclick={close}
 					>Done <span aria-hidden="true">✓</span></button
 				>
 			</div>

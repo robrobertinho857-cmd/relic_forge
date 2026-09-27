@@ -1,6 +1,6 @@
 # Dragon Flight — Stake Engine test upload
 
-Prepared 2026-09-22. Audio updated to the preferred click for UI, pickups, gate and result feedback; flight, ambience and creature effects are silent. The original crash sound is also enabled for impacts. Only button-click.mp3 and crash.mp3 are shipped. This package is for ACP testing and review, not an assertion of platform approval. No upload has been performed.
+Prepared 2026-09-22; audio restored 2026-09-23. All 31 original sound files and event mappings are included. This package is for ACP testing and review, not an assertion of platform approval. No upload has been performed.
 
 ## Upload
 

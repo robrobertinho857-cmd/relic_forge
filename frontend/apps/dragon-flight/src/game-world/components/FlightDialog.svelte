@@ -17,7 +17,12 @@
 <dialog bind:this={dialog} aria-labelledby={id} onclose={onClose}>
 	<header>
 		<h2 {id}>{title}</h2>
-		<button type="button" aria-label={`Close ${title}`} onclick={() => dialog?.close()}>×</button>
+		<button
+			type="button"
+			aria-label={`Close ${title}`}
+			data-audio-panel
+			onclick={() => dialog?.close()}>×</button
+		>
 	</header>
 	<div class="content">{@render children()}</div>
 </dialog>

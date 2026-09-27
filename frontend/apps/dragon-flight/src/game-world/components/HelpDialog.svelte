@@ -69,6 +69,7 @@
 				class="close-button"
 				type="button"
 				aria-label="Close game guide"
+				data-audio-panel
 				onclick={requestClose}
 			>
 				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17" /></svg>
