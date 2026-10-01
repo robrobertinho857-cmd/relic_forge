@@ -446,7 +446,6 @@
 	}
 
 	function showCombo(count: number) {
-		void flightAudio.play('perfect-pass', 0.2);
 		comboFeedback = { id: ++comboSequence, count };
 		if (comboTimer) clearTimeout(comboTimer);
 		comboTimer = setTimeout(() => {
@@ -866,7 +865,7 @@
 					await presentGate(event);
 					if (token !== presentationToken) return;
 					if (event.result === 'pass') {
-						void flightAudio.play('gate-pass', 0.3);
+						void flightAudio.play('result-win', 0.2, 'gate-pass');
 						comboCount += 1;
 						showCombo(comboCount);
 					} else {
