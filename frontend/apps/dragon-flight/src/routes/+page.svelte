@@ -4,8 +4,8 @@
 </script>
 
 <svelte:head>
-	<title>Dragon Flight Prototype</title>
-	<meta name="description" content="A local Dragon Flight gameplay prototype." />
+	<title>Lucky Flight</title>
+	<meta name="description" content="Lucky Flight: fly through mountain valleys, forest passes and open skies." />
 </svelte:head>
 
 <GameWorld />

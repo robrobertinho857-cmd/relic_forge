@@ -61,7 +61,7 @@
 	<div class="help-panel">
 		<header class="help-header">
 			<div>
-				<p class="help-kicker">DRAGON FLIGHT GUIDE</p>
+				<p class="help-kicker">LUCKY FLIGHT GUIDE</p>
 				<h2 id="dragon-flight-help-title">How to Play</h2>
 				<p id="dragon-flight-help-summary">Fly through mountains, forests and open skies.</p>
 			</div>

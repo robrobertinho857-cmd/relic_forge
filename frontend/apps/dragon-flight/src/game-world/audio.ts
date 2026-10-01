@@ -7,15 +7,11 @@ export const SOUND_NAMES = [
 	'button-click',
 	'crash',
 	'crystal-pickup',
-	'eagle-flight',
 	'encounter-warning',
 	'feather-pickup',
-	'gate-pass',
 	'golden-feather-pickup',
 	'landing',
 	'option-select',
-	'panel-open-close',
-	'perfect-pass',
 	'predator-pass',
 	'rain-loop',
 	'raptor-call',
@@ -27,19 +23,11 @@ export const SOUND_NAMES = [
 	'ridge-dragon-call',
 	'snow-loop',
 	'storm-loop',
-	'takeoff-boost',
-	'takeoff-dive',
-	'takeoff-glide',
 	'thunder',
 	'unavailable',
 	'wind',
 ] as const;
-export type SoundName =
-	| (typeof SOUND_NAMES)[number]
-	| 'danger-music'
-	| 'balanced-music'
-	| 'safe-music'
-	| 'wing-loop';
+export type SoundName = (typeof SOUND_NAMES)[number] | 'wing-loop';
 export const soundUrl = (name: SoundName) => `${base || '.'}/audio/${name}.mp3`;
 export const weatherSound = (weather: WeatherCondition): SoundName =>
 	weather === 'rain'
@@ -74,43 +62,6 @@ export class FlightAudio {
 	private disposed = false;
 	private ambience?: SoundName;
 	private ambiencePlaying?: SoundName;
-	private music?: 'danger-music' | 'balanced-music' | 'safe-music';
-	private musicPlaying = false;
-	setModeMusic(mode?: 'safe' | 'balanced' | 'danger') {
-		const music =
-			mode === 'danger'
-				? 'danger-music'
-				: mode === 'balanced'
-					? 'balanced-music'
-					: mode === 'safe'
-						? 'safe-music'
-						: undefined;
-		if (music !== this.music) {
-			this.stop('music');
-			this.musicPlaying = false;
-		}
-		this.music = music;
-		this.syncMusic();
-	}
-	private syncMusic() {
-		if (!this.music) {
-			this.stop('music');
-			this.musicPlaying = false;
-			return;
-		}
-		if (
-			!this.context ||
-			this.context.state !== 'running' ||
-			this.muted ||
-			this.hidden ||
-			this.disposed ||
-			this.musicPlaying
-		)
-			return;
-		this.musicPlaying = true;
-		void this.play(this.music, 0.16, 'music', true);
-	}
-
 	private wingsEnabled = false;
 	private wingsPlaying = false;
 	private wingCycleSeconds = 0.8;
@@ -157,7 +108,6 @@ export class FlightAudio {
 				.resume()
 				.then(() => {
 					this.syncAmbience();
-					this.syncMusic();
 					this.syncWings();
 				})
 				.catch(() => {});
@@ -175,7 +125,6 @@ export class FlightAudio {
 		if (hidden) this.stopAll();
 		else {
 			this.syncAmbience();
-			this.syncMusic();
 			this.syncWings();
 		}
 	}
@@ -265,7 +214,6 @@ export class FlightAudio {
 			source.start();
 		} catch {
 			if (channel === 'wings' && this.requests.get(channel) === request) this.wingsPlaying = false;
-			if (channel === 'music' && this.requests.get(channel) === request) this.musicPlaying = false;
 			if (channel === 'ambience' && this.requests.get(channel) === request)
 				this.ambiencePlaying = undefined;
 		}
@@ -282,13 +230,12 @@ export class FlightAudio {
 	}
 	stopEffects() {
 		for (const channel of new Set([...this.requests.keys(), ...this.voices.keys()]))
-			if (channel !== 'ambience' && channel !== 'music') this.stop(channel);
+			if (channel !== 'ambience') this.stop(channel);
 	}
 	private stopAll() {
 		for (const channel of new Set([...this.requests.keys(), ...this.voices.keys()]))
 			this.stop(channel);
 		this.ambiencePlaying = undefined;
-		this.musicPlaying = false;
 		this.wingsPlaying = false;
 	}
 	dispose() {

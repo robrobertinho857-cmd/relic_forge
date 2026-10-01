@@ -107,7 +107,6 @@
 			status === 'flying' || (status === 'ending' && !landed),
 			animation ? animation.frameOrder.length / animation.fps : 0.8,
 		);
-		flightAudio.setModeMusic(status === 'ready' ? selectedRisk : undefined);
 	});
 	$effect(() => {
 		const panels = [customizeOpen, helpOpen, bonusOpen, historyOpen, creaturePickerOpen].join(',');
@@ -117,7 +116,7 @@
 	});
 	import { ENCOUNTER_ARTWORK } from './encounterArtwork';
 	import { PICKUP_ARTWORK } from './pickupArtwork';
-	// Standalone local Dragon Flight prototype.
+	// Standalone local Lucky Flight prototype.
 	import {
 		INITIAL_BOUNDS,
 		MAX_PROTOTYPE_BET,
@@ -1223,7 +1222,7 @@
 </script>
 
 <svelte:head>
-	<title>Dragon Flight - Local Round Prototype</title>
+	<title>Lucky Flight</title>
 	{#each [...Object.values(PICKUP_ARTWORK), ...Object.values(ENCOUNTER_ARTWORK)] as src (src)}
 		<link rel="preload" as="image" href={src} type="image/webp" />
 	{/each}
@@ -1231,7 +1230,7 @@
 
 <main class="prototype-shell" style={`--playback-speed:${flightPlaybackSpeed};`}>
 	<header class="prototype-header">
-		<h1>Dragon Flight</h1>
+		<h1>Lucky Flight</h1>
 		<div
 			class="control-tools header-actions flight-extras"
 			role="group"
@@ -1270,7 +1269,7 @@
 			<button
 				class="help-button"
 				type="button"
-				aria-label="Open Dragon Flight game guide"
+				aria-label="Open Lucky Flight game guide"
 				data-audio-panel
 				onclick={() => (helpOpen = true)}
 			>

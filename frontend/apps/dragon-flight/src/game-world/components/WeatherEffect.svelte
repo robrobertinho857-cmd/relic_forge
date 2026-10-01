@@ -70,6 +70,16 @@
 	<div class="weather-back"></div>
 	<div class="weather-mid"></div>
 	<div class="weather-front"></div>
+	{#if weather === 'rain' || weather === 'storm'}
+		<div class="rain-layer" class:storm-rain={weather === 'storm'}>
+			{#each Array.from({ length: 32 }, (_, i) => i) as drop (drop)}
+				<span
+					class="raindrop"
+					style={`--drop-x:${(drop * 37 + 11) % 100}%;--drop-delay:${-((drop * 0.173) % 1.5)}s;--drop-duration:${0.85 + (drop % 5) * 0.13}s;--drop-length:${10 + (drop % 4) * 4}px;--drop-opacity:${0.16 + (drop % 3) * 0.07};`}
+				></span>
+			{/each}
+		</div>
+	{/if}
 
 	{#if weather === 'storm'}
 		<div class:visible={lightningVisible} class="weather-screen-flash"></div>
@@ -97,32 +107,31 @@
 		z-index: 8;
 	}
 
-	.weather-rain .weather-back,
-	.weather-storm .weather-back {
-		opacity: 0;
+	.rain-layer {
+		z-index: 8;
 	}
-
-	.weather-rain .weather-front,
-	.weather-storm .weather-front {
-		opacity: 0;
+	.raindrop {
+		position: absolute;
+		left: var(--drop-x);
+		top: -28px;
+		width: 1px;
+		height: calc(100% + 56px);
+		opacity: var(--drop-opacity);
+		animation: rain-fall var(--drop-duration) linear var(--drop-delay) infinite;
 	}
-	.finish-scene.weather-rain .weather-front,
-	.finish-scene.weather-storm .weather-front {
-		opacity: 0.28;
-		background-image: repeating-linear-gradient(
-			108deg,
-			transparent 0 64px,
-			#daeafa88 65px,
-			transparent 66px 116px
-		);
-		background-size: 190px 130px;
-		mask-image: repeating-linear-gradient(
-			0deg,
-			transparent 0 14px,
-			black 16px 32px,
-			transparent 34px 70px
-		);
-		animation: rain-fall 0.65s linear infinite;
+	.raindrop::before {
+		content: '';
+		position: absolute;
+		width: 100%;
+		height: var(--drop-length);
+		border-radius: 2px;
+		background: linear-gradient(transparent, #dfedff);
+		transform: rotate(12deg);
+	}
+	.storm-rain .raindrop {
+		width: 1.5px;
+		opacity: calc(var(--drop-opacity) + 0.1);
+		animation-duration: calc(var(--drop-duration) * 0.8);
 	}
 	.finish-weather-tone {
 		z-index: 1;
@@ -138,7 +147,7 @@
 	}
 	@keyframes rain-fall {
 		to {
-			background-position: -40px 130px;
+			transform: translate3d(-32px, 100%, 0);
 		}
 	}
 
@@ -195,6 +204,7 @@
 			animation: none;
 		}
 
+		.rain-layer,
 		.weather-screen-flash {
 			display: none;
 		}
