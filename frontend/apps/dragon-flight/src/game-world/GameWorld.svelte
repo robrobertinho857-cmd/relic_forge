@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { StakeSession, initialWallet, decodeStakeRound, loadStakeReplay } from './stake';
+	import {
+		StakeSession,
+		initialWallet,
+		decodeStakeRound,
+		loadStakeReplay,
+		isValidStakeBet,
+		stakeBetUnits,
+	} from './stake';
 	let wallet = $state(initialWallet());
 	let sessionSeconds = $state(0);
 	let sessionNet = $state(0);
@@ -34,7 +41,7 @@
 		const recovered = await stakeSession.connect(window.location.search, import.meta.env.DEV);
 		if (!wallet.ready) return;
 		if (wallet.live) {
-			selectedBet = wallet.levels.includes(1000000) ? 1 : wallet.levels[0] / 1e6;
+			selectedBet = wallet.defaultBet / 1e6;
 			betInput = String(selectedBet);
 			if (wallet.turboDisabled) playbackSpeed = 1;
 		}
@@ -55,10 +62,7 @@
 	}
 	async function startStakeFlight(bonusId?: BonusFlightId) {
 		try {
-			const response = await stakeSession.play(
-				bonusId ?? selectedRisk,
-				Math.round(selectedBet * 1e6),
-			);
+			const response = await stakeSession.play(bonusId ?? selectedRisk, stakeAmount);
 			let round: FlightRound;
 			try {
 				round = decodeStakeRound(response, {
@@ -260,8 +264,11 @@
 		replayMode || status !== 'ready' || wallet.busy || !wallet.ready || wallet.active,
 	);
 	const landed = $derived(Boolean(activeEnding) && landingProgress === 1);
+	const stakeAmount = $derived(
+		wallet.levels.length ? Math.round(selectedBet * 1e6) : stakeBetUnits(betInput),
+	);
 	const betInputIsValid = $derived(
-		wallet.live ? wallet.levels.includes(Math.round(selectedBet * 1e6)) : isBetInputValid(betInput),
+		wallet.live ? isValidStakeBet(stakeAmount, wallet) : isBetInputValid(betInput),
 	);
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
@@ -979,7 +986,7 @@
 		const previous = currentRound;
 		resetPresentation();
 		selectedBet = previous.bet;
-		betInput = previous.bet.toFixed(2);
+		betInput = wallet.live ? String(previous.bet) : previous.bet.toFixed(2);
 		selectedCreatureId = previous.creature;
 		selectedLaunchStyle = previous.launchStyle;
 		if (!previous.bonusFlight) {
@@ -1085,6 +1092,39 @@
 		flightAudio.setHidden(document.hidden);
 		const visibility = () => flightAudio.setHidden(document.hidden);
 		const unlock = () => flightAudio.unlock();
+		const flyWithSpace = (event: KeyboardEvent) => {
+			if (
+				event.code !== 'Space' ||
+				event.repeat ||
+				event.defaultPrevented ||
+				event.isComposing ||
+				event.ctrlKey ||
+				event.altKey ||
+				event.metaKey ||
+				event.shiftKey ||
+				controlsLocked ||
+				!betInputIsValid ||
+				wallet.spacebarDisabled ||
+				customizeOpen ||
+				helpOpen ||
+				bonusOpen ||
+				historyOpen ||
+				creaturePickerOpen
+			)
+				return;
+			const focused = document.activeElement;
+			const interactive = (target: EventTarget | null) =>
+				target instanceof Element &&
+				(Boolean(
+					target.closest(
+						'input, textarea, select, button, [contenteditable]:not([contenteditable="false"])',
+					),
+				) ||
+					(target instanceof HTMLElement && target.isContentEditable));
+			if (interactive(focused) || event.composedPath().some(interactive)) return;
+			event.preventDefault();
+			startFlight();
+		};
 		const click = (event: MouseEvent) => {
 			const target = event.target instanceof Element ? event.target : undefined;
 			const button = target?.closest('button');
@@ -1113,6 +1153,7 @@
 		};
 		document.addEventListener('pointerdown', unlock, true);
 		document.addEventListener('keydown', unlock, true);
+		document.addEventListener('keydown', flyWithSpace);
 		document.addEventListener('click', click, true);
 		document.addEventListener('change', change);
 		document.addEventListener('visibilitychange', visibility);
@@ -1168,6 +1209,7 @@
 		return () => {
 			document.removeEventListener('pointerdown', unlock, true);
 			document.removeEventListener('keydown', unlock, true);
+			document.removeEventListener('keydown', flyWithSpace);
 			document.removeEventListener('click', click, true);
 			document.removeEventListener('change', change);
 			document.removeEventListener('visibilitychange', visibility);
@@ -1532,12 +1574,30 @@
 
 			<div class="bet-control">
 				<span class="dock-label">BET</span>
-				{#if wallet.live}
+				{#if wallet.live && wallet.levels.length}
 					<select aria-label="Bet amount" disabled={controlsLocked} bind:value={selectedBet}>
 						{#each wallet.levels as amount (amount)}<option value={amount / 1e6}
 								>{formatLocalAmount(amount / 1e6)}</option
 							>{/each}
 					</select>
+				{:else if wallet.live}
+					<input
+						class="bet-input"
+						aria-label="Bet amount"
+						aria-invalid={!betInputIsValid}
+						disabled={controlsLocked}
+						type="number"
+						inputmode="decimal"
+						min={(Math.ceil(wallet.minBet / wallet.stepBet) * wallet.stepBet) / 1e6}
+						max={wallet.maxBet / 1e6}
+						step={wallet.stepBet / 1e6}
+						value={betInput}
+						oninput={(event) => {
+							betInput = event.currentTarget.value;
+							const units = stakeBetUnits(betInput);
+							if (isValidStakeBet(units, wallet)) selectedBet = units / 1e6;
+						}}
+					/>
 				{:else}
 					<div class="bet-stepper">
 						<button

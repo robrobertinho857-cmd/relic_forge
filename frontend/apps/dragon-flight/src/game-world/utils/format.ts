@@ -1,11 +1,9 @@
-const amountFormat = new Intl.NumberFormat('en-US', {
-	minimumFractionDigits: 2,
-	maximumFractionDigits: 2,
-	useGrouping: false,
-});
-
+// Preserve wallet millionths in labels, including fractional bets and payouts.
 export function formatLocalAmount(value: number, currency = 'USD') {
-	return currency === 'USD'
-		? '$' + amountFormat.format(value)
-		: `${amountFormat.format(value)} ${currency}`;
+	return new Intl.NumberFormat('en-US', {
+		style: 'currency',
+		currency,
+		maximumFractionDigits: 6,
+		useGrouping: false,
+	}).format(value);
 }

@@ -84,7 +84,10 @@
 					<li>Set your bet.</li>
 					<li>Choose Safe, Balanced or Danger.</li>
 					<li>Adjust weather, time and launch in Customize.</li>
-					<li>Press <strong>FLY</strong> and watch the flight.</li>
+					<li>
+						Press <strong>FLY</strong> and watch the flight. Space also starts a flight when permitted
+						and no menu or control has focus.
+					</li>
 					<li>See your result, then choose Fly Again or Change Settings.</li>
 				</ol>
 				<p>
@@ -111,7 +114,7 @@
 				<h3 id="help-bet">BET &amp; RISK</h3>
 				<p>
 					Choose your base bet from the available amounts. Connected play uses the wallet’s
-					permitted bet levels.
+					permitted bet levels, or its minimum, maximum and wager step.
 				</p>
 				<div class="guide-grid three-grid">
 					<article class="guide-card">

@@ -1,0 +1,567 @@
+{
+  "date": "2026-09-28",
+  "uploaded": false,
+  "testsRun": false,
+  "archives": {
+    "dragon-flight-frontend-2026-09-28.zip": {
+      "bytes": 74416347,
+      "sha256": "3cbdffb3d257cbc42aed762d9305b1bb480b4e74bec611900d2eb2bd7387fc03",
+      "files": {
+        "_app/env.js": {
+          "bytes": 19,
+          "sha256": "3c588b75cde522990022a70ade17b3a6db7068f685ac4cb8b31a104f7e258706"
+        },
+        "_app/immutable/assets/style.BLegDqKg.css": {
+          "bytes": 65910,
+          "sha256": "7d794672775da243a975a246a6b849e6bf35daeaeedc607757a866341c5a2212"
+        },
+        "_app/immutable/assets/style.be6dCKm-.css": {
+          "bytes": 64927,
+          "sha256": "064ef3316ab30ca39e285b5fb345c6d43b600e9b0a15ce2281acc87674ea46ae"
+        },
+        "_app/immutable/bundle.q2zDNQRO.js": {
+          "bytes": 167105,
+          "sha256": "4e3898fdec426c34f0a3e359a45df1a5d9fb069e433330ba191a4545b9168569"
+        },
+        "_app/version.json": {
+          "bytes": 27,
+          "sha256": "982c815365458aa8c7b35eba9152445f3b3c1cadc08ede1118373beb8a0962d1"
+        },
+        "audio/air-current.mp3": {
+          "bytes": 24620,
+          "sha256": "d6aaa79f8e6b6fc56edf339d78096f8eb92726cda24182175da859442e2ff8a5"
+        },
+        "audio/balanced-music.mp3": {
+          "bytes": 342428,
+          "sha256": "201994d30e07c65a6068f1722bddd410bcbe000d7e0c8ab2ae0532c5c92ae878"
+        },
+        "audio/bonus-start.mp3": {
+          "bytes": 33068,
+          "sha256": "1bc86d8ccbfa61ea8e00fe040151cae807b41b943557bba2fc00926feacfad8f"
+        },
+        "audio/button-click.mp3": {
+          "bytes": 16940,
+          "sha256": "94ec279918104b5fa8d1897137d35ac3b8342e87c3b4d8dfaf36aef2c1b31014"
+        },
+        "audio/crash.mp3": {
+          "bytes": 16940,
+          "sha256": "7b3f5a4d6bf3ef8c42c2be53121b6d841a404c6ca9b7c392ae37badc3011b2de"
+        },
+        "audio/crystal-pickup.mp3": {
+          "bytes": 33068,
+          "sha256": "0ba50c3362b90ca8bf3b1637bed4bdbb04344502bf4bd421e309808a550176d4"
+        },
+        "audio/danger-music.mp3": {
+          "bytes": 480620,
+          "sha256": "6da0f9da23dca25730c8ec26e6c0822c3e1883ceeb5ba74ca4fb9a75aa19b144"
+        },
+        "audio/eagle-flight.mp3": {
+          "bytes": 48812,
+          "sha256": "f1eb8a4efc8fc48d6768671d184fa627eca1bb65ed3ed3c796804b0c16a11f96"
+        },
+        "audio/encounter-warning.mp3": {
+          "bytes": 15020,
+          "sha256": "748f7d48d357dfe4536779620d5484b89a85c15c2dafa89b4ca85e90f9893bb1"
+        },
+        "audio/feather-pickup.mp3": {
+          "bytes": 10412,
+          "sha256": "ce235647bbb619e98b520b6ae463e7532f5e5a7463316f6660c1fb4d6a3952f5"
+        },
+        "audio/gate-pass.mp3": {
+          "bytes": 10412,
+          "sha256": "2bd523f1f89ca2cabb5b206303ab30ed62406a34d4b0d93cefff330a236410fc"
+        },
+        "audio/golden-feather-pickup.mp3": {
+          "bytes": 10412,
+          "sha256": "8bf2b4c8a8ad79ea8bd01c2765d046fa66c2cdd426abe3803708ddeb1daf3490"
+        },
+        "audio/landing.mp3": {
+          "bytes": 16940,
+          "sha256": "87629c252458e173fa585085591df042e88cd647be18503f82758488a803cbd7"
+        },
+        "audio/option-select.mp3": {
+          "bytes": 10412,
+          "sha256": "07bf792df61e9d447038214c4977bbbc21418e3288174c8ed61f0067740dae61"
+        },
+        "audio/panel-open-close.mp3": {
+          "bytes": 10412,
+          "sha256": "bccde813f55ea922c745f65bdde0264d368d4a688c7d8c8f19587bcaed0b8bf6"
+        },
+        "audio/perfect-pass.mp3": {
+          "bytes": 10412,
+          "sha256": "19e534a5e0b3be304ae7a2793c48250e4ebf489caed5db84c29f763bfdd30e06"
+        },
+        "audio/predator-pass.mp3": {
+          "bytes": 16940,
+          "sha256": "92aa1a959169ed1e696e46d24ac9ec5aa174a8efe3955a38fb03824d34627d91"
+        },
+        "audio/rain-loop.mp3": {
+          "bytes": 77612,
+          "sha256": "61af6b33a4b2e3c21732df7ae0692e691b8f286855ea6ab1853d5ead3e2efa61"
+        },
+        "audio/raptor-call.mp3": {
+          "bytes": 15020,
+          "sha256": "b0e3be9a31cd7edf2a0ca242610dfed2fa8b2fac64ef48a266be873b956b2a0b"
+        },
+        "audio/result-big-win.mp3": {
+          "bytes": 39212,
+          "sha256": "3b3914565c04544a9ba7d5ca0fa1519428344ee5720e0ccf6a7b212a199fcca2"
+        },
+        "audio/result-loss.mp3": {
+          "bytes": 16940,
+          "sha256": "1018cda5747fc10d811212754f697ad7354f51fbe9f61ee5b12e189c6ae9b30a"
+        },
+        "audio/result-outstanding.mp3": {
+          "bytes": 77612,
+          "sha256": "1a1df22de9da21a7ad9a3b5484c0c023d126cbc80d5ed518afa6013e7fefa2f1"
+        },
+        "audio/result-return.mp3": {
+          "bytes": 10412,
+          "sha256": "754b0b921364c4eecc1d29b04fd05be2600659fa3ec3fc9e3c7786f8693030ae"
+        },
+        "audio/result-win.mp3": {
+          "bytes": 24620,
+          "sha256": "5fd2a4996a0a2ebfa1eaeb6ac1d51d2b116e824a86f270de7ca4faac4454ea44"
+        },
+        "audio/ridge-dragon-call.mp3": {
+          "bytes": 16940,
+          "sha256": "a1136b16475cee5008b517c5fd400225045e9416304edc1ca283481a2eb5c083"
+        },
+        "audio/safe-music.mp3": {
+          "bytes": 242012,
+          "sha256": "023b249771c0f04fdf7c7ff4c025c73e8eb9818f5b32de3c8b3ab6f7ba612c6e"
+        },
+        "audio/snow-loop.mp3": {
+          "bytes": 77612,
+          "sha256": "97ec8ac77cd202952f2b1ce198d56c2d4f2a84343ac5420c60d2e86a1a6d70f4"
+        },
+        "audio/storm-loop.mp3": {
+          "bytes": 77612,
+          "sha256": "db43acabd2e4b5640b1ab68898b31ea48e1344d99884b27305cd0b188b979b2a"
+        },
+        "audio/takeoff-boost.mp3": {
+          "bytes": 16940,
+          "sha256": "e67de4b8c5d87ac6d7e71c5a0f09cfed1a4e28f1dc6fc9d3fb4a3f69b40cbfdd"
+        },
+        "audio/takeoff-dive.mp3": {
+          "bytes": 16940,
+          "sha256": "7b64b1b7ed204a603649da69df697fc15d663f7ea1761f8c4ef2b53e34727b89"
+        },
+        "audio/takeoff-glide.mp3": {
+          "bytes": 16940,
+          "sha256": "ae0ea425f0f9e24ab2b2d0ccb415270732033ab1a4f28d1a67e71abd51b48b10"
+        },
+        "audio/thunder.mp3": {
+          "bytes": 77612,
+          "sha256": "19174589db5fb2a85fa4aeeea912d414e1624315d6aa2b76c82ab0f5d6c84b27"
+        },
+        "audio/unavailable.mp3": {
+          "bytes": 10412,
+          "sha256": "af5f90a1b51baa14c07aebd0af9308c2169e7b7343d44016f8becca93efbbfc3"
+        },
+        "audio/wind.mp3": {
+          "bytes": 8492,
+          "sha256": "1be95d79eb515c2334feee575a03f5786ec3bc026d4d5b151fa8e90e144da141"
+        },
+        "audio/wing-loop.mp3": {
+          "bytes": 10412,
+          "sha256": "a77317d289eec6fd806a8e86fccd62b91b311d051aa8a9a2399c0ad3ab2ab7fd"
+        },
+        "backgrounds/clear-day.webp": {
+          "bytes": 1774372,
+          "sha256": "eceda2e9ebeee24f8677bb0aee1261cb2946e347dc88cda12099fed5a523749e"
+        },
+        "backgrounds/dawn.webp": {
+          "bytes": 1701506,
+          "sha256": "416f59c28c9a7ff42d97a96a74ab913a5b73132e4d72d86d85076fbc189f9ba3"
+        },
+        "backgrounds/eclipse.webp": {
+          "bytes": 1626184,
+          "sha256": "062bb8f9d190f5a501efd4b215ae235cbbfae5aa41415fa9ee967c6cbbaaf16a"
+        },
+        "backgrounds/fog.webp": {
+          "bytes": 1378996,
+          "sha256": "d3c56d88c38e6ff1d937ac17e50a5a5306e943e05e14e56db2482a2f793ec8c4"
+        },
+        "backgrounds/night.webp": {
+          "bytes": 1585636,
+          "sha256": "ed91f43e00fe2b1449690babcfcab6e356b5e213f5d7adb323d8382aaa72f07f"
+        },
+        "backgrounds/rain.webp": {
+          "bytes": 1566944,
+          "sha256": "b43ac924831e8a80c0933d99e4d36f383083ac7dc6a81c3d4e23cb3ae4f35b77"
+        },
+        "backgrounds/snow.webp": {
+          "bytes": 1737104,
+          "sha256": "0d8bdfd4cc449088498f7a9b5e0a3c3ec9f07bd3a6bfa55a2abd3ab4d080c9db"
+        },
+        "backgrounds/storm.webp": {
+          "bytes": 1713496,
+          "sha256": "59b5bbde16a7c87228401bb0e93c4788a039d6417ec3263691612e483f3c844a"
+        },
+        "backgrounds/sunset.webp": {
+          "bytes": 1922420,
+          "sha256": "98cea024277af5e0851a8b8af04d85bfdd95ecc3d7aa83451934b11cbe416039"
+        },
+        "bonuses/storm-run.webp": {
+          "bytes": 1650024,
+          "sha256": "c6b44e6d3230b3c919e2c0d81a5031db80297461b72873ae257ca271ccf8688a"
+        },
+        "bonuses/summit-expedition.webp": {
+          "bytes": 1844320,
+          "sha256": "4dc4a9c89e5defba8be6a06d0e4a9dddb97e5eebadd2e4966e3a26f997c02673"
+        },
+        "creatures/archaeopteryx/fly-01.webp": {
+          "bytes": 141488,
+          "sha256": "7fea65c3057695d30fe949d640f5503a66e5d0115d30dbc07c090553e42802e7"
+        },
+        "creatures/archaeopteryx/fly-02.webp": {
+          "bytes": 201030,
+          "sha256": "ae2287162f7a49967133e6f580c846b7e563468846ee84ed5574b2363dfb4d44"
+        },
+        "creatures/archaeopteryx/fly-03.webp": {
+          "bytes": 218986,
+          "sha256": "a09802089b1732aaf59782a00d526c30d310205afba2b2f608f796ea909174c3"
+        },
+        "creatures/archaeopteryx/fly-04.webp": {
+          "bytes": 154442,
+          "sha256": "58d90788b35d8373e93f06313eee40f9a2b78c5885437cab85aac131cfc41559"
+        },
+        "creatures/archaeopteryx/fly-05.webp": {
+          "bytes": 115956,
+          "sha256": "9b7876c0d3dc642dc4cf87e6114656e7c73035975477145501dda8af24fb3f7f"
+        },
+        "creatures/archaeopteryx/fly-06.webp": {
+          "bytes": 146880,
+          "sha256": "e41fb09a1324da9de57b1ba91b77d88b0714053acc1f79101dde0e2cace8e8f1"
+        },
+        "creatures/archaeopteryx/fly-07.webp": {
+          "bytes": 231032,
+          "sha256": "99740866bf35cea9c059dbc00c3ab4376d312bdcc150e685dcbc865dd2227b0b"
+        },
+        "creatures/archaeopteryx/fly-08.webp": {
+          "bytes": 234150,
+          "sha256": "8129cb40c259a55bf9cc257e8a7ec19f6e9237330e085f664bb5da2f76781202"
+        },
+        "creatures/azure-swift/fly-01.webp": {
+          "bytes": 265450,
+          "sha256": "06ce17186957c33680e40fdaa097f181599a2b2d9a161af009ff7bc65b3e44a3"
+        },
+        "creatures/azure-swift/fly-02.webp": {
+          "bytes": 251176,
+          "sha256": "77f869de1243ba1aaba1a62e6f9cab406176224272a665d03f55e8a41b6515ca"
+        },
+        "creatures/azure-swift/fly-03.webp": {
+          "bytes": 181558,
+          "sha256": "bf9975cd808bcb24ca5250754ade4c2d93b0314e8ee6fce810955ccf83880ddf"
+        },
+        "creatures/azure-swift/fly-04.webp": {
+          "bytes": 139652,
+          "sha256": "2f6c3e6ad3c53f8868b3dab78888c53eb715e14205da0065a1342465cca0c59d"
+        },
+        "creatures/azure-swift/fly-05.webp": {
+          "bytes": 182466,
+          "sha256": "8823dad690f33f3857761734c4aeb3b6b5396b3fec14847808cecfa427da8c10"
+        },
+        "creatures/azure-swift/fly-06.webp": {
+          "bytes": 252630,
+          "sha256": "ec2a7db0d5581feaae69af9bfdf1843585463b6dd536785de0dbb817baea68c3"
+        },
+        "creatures/azure-swift/fly-07.webp": {
+          "bytes": 243366,
+          "sha256": "128768e363cf440897878041027957afe602f95d2e0c0aa2a765d46036a40e49"
+        },
+        "creatures/azure-swift/fly-08.webp": {
+          "bytes": 234906,
+          "sha256": "c65aabbf5b955957114946b9f0352a509808fedeb68e7037c17e41e3210cc2a4"
+        },
+        "creatures/azure-swift/fly-09.webp": {
+          "bytes": 170550,
+          "sha256": "aa642b73f3265c550a961c5d767a28026d7a5bbb7e00ce00af06e785e72316b4"
+        },
+        "creatures/eagle/fly-01.webp": {
+          "bytes": 42248,
+          "sha256": "1b289fad57bc29602b8b0ef63274af85a96b42f51affe173f592a4d792748ec6"
+        },
+        "creatures/eagle/fly-02.webp": {
+          "bytes": 38230,
+          "sha256": "9fb77781bf43cd69c85d3b16eca341566bc4980ffc553c80f7404e0660e069a4"
+        },
+        "creatures/eagle/fly-03.webp": {
+          "bytes": 28248,
+          "sha256": "17dfcd1e3b0b844a86d4a69a9d6a9a61a442db42e5092323cb6b688ce0aaa11d"
+        },
+        "creatures/eagle/fly-04.webp": {
+          "bytes": 20822,
+          "sha256": "62c1ebd917e6051e59ce03e82edcf9217af9a3af2f573c0b368056c84a3f85b2"
+        },
+        "creatures/eagle/fly-05.webp": {
+          "bytes": 24600,
+          "sha256": "ebc2b2ff36a04d8548317e8d9c50926f9d51d45f39e196c45efce561fc53f8a9"
+        },
+        "creatures/eagle/fly-06.webp": {
+          "bytes": 29848,
+          "sha256": "d87ff99c70569713cac1e17114fc866c885922dfae2fb220d5462414afd8a8d0"
+        },
+        "creatures/eagle/fly-07.webp": {
+          "bytes": 27908,
+          "sha256": "fa1da713b3160c8435cb1d3ce0fd85e58beb38ec527031acf686732efe70bc8d"
+        },
+        "creatures/eagle/fly-08.webp": {
+          "bytes": 32090,
+          "sha256": "74753704fc1a2c0af1312c6fbbe4624c04e3cb734a43db683bfe884be59a875e"
+        },
+        "creatures/woodpecker/fly-01.webp": {
+          "bytes": 31882,
+          "sha256": "695389ee1a4eab67f170bac739e13b2c6d88b64214890027de717125c149f024"
+        },
+        "creatures/woodpecker/fly-02.webp": {
+          "bytes": 29900,
+          "sha256": "a206d00a4a7a5c17d3514d77bfb43d9a49d247881e2fd5b2c9c315d0e7855bb0"
+        },
+        "creatures/woodpecker/fly-03.webp": {
+          "bytes": 21694,
+          "sha256": "1eb8ee84d8e31fd4203fc0f0cee81b7cefd5e6fd729520f21180323d3af108f3"
+        },
+        "creatures/woodpecker/fly-04.webp": {
+          "bytes": 16270,
+          "sha256": "e5df71b1461e4887099c3c88d95c5d4cfc9721645783cbb40ac3c5d4d6e88eaf"
+        },
+        "creatures/woodpecker/fly-05.webp": {
+          "bytes": 20938,
+          "sha256": "cd67e9b59875ec781e6818a70af50b20e3baf12daa07bdbac8b2edd6bc0f0af2"
+        },
+        "creatures/woodpecker/fly-06.webp": {
+          "bytes": 25838,
+          "sha256": "290b4c8525370e098d88699d570d5cf946f83d5872de3d3657ca750a3827beea"
+        },
+        "creatures/woodpecker/fly-07.webp": {
+          "bytes": 25780,
+          "sha256": "909aa18dc1666e977199ae21a321698dc256cdaa61b42292d3343d86a2f0b4e9"
+        },
+        "creatures/woodpecker/fly-08.webp": {
+          "bytes": 22432,
+          "sha256": "9f175d6d63996fa965e0e71c919a290bbbb3931998ca464a7023c608ea969484"
+        },
+        "customize/boost.webp": {
+          "bytes": 1561270,
+          "sha256": "34a2ab100dfada0babfdd961866bd50437e1219d6201b1c66d8dbb3dfbc8b4fa"
+        },
+        "customize/dawn.webp": {
+          "bytes": 917002,
+          "sha256": "b2e0ad0b23dd8acfde409fa873d5fa346f01a91fe19fd972eadaf4367024f3a8"
+        },
+        "customize/day.webp": {
+          "bytes": 918454,
+          "sha256": "3e12bffbda1256f877e99bd2ae28063ab4d17c3855633f23cc49c7864453a680"
+        },
+        "customize/dive.webp": {
+          "bytes": 1319424,
+          "sha256": "0192f752c611a1dcbba590fc15760f9379ad969e77322129a58265785b7edf15"
+        },
+        "customize/eclipse.webp": {
+          "bytes": 984354,
+          "sha256": "bc7543843f47392e667a188759fe4cfaa9de9be8ec0077a6e698c1065c4c189a"
+        },
+        "customize/fog.webp": {
+          "bytes": 956788,
+          "sha256": "737a07b595ca1f639f1f29f4c9bd9186aa3a5801d4b9b2e494f648eeadb6a41c"
+        },
+        "customize/glide.webp": {
+          "bytes": 1287700,
+          "sha256": "ae65540aebb1f0d21aaa39279ae04da7b194654b3b1f2948271a3c3853e55a50"
+        },
+        "customize/night.webp": {
+          "bytes": 875900,
+          "sha256": "82943aca6e8cbf21f9cb2755c8eca00e7291fcf1da3f97818238e581471dc5f2"
+        },
+        "customize/rain.webp": {
+          "bytes": 894254,
+          "sha256": "ece2a825a7fabc6d57a3abe942be9dd2ddd776849a6f47de068408c550782763"
+        },
+        "customize/snow.webp": {
+          "bytes": 957548,
+          "sha256": "a09dd9e869234bccf08338f50b7e78026ec071aa0f22cb27ba4247ccd7eff28a"
+        },
+        "customize/storm.webp": {
+          "bytes": 926870,
+          "sha256": "54e86ddb0fa1af2b69941934eba744f6a9a4ef7952ec7e10a1f728607d66b4af"
+        },
+        "customize/sunset.webp": {
+          "bytes": 830114,
+          "sha256": "4db2e2b37bc25f7ac895efc2565d6cb0892c3735f783e02ec75fbcbad173056b"
+        },
+        "encounters/mountain-raptor.webp": {
+          "bytes": 120198,
+          "sha256": "bb5c6227ad80b1e235efcbd6aad23f2af8d17fd83679bdf03d1791a612269d4e"
+        },
+        "encounters/ridge-dragon.webp": {
+          "bytes": 141218,
+          "sha256": "498bcee17d0f077e1cae2cf5595841149cf779ba98c9f646463572f0b1c39a6b"
+        },
+        "finishes/meadow-night.webp": {
+          "bytes": 1567982,
+          "sha256": "07b91af41ef1817a35d57472f5cd6ad51f2a28407416595dc3b44b7a5ae17c84"
+        },
+        "finishes/meadow.webp": {
+          "bytes": 1761584,
+          "sha256": "1cdf143769b219a8115e2d07d8f4355f3d589ac718923b9a5a8177d9e6de5d3d"
+        },
+        "finishes/ridge-night.webp": {
+          "bytes": 1540312,
+          "sha256": "9210351504e2ef5a71d38c41d5ff75f766ee3d34a4f1befee91b623bd39df73f"
+        },
+        "finishes/ridge.webp": {
+          "bytes": 1747104,
+          "sha256": "bd5bcb4945e09846c0951d6323a791aace7a2c8918e89192ed8b306821859cb4"
+        },
+        "finishes/summit-night.webp": {
+          "bytes": 1666980,
+          "sha256": "cab5d08f6f69c5f818ca48ef326e9a5050de79e42feb5d7f73f881990b6a0ace"
+        },
+        "finishes/summit.webp": {
+          "bytes": 1885244,
+          "sha256": "e8e5a8c241f08070017e1f3ee779261348fcd7b949fbc05acf4f01cdf601babf"
+        },
+        "index.html": {
+          "bytes": 233539,
+          "sha256": "fcb9b3378dcedaf8aabddb0610535e65d8f6228cd114fb9cdb1269ae5f3c5024"
+        },
+        "pickups/amber-crystal.webp": {
+          "bytes": 35074,
+          "sha256": "48c81c9f62f3f368045bd84e76c8b6f2b6784e2e81d52a3094a73fe22bfcb1a5"
+        },
+        "pickups/feather.webp": {
+          "bytes": 36540,
+          "sha256": "2416a70e0f2c8278372c7c89306583fbcf5ec6754b0f45c4d93029603888879b"
+        },
+        "pickups/golden-feather.webp": {
+          "bytes": 41126,
+          "sha256": "dd12474b7b74b3decb93fd8e72f11cde127bac707123be75f74299527e8acd4e"
+        },
+        "pickups/green-crystal.webp": {
+          "bytes": 32710,
+          "sha256": "ae26892f4b9aeeb38b62dc154f9b5ba0f2eb25897c55210f6fd450b8aff96b83"
+        },
+        "pickups/sky-crystal.webp": {
+          "bytes": 33782,
+          "sha256": "e2d52ced6be0c137de6ce94a2192e76b373eca016485b9ca93902d9406f82390"
+        },
+        "terrain/bark.webp": {
+          "bytes": 2285178,
+          "sha256": "e76c5c9e4dc825e9172ed669a8be89fddbc675966d97876f8df135bbfccd8901"
+        },
+        "terrain/granite.webp": {
+          "bytes": 2097550,
+          "sha256": "855c7f8e2e8da3cdea864937ba9cf0597a9f7d1f890d5c073dbd32b7ebb0ed0b"
+        },
+        "terrain/natural/rock-lower-rounded-snow.webp": {
+          "bytes": 1832204,
+          "sha256": "f3ec6a9f4423acb44344dc9078a7f5438bf29353580561f64fa9a1331c7aa2ab"
+        },
+        "terrain/natural/rock-lower-rounded.webp": {
+          "bytes": 1667364,
+          "sha256": "c9b3c16140f4bee09392b981e75059ba6aad267b3b6060229109d0cfa97247bb"
+        },
+        "terrain/natural/rock-lower-snow.webp": {
+          "bytes": 1940748,
+          "sha256": "a3f92b0f6f60ae19b6d17734bcf915e41887374debe3d9cf28fa1d10de81910f"
+        },
+        "terrain/natural/rock-lower.webp": {
+          "bytes": 1907382,
+          "sha256": "310de583870a4db4b49240d1d9e88b64c0a6a81eb4d2e11396967df6da52759a"
+        },
+        "terrain/natural/rock-upper-rounded-snow.webp": {
+          "bytes": 1682218,
+          "sha256": "a4ec7d66740bd061b2d15457d046c576d21ccff8cb5628f388c01c47333126fa"
+        },
+        "terrain/natural/rock-upper-rounded.webp": {
+          "bytes": 1083784,
+          "sha256": "128e1f948f03d38ffa0f3dfc46ace181550d4974371f0018134c46d2d040aa43"
+        },
+        "terrain/natural/rock-upper-sharp-snow.webp": {
+          "bytes": 1314226,
+          "sha256": "484c17dec06eb21d194f8253252d24ba960f055793662bdb08b705989d9d1d3d"
+        },
+        "terrain/natural/rock-upper-sharp.webp": {
+          "bytes": 1104852,
+          "sha256": "bbef0da7775c4c4058fe5023792a8ced06cf22e41bf1e1400e8bf87d2f98e99d"
+        },
+        "terrain/natural/rock-upper-snow.webp": {
+          "bytes": 1719034,
+          "sha256": "3d4c82b3a66b8a9c8721c8ab2f6ea0f86926e4f2cbbbedf3df68b53de11e8daa"
+        },
+        "terrain/natural/rock-upper.webp": {
+          "bytes": 1313424,
+          "sha256": "e8a9b378729e694c04a3ec35e405ee6d2301484659d747211afd4ab85f5f999b"
+        },
+        "terrain/natural/tree-lower-snow.webp": {
+          "bytes": 1985426,
+          "sha256": "34b8d4ee6baa1aaaa86f7c0969a016ab73f661c4301475e0dce67cb902cacd92"
+        },
+        "terrain/natural/tree-lower.webp": {
+          "bytes": 1415596,
+          "sha256": "333a978311ee9b313c69d3ffad0cc063f07fee3fa98acd61c1f8ca8ca48a4176"
+        },
+        "terrain/natural/tree-upper-snow.webp": {
+          "bytes": 2092762,
+          "sha256": "100f988ec001f91e51d4202a712945c6bcdafd0d12f2af7a17fac1ad13b5566e"
+        },
+        "terrain/natural/tree-upper.webp": {
+          "bytes": 1668664,
+          "sha256": "03973ee2d15be02ac78cdda19e22da2777a5cc70ca583f11fd284ac24159ffc3"
+        }
+      }
+    },
+    "dragon-flight-math-2026-09-28.zip": {
+      "bytes": 17252008,
+      "sha256": "5d6fe4207571791171d0202058fc8b406695258d8aef9c26861788273681748c",
+      "files": {
+        "index.json": {
+          "bytes": 804,
+          "sha256": "7d0696e58aa6b01f59c5d1f66d79bdade56c97e319cf1e1e088db5100080c712"
+        },
+        "books_safe.jsonl.zst": {
+          "bytes": 2544395,
+          "sha256": "235a887a3d8ee8c808ca90ca5da818e09010537f43654527f504e2fe7cdaffac"
+        },
+        "lookUpTable_safe_0.csv": {
+          "bytes": 1529343,
+          "sha256": "2b1c1345d4a193909f7f42730950a476373038995366885b4e57de2c27f23532"
+        },
+        "books_balanced.jsonl.zst": {
+          "bytes": 4609750,
+          "sha256": "1da07e7ff39371855884ba8292ab38458b8fb5d2e7b12e13c5529466f9655276"
+        },
+        "lookUpTable_balanced_0.csv": {
+          "bytes": 2010623,
+          "sha256": "8c7eefb8d520f4c5386eaa10ffb7c3ad87a5e153586ee9d615b22bf8325c8b56"
+        },
+        "books_danger.jsonl.zst": {
+          "bytes": 9182449,
+          "sha256": "9047cd9bf7aaa69242232fe6be48243636ce8913fb82ba1393a0c6ce474bb0b2"
+        },
+        "lookUpTable_danger_0.csv": {
+          "bytes": 3045887,
+          "sha256": "cdab99d915d2ddc54b1ea1d47eae48b0090ed4f3e1ac412eb7b07657f53cdbda"
+        },
+        "books_storm-run.jsonl.zst": {
+          "bytes": 531,
+          "sha256": "c8513f84358f1a61c4f091a6bd2050408e206875d1b49ef9c62be9b92ee46f49"
+        },
+        "lookUpTable_storm-run_0.csv": {
+          "bytes": 113,
+          "sha256": "93a3d18b131603b6240d36f8cd169de08ea1a7fd9f97b64fba0816ba3a672eb3"
+        },
+        "books_summit-expedition.jsonl.zst": {
+          "bytes": 747,
+          "sha256": "8b878cf3b8cc3e804bc6ad7593604044a4bd062fc5fd08b320fdb72022cab8fb"
+        },
+        "lookUpTable_summit-expedition_0.csv": {
+          "bytes": 141,
+          "sha256": "0ceb0e4617d3c36b50349a9ce2c2113dae1c9854a9209a9476eac58bc188449a"
+        }
+      }
+    }
+  }
+}

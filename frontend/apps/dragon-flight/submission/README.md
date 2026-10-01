@@ -1,3 +1,5 @@
+> Current candidate: see [September 28 upload instructions](UPLOAD-2026-09-28.md) and use the separate September 28 frontend/math ZIPs. The combined September 22 ZIP and frontend folder below are older snapshots. Do not run the historical math/test rebuild commands for the current candidate.
+
 # Dragon Flight — Stake Engine test upload
 
 Prepared 2026-09-22; audio restored 2026-09-23. All 31 original sound files and event mappings are included. This package is for ACP testing and review, not an assertion of platform approval. No upload has been performed.

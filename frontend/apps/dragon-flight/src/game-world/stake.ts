@@ -230,6 +230,28 @@ export function decodeStakeRound(
 	};
 }
 
+export function isValidStakeBet(
+	amount: number,
+	limits: Pick<WalletState, 'minBet' | 'maxBet' | 'stepBet' | 'levels'>,
+): boolean {
+	return (
+		Number.isSafeInteger(amount) &&
+		amount > 0 &&
+		amount >= limits.minBet &&
+		amount <= limits.maxBet &&
+		amount % limits.stepBet === 0 &&
+		(!limits.levels.length || limits.levels.includes(amount))
+	);
+}
+
+// Parse decimal currency without rounding fractional millionths into a valid bet.
+export function stakeBetUnits(value: string): number {
+	if (!/^\d+(?:\.\d{0,6})?$/.test(value)) return NaN;
+	const [whole, fraction = ''] = value.split('.');
+	const units = Number(whole) * 1e6 + Number(fraction.padEnd(6, '0'));
+	return Number.isSafeInteger(units) ? units : NaN;
+}
+
 export type WalletState = {
 	live: boolean;
 	ready: boolean;
@@ -238,6 +260,11 @@ export type WalletState = {
 	amount: number;
 	currency: string;
 	levels: number[];
+	minBet: number;
+	maxBet: number;
+	stepBet: number;
+	defaultBet: number;
+	spacebarDisabled: boolean;
 	turboDisabled: boolean;
 	buyDisabled: boolean;
 	error: string;
@@ -250,6 +277,11 @@ export const initialWallet = (): WalletState => ({
 	amount: 0,
 	currency: 'USD',
 	levels: [],
+	minBet: 0,
+	maxBet: 0,
+	stepBet: 1,
+	defaultBet: 0,
+	spacebarDisabled: false,
 	turboDisabled: false,
 	buyDisabled: false,
 	error: '',
@@ -259,9 +291,6 @@ export class StakeSession {
 	state = initialWallet();
 	private origin = '';
 	private sessionID = '';
-	private min = 0;
-	private max = 0;
-	private step = 1;
 	private minimumDuration = 0;
 	private started = 0;
 	constructor(
@@ -314,16 +343,26 @@ export class StakeSession {
 			this.sessionID = session;
 			const data = await this.request('authenticate');
 			const config = object(data.config);
-			this.min = integer(config.minBet);
-			this.max = integer(config.maxBet);
-			this.step = integer(config.stepBet);
-			if (!this.min || this.max < this.min || !this.step) throw new Error('Invalid bet limits');
-			const levels = Array.isArray(config.betLevels)
-				? config.betLevels
-						.map(integer)
-						.filter((x) => x >= this.min && x <= this.max && x % this.step === 0)
-				: [];
-			if (!levels.length) throw new Error('No supported bet levels');
+			const minBet = integer(config.minBet);
+			const maxBet = integer(config.maxBet);
+			const stepBet = integer(config.stepBet);
+			const limits = { minBet, maxBet, stepBet, levels: [] };
+			const firstBet = Math.ceil(minBet / stepBet) * stepBet;
+			if (!minBet || !stepBet || !isValidStakeBet(firstBet, limits))
+				throw new Error('Invalid bet limits');
+			if (config.betLevels !== undefined && !Array.isArray(config.betLevels))
+				throw new Error('Invalid bet levels');
+			const levels = ((config.betLevels as unknown[] | undefined) ?? []).map(integer);
+			if (levels.some((amount) => !isValidStakeBet(amount, limits)))
+				throw new Error('Invalid bet levels');
+			const defaultBet =
+				config.defaultBetLevel === undefined
+					? levels.includes(1000000)
+						? 1000000
+						: (levels[0] ?? firstBet)
+					: integer(config.defaultBetLevel);
+			if (!isValidStakeBet(defaultBet, { ...limits, levels }))
+				throw new Error('Invalid default bet');
 			const jurisdiction = object(config.jurisdiction ?? {});
 			this.minimumDuration = integer(jurisdiction.minimumRoundDuration ?? 0);
 			if (this.minimumDuration > 60000) throw new Error('Unsupported minimum round duration');
@@ -338,6 +377,11 @@ export class StakeSession {
 				ready: true,
 				live: true,
 				active,
+				minBet,
+				maxBet,
+				stepBet,
+				defaultBet,
+				spacebarDisabled: jurisdiction.disabledSpacebar === true,
 				levels: [...new Set(levels)].sort((a, b) => a - b),
 				turboDisabled: jurisdiction.disabledTurbo === true,
 				buyDisabled: jurisdiction.disabledBuyFeature === true,
@@ -359,9 +403,8 @@ export class StakeSession {
 		if (
 			!Object.hasOwn(STAKE_MODES, mode) ||
 			(this.state.buyDisabled && STAKE_MODES[mode] > 1) ||
-			amount < this.min ||
-			amount > this.max ||
-			amount % this.step !== 0 ||
+			!isValidStakeBet(amount, this.state) ||
+			!Number.isSafeInteger(amount * STAKE_MODES[mode]) ||
 			amount * STAKE_MODES[mode] > this.state.amount
 		)
 			throw new Error('Invalid bet or insufficient balance');
