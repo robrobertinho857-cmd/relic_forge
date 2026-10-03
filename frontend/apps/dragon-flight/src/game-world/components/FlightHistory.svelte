@@ -3,6 +3,7 @@
 	import type { FlightRound } from '../types';
 	import { getBonusFlight } from '../bonusFlights';
 	import { formatLocalAmount as formatAmount } from '../utils/format';
+	import { t } from '../i18n';
 	function formatLocalAmount(value: number) {
 		return formatAmount(value, currency);
 	}
@@ -23,11 +24,11 @@
 	} = $props();
 </script>
 
-<FlightDialog {open} title="Flight History" {onClose}>
+<FlightDialog {open} title={t('history')} {onClose}>
 	<p>
 		Your last 20 completed flights in this session. Replays show the same result and cost nothing.
 	</p>
-	{#if !rounds.length}<p class="empty">Your first completed flight will appear here.</p>{/if}
+	{#if !rounds.length}<p class="empty">{t('history')}</p>{/if}
 	<ol>
 		{#each rounds as round (round.id)}
 			{@const cost = round.entryCost ?? round.bet}
@@ -41,25 +42,25 @@
 				</div>
 				<dl>
 					<div>
-						<dt>Entry</dt>
+						<dt>{t('entryCost')}</dt>
 						<dd>{formatLocalAmount(cost)}</dd>
 					</div>
 					<div>
-						<dt>Payout</dt>
+						<dt>{t('payout')}</dt>
 						<dd>{formatLocalAmount(round.finalWin)}</dd>
 					</div>
 					<div>
-						<dt>Net</dt>
+						<dt>{t('netResult')}</dt>
 						<dd>{formatLocalAmount(round.finalWin - cost)}</dd>
 					</div>
 					<div>
-						<dt>Base-bet multiplier</dt>
+						<dt>{t('multiplier')}</dt>
 						<dd>{round.finalMultiplier}×</dd>
 					</div>
 				</dl>
 				<div class="actions">
 					<button type="button" {disabled} onclick={() => onReplay(round)}
-						>Replay #{round.id} · No cost</button
+						>{t('playReplay')} #{round.id} · {t('replayNoCost')}</button
 					>
 				</div>
 			</li>

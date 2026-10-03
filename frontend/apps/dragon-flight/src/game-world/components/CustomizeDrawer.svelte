@@ -4,6 +4,7 @@
 	import { getTimeOfDay, TIME_OF_DAY_OPTIONS } from '../timeOfDay';
 	import { LAUNCH_OPTIONS } from '../config';
 	import type { LaunchStyle, TimeOfDay, WeatherCondition } from '../types';
+	import { t } from '../i18n';
 
 	type Props = {
 		open: boolean;
@@ -77,8 +78,8 @@
 	<section class="customize-drawer">
 		<header>
 			<div>
-				<span class="eyebrow">YOUR FLIGHT</span>
-				<h2 id="customize-title">Set the scene</h2>
+				<span class="eyebrow">{t('flightActive')}</span>
+				<h2 id="customize-title">{t('customize')}</h2>
 			</div>
 			<button
 				class="close-button"
@@ -91,7 +92,7 @@
 		</header>
 		<div class="customize-content">
 			<fieldset class="option-section" {disabled} aria-describedby="customize-time-note">
-				<legend>Time of day <span>{getTimeOfDay(timeOfDay).name.toLowerCase()}</span></legend>
+				<legend>{t('time')} <span>{getTimeOfDay(timeOfDay).name.toLowerCase()}</span></legend>
 				<p id="customize-time-note" class="option-note">{getTimeOfDay(timeOfDay).description}</p>
 				<div class="option-grid time-grid">
 					{#each TIME_OF_DAY_OPTIONS as option (option.id)}
@@ -118,7 +119,7 @@
 				</div>
 			</fieldset>
 			<fieldset class="option-section" {disabled} aria-describedby="customize-weather-note">
-				<legend>Weather <span>{getWeather(weather).name.toLowerCase()}</span></legend>
+				<legend>{t('weather')} <span>{getWeather(weather).name.toLowerCase()}</span></legend>
 				<p id="customize-weather-note" class="option-note">
 					Mix any weather with your chosen time.
 				</p>
@@ -151,8 +152,8 @@
 				{disabled}
 				aria-describedby="customize-launch-note"
 			>
-				<legend>Takeoff</legend>
-				<p id="customize-launch-note" class="option-note">Choose your entrance.</p>
+				<legend>{t('launch')}</legend>
+				<p id="customize-launch-note" class="option-note">{t('launch')}</p>
 				<div class="launch-grid">
 					{#each LAUNCH_OPTIONS as option (option.id)}
 						<label
@@ -189,10 +190,10 @@
 					class="reset-button"
 					type="button"
 					disabled={disabled || defaultSettingsSelected}
-					onclick={resetDefaults}>Reset defaults</button
+					onclick={resetDefaults}>{t('changeSettings')}</button
 				>
 				<button class="done-button" type="button" data-audio-panel onclick={close}
-					>Done <span aria-hidden="true">✓</span></button
+					>{t('ready')} <span aria-hidden="true">✓</span></button
 				>
 			</div>
 		</footer>

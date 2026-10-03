@@ -2,6 +2,17 @@
 	import { onMount } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import {
+		LANGUAGE_NAMES,
+		SUPPORTED_LANGUAGES,
+		changeLanguage,
+		getRiskNote,
+		language,
+		readyPrompt,
+		stageWord,
+		t,
+		textDirection,
+	} from './i18n';
+	import {
 		StakeSession,
 		initialWallet,
 		decodeStakeRound,
@@ -18,6 +29,22 @@
 	let sharedReplay = $state<FlightRound>();
 	function formatLocalAmount(value: number) {
 		return formatAmount(value, wallet.live ? wallet.currency : 'USD');
+	}
+	function formatBetInput(value: number) {
+		const step = wallet.live ? wallet.stepBet / 1e6 : PROTOTYPE_BET_STEP;
+		const stepDecimals = (step.toFixed(6).match(/\.(\d*?[1-9])0*$/)?.[1] ?? '').length;
+		return value.toFixed(Math.max(2, stepDecimals));
+	}
+	function getCurrencySymbol(currency: string) {
+		return (
+			new Intl.NumberFormat('en-US', {
+				style: 'currency',
+				currency,
+				currencyDisplay: 'narrowSymbol',
+			})
+				.formatToParts(0)
+				.find((part) => part.type === 'currency')?.value ?? currency
+		);
 	}
 	async function connectStake() {
 		flightError = '';
@@ -42,7 +69,7 @@
 		if (!wallet.ready) return;
 		if (wallet.live) {
 			selectedBet = wallet.defaultBet / 1e6;
-			betInput = String(selectedBet);
+			betInput = formatBetInput(selectedBet);
 			if (wallet.turboDisabled) playbackSpeed = 1;
 		}
 		if (recovered) {
@@ -53,8 +80,8 @@
 				});
 				resetPresentation();
 				beginFlight(round);
-			} catch {
-				stakeSession.block();
+			} catch (error) {
+				stakeSession.block(error);
 			}
 		} else if (currentRound && !isReplay && status !== 'ready' && status !== 'complete') {
 			await presentFinalResult(currentRound, presentationToken);
@@ -69,8 +96,8 @@
 					creature: selectedCreatureId,
 					launchStyle: selectedLaunchStyle,
 				});
-			} catch {
-				stakeSession.block();
+			} catch (error) {
+				stakeSession.block(error);
 				return;
 			}
 			if (!bonusId) {
@@ -189,6 +216,7 @@
 	let player = $state<PlayerBody>(createPlayer(INITIAL_BOUNDS));
 	let selectedBet = $state(1);
 	let betInput = $state('1.00');
+	const betCurrencySymbol = $derived(getCurrencySymbol(wallet.live ? wallet.currency : 'USD'));
 	let selectedRisk = $state<FlightRisk>('balanced');
 	let selectedCreatureId = $state<CreatureId>('archaeopteryx');
 	let selectedLaunchStyle = $state<LaunchStyle>('glide');
@@ -212,6 +240,7 @@
 	let currentMultiplier = $state(1);
 	let finalMultiplier = $state(0);
 	let finalWin = $state(0);
+	let winCelebrationOpen = $state(false);
 	let gatesPassed = $state(0);
 	let distanceTravelled = $state(0);
 	let activeGate = $state<ActiveGate>();
@@ -263,15 +292,13 @@
 		replayMode || status !== 'ready' || wallet.busy || !wallet.ready || wallet.active,
 	);
 	const landed = $derived(Boolean(activeEnding) && landingProgress === 1);
-	const stakeAmount = $derived(
-		wallet.levels.length ? Math.round(selectedBet * 1e6) : stakeBetUnits(betInput),
-	);
+	const stakeAmount = $derived(stakeBetUnits(betInput));
 	const betInputIsValid = $derived(
 		wallet.live ? isValidStakeBet(stakeAmount, wallet) : isBetInputValid(betInput),
 	);
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
 	const selectedCreature = $derived(getCreature(selectedCreatureId));
-	const selectedPathNote = $derived(PATHS.find((path) => path.risk === selectedRisk)?.note ?? '');
+	const selectedPathNote = $derived(getRiskNote(selectedRisk));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(
 		getWinTier(
@@ -332,6 +359,12 @@
 	});
 
 	function updateBetInput(input: HTMLInputElement) {
+		if (wallet.live) {
+			betInput = input.value;
+			const units = stakeBetUnits(betInput);
+			if (isValidStakeBet(units, wallet)) selectedBet = units / 1e6;
+			return;
+		}
 		const sanitized = sanitizeBetInput(input.value, betInput);
 		input.value = sanitized;
 		betInput = sanitized;
@@ -347,15 +380,41 @@
 	}
 
 	function normalizeBetInput() {
+		if (wallet.live) {
+			betInput = formatBetInput(selectedBet);
+			return;
+		}
 		if (!betInputIsValid) void flightAudio.play('unavailable', 0.3, 'ui');
 		const numericValue = Number(betInput);
 		selectedBet = Number.isFinite(numericValue) ? clampBet(numericValue) : selectedBet;
 		betInput = selectedBet.toFixed(2);
 	}
 
+	const minimumBet = $derived(
+		wallet.live
+			? (wallet.levels[0] ?? Math.ceil(wallet.minBet / wallet.stepBet) * wallet.stepBet) / 1e6
+			: MIN_PROTOTYPE_BET,
+	);
+	const maximumBet = $derived(
+		wallet.live
+			? (wallet.levels.at(-1) ?? Math.floor(wallet.maxBet / wallet.stepBet) * wallet.stepBet) / 1e6
+			: MAX_PROTOTYPE_BET,
+	);
 	function moveBet(direction: -1 | 1) {
+		if (controlsLocked) return;
+		if (wallet.live) {
+			const current = Math.round(selectedBet * 1e6);
+			const next = wallet.levels.length
+				? wallet.levels[wallet.levels.indexOf(current) + direction]
+				: current + direction * wallet.stepBet;
+			if (isValidStakeBet(next, wallet)) {
+				selectedBet = next / 1e6;
+				betInput = formatBetInput(selectedBet);
+			}
+			return;
+		}
 		selectedBet = clampBet(selectedBet + direction * PROTOTYPE_BET_STEP);
-		betInput = selectedBet.toFixed(2);
+		betInput = formatBetInput(selectedBet);
 	}
 
 	function delay(milliseconds: number) {
@@ -540,6 +599,7 @@
 	}
 
 	function resetPresentation() {
+		winCelebrationOpen = false;
 		cancelPresentation();
 		player = createPlayer(bounds);
 		status = 'ready';
@@ -800,7 +860,6 @@
 			0.35,
 			'result',
 		);
-		status = 'complete';
 		if (!isReplay && !flightHistory.some((item) => item.id === round.id)) {
 			flightHistory = [round, ...flightHistory].slice(0, 20);
 		}
@@ -809,6 +868,7 @@
 		eventCallout = round.ending === 'crash' ? 'CRASH' : tier.label;
 
 		if (round.ending === 'crash') {
+			status = 'complete';
 			finalMultiplier = round.finalMultiplier;
 			finalWin = round.finalWin;
 			currentMultiplier = round.finalMultiplier;
@@ -817,11 +877,17 @@
 
 		finalMultiplier = 0;
 		finalWin = 0;
+		winCelebrationOpen = round.finalWin > 0;
+		const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const amountDecimals = Math.max(
+			2,
+			(round.finalWin.toFixed(6).match(/\.(\d*?[1-9])0*$/)?.[1] ?? '').length,
+		);
 		await animatePresentationValues(
-			tier.duration,
+			reducedMotion ? 1 : Math.max(1800, tier.duration * 3),
 			(progress) => {
 				finalMultiplier = round.finalMultiplier * progress;
-				finalWin = round.finalWin * progress;
+				finalWin = Number((round.finalWin * progress).toFixed(amountDecimals));
 			},
 			token,
 		);
@@ -829,6 +895,10 @@
 		finalMultiplier = round.finalMultiplier;
 		finalWin = round.finalWin;
 		currentMultiplier = round.finalMultiplier;
+		if (winCelebrationOpen) await delay(reducedMotion ? 350 : 1000);
+		if (token !== presentationToken) return;
+		winCelebrationOpen = false;
+		status = 'complete';
 	}
 
 	async function presentRound(round: FlightRound, token: number) {
@@ -839,7 +909,6 @@
 
 			switch (event.type) {
 				case 'launch':
-					void flightAudio.play('button-click', 0.18, 'ui');
 					eventLabel = 'LAUNCH';
 					eventCallout = `${round.launchStyle.toUpperCase()} LAUNCH`;
 					status = 'flying';
@@ -984,7 +1053,7 @@
 		const previous = currentRound;
 		resetPresentation();
 		selectedBet = previous.bet;
-		betInput = wallet.live ? String(previous.bet) : previous.bet.toFixed(2);
+		betInput = formatBetInput(previous.bet);
 		selectedCreatureId = previous.creature;
 		selectedLaunchStyle = previous.launchStyle;
 		if (!previous.bonusFlight) {
@@ -1077,6 +1146,8 @@
 	}
 
 	onMount(() => {
+		document.documentElement.lang = language;
+		document.documentElement.dir = textDirection;
 		stakeSession = new StakeSession((state) => {
 			wallet = state;
 		});
@@ -1242,10 +1313,10 @@
 				data-audio-toggle
 				aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
 				aria-pressed={!soundMuted}
-				onclick={toggleSound}>SOUND {soundMuted ? 'OFF' : 'ON'}</button
+				onclick={toggleSound}>{soundMuted ? t('soundOff') : t('soundOn')}</button
 			>
 			<label class="playback-control" title="Animation speed only. Odds and payouts stay the same.">
-				<span>Speed</span>
+				<span>{t('speed')}</span>
 				<select
 					aria-label="Flight playback speed"
 					bind:value={playbackSpeed}
@@ -1264,12 +1335,12 @@
 				data-audio-panel
 				aria-expanded={customizeOpen}
 				disabled={controlsLocked}
-				onclick={() => (customizeOpen = true)}>CUSTOMIZE</button
+				onclick={() => (customizeOpen = true)}>{t('customize')}</button
 			>
 			<button
 				class="help-button"
 				type="button"
-				aria-label="Open Lucky Flight game guide"
+				aria-label={t('guide')}
 				data-audio-panel
 				onclick={() => (helpOpen = true)}
 			>
@@ -1283,13 +1354,30 @@
 				class="bonus-button"
 				disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
 				data-audio-panel
-				onclick={() => (bonusOpen = true)}>BONUS FLIGHTS <span>2 routes</span></button
+				onclick={() => (bonusOpen = true)}>{t('bonusFlights')} <span>2 {t('routes')}</span></button
 			>
 			<button
-				disabled={status !== 'ready' && status !== 'complete'}
+				disabled={wallet.busy ||
+					!wallet.ready ||
+					wallet.active ||
+					(status !== 'ready' && status !== 'complete')}
 				data-audio-panel
-				onclick={() => (historyOpen = true)}>HISTORY <span>{flightHistory.length}</span></button
+				onclick={() => (historyOpen = true)}
+				>{t('history')} <span>{flightHistory.length}</span></button
 			>
+			<label class="language-control">
+				<span>{t('language')}</span>
+				<select
+					aria-label={t('language')}
+					value={language}
+					onchange={(event) =>
+						changeLanguage(event.currentTarget.value as (typeof SUPPORTED_LANGUAGES)[number])}
+				>
+					{#each SUPPORTED_LANGUAGES as code (code)}<option value={code}
+							>{LANGUAGE_NAMES[code]}</option
+						>{/each}
+				</select>
+			</label>
 		</div>
 	</header>
 
@@ -1326,14 +1414,18 @@
 						class:danger={status === 'collided' ||
 							(status === 'complete' && currentRound?.ending === 'crash')}
 						class="round-status"
-						>{status === 'ready'
-							? 'READY'
-							: status === 'complete' && currentRound
-								? ENDING_LABELS[currentRound.ending]
-								: 'IN FLIGHT'}</span
+						>{wallet.busy
+							? t('pleaseWait')
+							: !wallet.ready
+								? t('disconnected')
+								: status === 'ready'
+									? t('ready')
+									: status === 'complete' && currentRound
+										? ENDING_LABELS[currentRound.ending]
+										: t('flightActive')}</span
 					>
 					<span
-						>{currentRound?.bonusFlight ? 'ENTRY' : 'BET'}
+						>{currentRound?.bonusFlight ? t('entryCost') : t('bet')}
 						<strong
 							>{formatLocalAmount(
 								currentRound?.entryCost ?? currentRound?.bet ?? selectedBet,
@@ -1341,29 +1433,29 @@
 						></span
 					>
 					<span
-						>{currentRound?.bonusFlight ? 'ROUTE' : 'RISK'}
+						>{currentRound?.bonusFlight ? t('routes').toUpperCase() : t('risk')}
 						<strong
 							>{currentRound?.bonusFlight
 								? getBonusFlight(currentRound.bonusFlight).name
-								: (currentRound?.risk ?? selectedRisk).toUpperCase()}</strong
+								: t(currentRound?.risk ?? selectedRisk)}</strong
 						></span
 					>
-					<span>CREATURE <strong>{activeCreature.name}</strong></span>
-					<span>RUN <strong>{gatesPassed} · {distanceMetres}m</strong></span>
+					<span>{t('creature')} <strong>{activeCreature.name}</strong></span>
+					<span>{t('run')} <strong>{gatesPassed} · {distanceMetres}m</strong></span>
 				</div>
 				<span class="stage-readout"
-					>STAGE {currentStage.order}<strong>{currentStage.name}</strong></span
+					>{stageWord} {currentStage.order}<strong>{currentStage.name}</strong></span
 				>
 				<span class:pulse={multiplierPulse} class="multiplier-readout"
-					>CURRENT<strong>x{currentMultiplier.toFixed(2)}</strong></span
+					>{t('current')}<strong>x{currentMultiplier.toFixed(2)}</strong></span
 				>
 			</div>
-			{#if isReplay && status !== 'ready'}<div class="replay-label">REPLAY · NO COST</div>{/if}
+			{#if isReplay && status !== 'ready'}<div class="replay-label">{t('replayNoCost')}</div>{/if}
 
 			{#if stageAnnouncement}
 				{#key stageAnnouncement.id}
 					<div class="stage-transition" role="status" aria-live="polite">
-						<span>STAGE {stageAnnouncement.order}</span>
+						<span>{stageWord} {stageAnnouncement.order}</span>
 						<strong>{stageAnnouncement.name}</strong>
 					</div>
 				{/key}
@@ -1392,12 +1484,12 @@
 					aria-valuemax="100"
 					aria-valuenow={Math.round(flightProgress)}
 				>
-					<span>START</span>
+					<span>{t('start')}</span>
 					<div class="flight-meter-track">
 						<i style={`width:${flightProgress}%;`}></i>
 						<b style={`left:${flightProgress}%;`}></b>
 					</div>
-					<span>DESTINATION</span>
+					<span>{t('destination')}</span>
 					<small>{eventProgress}/{currentRound.events.length} · {eventLabel}</small>
 				</div>
 			{/if}
@@ -1501,7 +1593,7 @@
 			<div class="floor" style={`height:${bounds.height - bounds.floorY}px;`}></div>
 
 			{#if status === 'ready'}<div class="start-hint">
-					CHOOSE YOUR CREATURE, BET AND RISK. THEN FLY.
+					{readyPrompt.toUpperCase()}
 				</div>{/if}
 			{#if status === 'complete' && currentRound}
 				<div
@@ -1517,40 +1609,39 @@
 						/>
 					{/if}
 					<strong id="flight-result-title">{ENDING_LABELS[currentRound.ending]}</strong>
-					{#if currentRound.ending !== 'crash' && currentRound.finalWin > (currentRound.entryCost ?? currentRound.bet)}
-						<WinCelebration
-							tier={resultWinTier}
-							multiplier={`x${finalMultiplier.toFixed(2)}`}
-							win={formatLocalAmount(finalWin)}
-						/>
-					{/if}
 					<div>
-						<span>ENTRY COST</span><b
+						<span>{t('entryCost')}</span><b
 							>{formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}</b
 						>
 					</div>
-					<div><span>BASE-BET MULTIPLIER</span><b>x{finalMultiplier.toFixed(2)}</b></div>
-					<div><span>PAYOUT</span><b>{formatLocalAmount(finalWin)}</b></div>
+					<div><span>{t('multiplier')}</span><b>x{finalMultiplier.toFixed(2)}</b></div>
+					<div><span>{t('payout')}</span><b>{formatLocalAmount(finalWin)}</b></div>
 					<div>
-						<span>NET RESULT</span><b
+						<span>{t('netResult')}</span><b
 							>{formatLocalAmount(
 								currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
 							)}</b
 						>
 					</div>
-					<div class="result-creature"><span>CREATURE</span><b>{activeCreature.name}</b></div>
-					<div><span>LAUNCH</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
-					<div><span>WEATHER</span><b>{activeWeatherConfig.name}</b></div>
-					<div><span>TIME</span><b>{activeTimeConfig.name}</b></div>
+					<div class="result-creature">
+						<span>{t('creature')}</span><b>{activeCreature.name}</b>
+					</div>
+					<div><span>{t('launch')}</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
+					<div><span>{t('weather')}</span><b>{activeWeatherConfig.name}</b></div>
+					<div><span>{t('time')}</span><b>{activeTimeConfig.name}</b></div>
 					<small>{wallet.live ? 'SERVER RESULT' : 'DEMO RESULT - NO REAL MONEY'}</small>
 					<button onclick={flyAgain}
-						>{replayMode ? 'PLAY AGAIN' : currentRound.bonusFlight ? 'BUY AGAIN' : 'FLY AGAIN'} · {formatLocalAmount(
+						>{replayMode
+							? t('playAgain')
+							: currentRound.bonusFlight
+								? t('buyAgain')
+								: t('flyAgain')} · {formatLocalAmount(
 							currentRound.entryCost ?? currentRound.bet,
 						)}</button
 					>
 					<button
 						disabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
-						onclick={resetPresentation}>CHANGE SETTINGS</button
+						onclick={resetPresentation}>{t('changeSettings')}</button
 					>
 				</div>
 			{/if}
@@ -1558,7 +1649,7 @@
 
 		<section class="control-dock" aria-label="Flight controls">
 			<div class="creature-control">
-				<span class="dock-label">CREATURE</span>
+				<span class="dock-label">{t('creature')}</span>
 				<button
 					class="creature-button"
 					type="button"
@@ -1571,66 +1662,43 @@
 			</div>
 
 			<div class="bet-control">
-				<span class="dock-label">BET</span>
-				{#if wallet.live && wallet.levels.length}
-					<select aria-label="Bet amount" disabled={controlsLocked} bind:value={selectedBet}>
-						{#each wallet.levels as amount (amount)}<option value={amount / 1e6}
-								>{formatLocalAmount(amount / 1e6)}</option
-							>{/each}
-					</select>
-				{:else if wallet.live}
-					<input
-						class="bet-input"
-						aria-label="Bet amount"
-						aria-invalid={!betInputIsValid}
-						disabled={controlsLocked}
-						type="number"
-						inputmode="decimal"
-						min={(Math.ceil(wallet.minBet / wallet.stepBet) * wallet.stepBet) / 1e6}
-						max={wallet.maxBet / 1e6}
-						step={wallet.stepBet / 1e6}
-						value={betInput}
-						oninput={(event) => {
-							betInput = event.currentTarget.value;
-							const units = stakeBetUnits(betInput);
-							if (isValidStakeBet(units, wallet)) selectedBet = units / 1e6;
-						}}
-					/>
-				{:else}
-					<div class="bet-stepper">
-						<button
-							aria-label="Decrease bet"
-							disabled={controlsLocked || selectedBet <= MIN_PROTOTYPE_BET}
-							onclick={() => moveBet(-1)}
-							><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" /></svg></button
-						>
+				<span class="dock-label">{t('bet')}</span>
+				<div class="bet-stepper">
+					<button
+						aria-label="Decrease bet"
+						disabled={controlsLocked || selectedBet <= minimumBet}
+						onclick={() => moveBet(-1)}
+						><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10" /></svg></button
+					>
+					<div
+						class="bet-input-shell"
+						class:invalid={!betInputIsValid}
+						class:disabled={controlsLocked}
+					>
+						<span aria-hidden="true">{betCurrencySymbol}</span>
 						<input
-							aria-label="Prototype bet amount"
+							aria-label="Bet amount"
 							aria-invalid={!betInputIsValid}
 							class="bet-input"
 							disabled={controlsLocked}
 							inputmode="decimal"
-							min={MIN_PROTOTYPE_BET}
-							max={MAX_PROTOTYPE_BET}
-							step="0.01"
-							type="number"
+							type="text"
 							value={betInput}
 							oninput={(event) => updateBetInput(event.currentTarget as HTMLInputElement)}
 							onblur={normalizeBetInput}
 						/>
-						<button
-							aria-label="Increase bet"
-							disabled={controlsLocked || selectedBet >= MAX_PROTOTYPE_BET}
-							onclick={() => moveBet(1)}
-							><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10M10 5v10" /></svg
-							></button
-						>
 					</div>
-				{/if}
+					<button
+						aria-label="Increase bet"
+						disabled={controlsLocked || selectedBet >= maximumBet}
+						onclick={() => moveBet(1)}
+						><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10h10M10 5v10" /></svg></button
+					>
+				</div>
 			</div>
 
 			<div class="risk-control">
-				<span class="dock-label">RISK</span>
+				<span class="dock-label">{t('risk')}</span>
 				<div class="risk-selector">
 					{#each PATHS as path (path.risk)}
 						<button
@@ -1638,45 +1706,62 @@
 							disabled={controlsLocked}
 							aria-pressed={selectedRisk === path.risk}
 							class:active={selectedRisk === path.risk}
-							onclick={() => (selectedRisk = path.risk)}>{path.risk}</button
+							onclick={() => (selectedRisk = path.risk)}>{t(path.risk)}</button
 						>
 					{/each}
 				</div>
-				<p><strong>{selectedRisk}</strong> · {selectedPathNote}</p>
+				<p><strong>{t(selectedRisk)}</strong> · {selectedPathNote}</p>
 			</div>
 
 			{#if replayMode}
 				<button
 					class="fly-button"
-					disabled={!sharedReplay || (status !== 'ready' && status !== 'complete')}
+					disabled={wallet.busy ||
+						!wallet.ready ||
+						!sharedReplay ||
+						(status !== 'ready' && status !== 'complete')}
 					onclick={() => sharedReplay && replayFlight(sharedReplay)}
-					>{status === 'complete' ? 'PLAY AGAIN' : 'PLAY REPLAY'}</button
+					>{status === 'complete' ? t('playAgain') : t('playReplay')}</button
 				>
 			{:else}
 				<button
 					class="fly-button"
+					aria-live="polite"
 					disabled={controlsLocked || !betInputIsValid}
 					onclick={() => startFlight()}
-					>{controlsLocked ? 'FLIGHT ACTIVE' : `FLY ${formatLocalAmount(selectedBet)}`}</button
+					>{wallet.busy
+						? `${t('pleaseWait')}…`
+						: !wallet.ready
+							? t('reconnect').toUpperCase()
+							: controlsLocked
+								? t('flightActive')
+								: `${t('fly')} ${formatLocalAmount(selectedBet)}`}</button
 				>
 			{/if}
 		</section>
 	</section>
 
-	{#if wallet.busy}<p role="status">Contacting wallet...</p>{/if}
 	{#if wallet.error}<p role="alert">{wallet.error}</p>
-		<button disabled={wallet.busy} onclick={connectStake}>Reconnect</button>{/if}
+		<button disabled={wallet.busy} onclick={connectStake}>{t('reconnect')}</button>{/if}
 	{#if flightError}<p role="alert">{flightError}</p>{/if}
 	<footer>
-		<span>Explore the peaks. Find your next landing.</span><span
+		<span>{t('explore')}</span><span
 			>{replayMode
 				? 'Replay - no bet is placed'
 				: wallet.live
-					? `Balance ${formatLocalAmount(wallet.amount / 1e6)} | Net ${formatLocalAmount(sessionNet)} | Session ${Math.floor(sessionSeconds / 60)}m ${sessionSeconds % 60}s`
+					? `${t('balance')} ${formatLocalAmount(wallet.amount / 1e6)} | ${t('netResult')} ${formatLocalAmount(sessionNet)} | ${t('session')} ${Math.floor(sessionSeconds / 60)}m ${sessionSeconds % 60}s`
 					: 'Local demo - No real-money bets.'}</span
 		>
 	</footer>
 </main>
+
+{#if winCelebrationOpen && currentRound}
+	<WinCelebration
+		tier={resultWinTier}
+		multiplier={`x${finalMultiplier.toFixed(2)}`}
+		win={formatLocalAmount(finalWin)}
+	/>
+{/if}
 
 <HelpDialog live={wallet.live} open={helpOpen} onClose={() => (helpOpen = false)} />
 <BonusFlightsDialog
@@ -1692,7 +1777,10 @@
 	currency={wallet.currency}
 	open={historyOpen}
 	rounds={flightHistory}
-	disabled={status !== 'ready' && status !== 'complete'}
+	disabled={wallet.busy ||
+		!wallet.ready ||
+		wallet.active ||
+		(status !== 'ready' && status !== 'complete')}
 	onClose={() => (historyOpen = false)}
 	onReplay={replayFlight}
 />
@@ -2172,37 +2260,48 @@
 		border-radius: 50%;
 		font-size: 1.35rem;
 	}
-	.bet-input {
+	.bet-input-shell {
+		display: flex;
 		min-width: 0;
 		width: 100%;
-		padding: 12px 8px;
+		align-items: center;
+		justify-content: center;
+		gap: 3px;
+		padding: 0 12px;
 		border: 1px solid rgba(199, 153, 63, 0.45);
 		background: rgba(0, 0, 0, 0.22);
+		color: #f2d594;
+	}
+	.bet-input-shell > span {
+		font:
+			700 1rem/1 system-ui,
+			sans-serif;
+	}
+	.bet-input {
+		min-width: 0;
+		width: 7ch;
+		padding: 12px 0;
+		border: 0;
+		outline: 0;
+		background: transparent;
 		color: #f2d594;
 		font:
 			700 1rem/1 system-ui,
 			sans-serif;
-		text-align: center;
+		text-align: left;
 	}
-	.bet-input:focus {
+	.bet-input-shell:focus-within {
 		border-color: #9dc5ad;
 		outline: 2px solid rgba(73, 229, 156, 0.25);
 		outline-offset: 1px;
 	}
-	.bet-input[aria-invalid='true'] {
+	.bet-input-shell.invalid {
 		border-color: #c65c3a;
 		box-shadow: inset 0 0 12px rgba(198, 92, 58, 0.16);
 	}
-	.bet-input:disabled {
+	.bet-input-shell.disabled {
 		cursor: not-allowed;
 		opacity: 0.48;
-	}
-	.bet-input::-webkit-inner-spin-button,
-	.bet-input::-webkit-outer-spin-button {
-		margin: 0;
-	}
-	.bet-input[type='number'] {
-		appearance: textfield;
 	}
 	.event-callout {
 		position: absolute;
@@ -2872,9 +2971,12 @@
 		stroke-width: 1.8;
 		stroke-linecap: round;
 	}
-	.bet-control .bet-input {
+	.bet-control .bet-input-shell {
 		height: 42px;
-		padding: 7px;
+		box-sizing: border-box;
+	}
+	.bet-control .bet-input {
+		padding: 7px 0;
 		font-size: 1.05rem;
 	}
 	.control-dock .fly-button {
@@ -3004,8 +3106,10 @@
 			height: 40px;
 			min-height: 40px;
 		}
-		.bet-control .bet-input {
+		.bet-control .bet-input-shell {
 			height: 40px;
+		}
+		.bet-control .bet-input {
 			font-size: 0.9rem;
 		}
 		.risk-selector button {
@@ -3016,14 +3120,16 @@
 			min-height: 44px;
 		}
 	}
-	.playback-control {
+	.playback-control,
+	.language-control {
 		display: flex;
 		align-items: center;
 		gap: 6px;
 		font-size: 0.65rem;
 		color: #d8e5e0;
 	}
-	.playback-control select {
+	.playback-control select,
+	.language-control select {
 		min-height: 36px;
 		padding: 4px 6px;
 		border: 1px solid #627e81;
@@ -3032,12 +3138,16 @@
 		color: #d8e5e0;
 		font: inherit;
 	}
-	.playback-control select:focus-visible {
+	.playback-control select:focus-visible,
+	.language-control select:focus-visible {
 		outline: 2px solid #64efbd;
 		outline-offset: 2px;
 	}
 	.playback-control select:disabled {
 		opacity: 0.55;
+	}
+	.language-control select {
+		max-width: 112px;
 	}
 	@media (max-width: 480px) {
 		.prototype-header {

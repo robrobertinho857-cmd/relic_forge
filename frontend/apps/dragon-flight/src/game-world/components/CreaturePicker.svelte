@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { CREATURES } from '../creatures';
 	import type { CreatureId } from '../types';
+	import { t } from '../i18n';
 
 	type Props = {
 		open: boolean;
@@ -44,8 +45,8 @@
 	<section class="creature-picker">
 		<header>
 			<div>
-				<span>FLIGHT CREATURE</span>
-				<h2 id="creature-picker-title">Choose your flier</h2>
+				<span>{t('flightActive')}</span>
+				<h2 id="creature-picker-title">{t('creature')}</h2>
 			</div>
 			<button type="button" aria-label="Close creature picker" data-audio-panel onclick={close}
 				>×</button

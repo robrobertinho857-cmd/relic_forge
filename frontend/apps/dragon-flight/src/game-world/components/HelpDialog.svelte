@@ -4,6 +4,8 @@
 	import { WEATHER_OPTIONS } from '../weather';
 	import { TIME_OF_DAY_OPTIONS } from '../timeOfDay';
 	import { LAUNCH_OPTIONS } from '../config';
+	import payouts from '../payouts.json';
+	import { language, rulesSummary, t } from '../i18n';
 	import {
 		PICKUP_LABELS,
 		CURRENT_LABELS,
@@ -61,8 +63,8 @@
 	<div class="help-panel">
 		<header class="help-header">
 			<div>
-				<p class="help-kicker">LUCKY FLIGHT GUIDE</p>
-				<h2 id="dragon-flight-help-title">How to Play</h2>
+				<p class="help-kicker">LUCKY FLIGHT</p>
+				<h2 id="dragon-flight-help-title">{t('guide')}</h2>
 				<p id="dragon-flight-help-summary">Fly through mountains, forests and open skies.</p>
 			</div>
 			<button
@@ -76,7 +78,24 @@
 			</button>
 		</header>
 
-		<div class="help-content">
+		<div class="help-content" class:translated={language !== 'en'}>
+			{#if language !== 'en'}
+				<section class="localized-guide">
+					<h3>{t('guide').toUpperCase()}</h3>
+					<p>{rulesSummary[language]}</p>
+					{#if live}
+						<div class="localized-payouts">
+							{#each payouts as mode (mode.id)}
+								<p>
+									<strong>{mode.name}</strong> · {mode.cost}× {t('bet')} · {t('multiplier')}: 0×–{mode.multipliers.at(
+										-1,
+									)}×
+								</p>
+							{/each}
+						</div>
+					{/if}
+				</section>
+			{/if}
 			<section aria-labelledby="help-play">
 				<h3 id="help-play">YOUR FLIGHT</h3>
 				<ol>
@@ -138,6 +157,33 @@
 				</p>
 			</section>
 
+			{#if live}
+				<section aria-labelledby="help-payouts">
+					<h3 id="help-payouts">PAYOUT REFERENCE</h3>
+					<p>
+						Every mode has a theoretical RTP of 96% of its entry cost over many rounds. This does
+						not predict an individual result. All payouts below multiply the base bet, not the bonus
+						entry cost.
+					</p>
+					{#each payouts as mode (mode.id)}
+						<details class="payout-reference">
+							<summary
+								>{mode.name} · {mode.cost}× entry · maximum {mode.multipliers.at(-1)}× base bet</summary
+							>
+							<p>
+								Possible final payout multipliers: {mode.multipliers
+									.map((value) => `${value}×`)
+									.join(', ')}.
+							</p>
+						</details>
+					{/each}
+					<p>
+						Pickups and currents show potential rewards, not separate payments. Only the final
+						payout is paid. A crash pays zero. Interruptions do not create a new outcome; reconnect
+						to recover the server round.
+					</p>
+				</section>
+			{/if}
 			<section aria-labelledby="help-landscapes">
 				<h3 id="help-landscapes">LANDSCAPES</h3>
 				<p>{FLIGHT_STAGES.map((stage) => stage.name).join(' → ')}</p>
@@ -236,6 +282,22 @@
 </dialog>
 
 <style>
+	.payout-reference {
+		margin-bottom: 10px;
+		padding: 10px;
+		border: 1px solid #627e81;
+		border-radius: 8px;
+		font:
+			0.8rem/1.5 system-ui,
+			sans-serif;
+	}
+	.payout-reference summary {
+		cursor: pointer;
+	}
+	.payout-reference p {
+		margin-top: 10px;
+		overflow-wrap: anywhere;
+	}
 	.help-dialog {
 		box-sizing: border-box;
 		width: min(780px, calc(100vw - 28px));
@@ -329,6 +391,20 @@
 	}
 	.help-content section {
 		padding: 0 0 20px;
+	}
+	.help-content.translated > section:not(.localized-guide) {
+		display: none;
+	}
+	.localized-payouts {
+		display: grid;
+		gap: 6px;
+		margin-top: 18px;
+	}
+	.localized-payouts p {
+		margin: 0;
+		padding: 9px 10px;
+		border: 1px solid rgba(181, 130, 44, 0.4);
+		background: rgba(3, 16, 11, 0.62);
 	}
 	.help-content section + section {
 		padding-top: 20px;

@@ -209,7 +209,7 @@ export function decodeStakeRound(
 	if (endingEvent && endingEvent.multiplier !== finalUnits / 100)
 		throw new Error('Landing payout mismatch');
 	return {
-		id: integer(round.roundID),
+		id: integer(round.betID ?? round.roundID),
 		seed: 0,
 		bet: amount / 1e6,
 		risk,
@@ -446,10 +446,10 @@ export class StakeSession {
 			this.update({ busy: false });
 		}
 	}
-	block() {
+	block(error?: unknown) {
 		this.update({
 			ready: false,
-			error: 'This flight could not be read. Reconnect to recover the server round.',
+			error: `This flight could not be read${error instanceof Error ? ` (${error.message})` : ''}. Reconnect to recover the server round.`,
 		});
 	}
 }

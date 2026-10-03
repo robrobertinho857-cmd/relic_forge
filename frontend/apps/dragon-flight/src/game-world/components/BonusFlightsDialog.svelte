@@ -4,6 +4,7 @@
 	import { BONUS_FLIGHTS, BONUS_TICKETS, getBonusFlight } from '../bonusFlights';
 	import { formatLocalAmount as formatAmount } from '../utils/format';
 	import type { BonusFlightId } from '../types';
+	import { language, rulesSummary, t } from '../i18n';
 	function formatLocalAmount(value: number) {
 		return formatAmount(value, currency);
 	}
@@ -29,22 +30,26 @@
 	const cost = $derived(bet * feature.costMultiplier);
 </script>
 
-<FlightDialog {open} title="Bonus Flights" {onClose}>
-	<p class="intro">Choose your expedition. Entry guarantees the flight, not a payout.</p>
+<FlightDialog {open} title={t('bonusFlights')} {onClose}>
+	<p class="intro">
+		{language === 'en'
+			? 'Choose your expedition. Entry guarantees the flight, not a payout.'
+			: rulesSummary[language]}
+	</p>
 	<p class="base-bet">
-		Base bet <strong>{formatLocalAmount(bet)}</strong> · Set your base bet in the main controls.
+		{t('bet')} <strong>{formatLocalAmount(bet)}</strong>
 	</p>
 	<fieldset {disabled}>
-		<legend>Choose a route</legend>
+		<legend>{t('routes')}</legend>
 		<div class="routes">
 			{#each BONUS_FLIGHTS as route (route.id)}
 				<label class:selected={selected === route.id}>
 					<input type="radio" name="bonus-flight" value={route.id} bind:group={selected} />
 					<img src={`${base || '.'}/bonuses/${route.id}.webp`} alt="" />
 					<div class="caption">
-						<span>{route.gateCount} GATES · {route.costMultiplier}× BASE BET</span><strong
+						<span>{route.gateCount} · {route.costMultiplier}× {t('bet')}</span><strong
 							>{route.name}</strong
-						><b>{formatLocalAmount(bet * route.costMultiplier)} entry</b>
+						><b>{formatLocalAmount(bet * route.costMultiplier)} · {t('entryCost')}</b>
 					</div>
 				</label>
 			{/each}
@@ -60,7 +65,7 @@
 		<table>
 			<thead
 				><tr
-					><th scope="col">Base-bet multiplier</th><th scope="col">Payout</th><th scope="col"
+					><th scope="col">{t('multiplier')}</th><th scope="col">{t('payout')}</th><th scope="col"
 						>Chance</th
 					></tr
 				></thead
@@ -79,9 +84,9 @@
 		</p>
 	</details>
 	<div class="purchase">
-		<div><span>Total entry</span><strong>{formatLocalAmount(cost)}</strong></div>
+		<div><span>{t('entryCost')}</span><strong>{formatLocalAmount(cost)}</strong></div>
 		<button type="button" {disabled} onclick={() => onBuy(selected)}
-			>Buy flight · {formatLocalAmount(cost)}</button
+			>{t('buyAgain')} · {formatLocalAmount(cost)}</button
 		>
 	</div>
 	<p class="demo-note">
