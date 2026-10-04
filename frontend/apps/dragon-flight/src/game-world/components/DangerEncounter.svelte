@@ -38,7 +38,7 @@
 		height: 55%;
 		object-fit: contain;
 		opacity: 0.96;
-		filter: drop-shadow(0 8px 8px #16242a55);
+		filter: none;
 		transform: translateX(115%);
 		animation: encounter-enter calc(0.38s / var(--playback-speed, 1)) ease-out forwards;
 	}

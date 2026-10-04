@@ -1921,7 +1921,7 @@
 		z-index: 7;
 		width: clamp(58px, 7vw, 86px);
 		height: clamp(38px, 4.6vw, 58px);
-		filter: drop-shadow(0 7px 8px rgba(0, 0, 0, 0.55));
+		filter: none;
 		transition: filter 0.12s;
 	}
 	.creature-sprite {
@@ -2009,7 +2009,7 @@
 		pointer-events: none;
 	}
 	.has-impact .creature-flight {
-		filter: grayscale(0.5) drop-shadow(0 0 12px #e85b2c);
+		filter: grayscale(0.5);
 	}
 	.floor {
 		position: absolute;
@@ -2548,7 +2548,7 @@
 	}
 	.creature-flight.is-hit {
 		animation: creature-hit calc(0.52s / var(--playback-speed, 1)) ease-out both;
-		filter: sepia(0.8) saturate(2) drop-shadow(0 0 17px #ff6533);
+		filter: sepia(0.8) saturate(2);
 	}
 	@keyframes multiplier-hud-pulse {
 		35% {

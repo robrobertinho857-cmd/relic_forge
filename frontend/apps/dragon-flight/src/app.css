@@ -1,5 +1,5 @@
 :root {
-	font-family: system-ui, sans-serif;
+	font-family: 'Google Sans', sans-serif;
 	color-scheme: dark;
 	background: #0d1a21;
 }
@@ -14,4 +14,19 @@ body {
 
 body {
 	overflow: hidden;
+}
+
+/* Apply the same typography and flat surfaces to game controls and every dialog. */
+body *,
+body *::before,
+body *::after {
+	font-family: 'Google Sans', sans-serif !important;
+	border-style: none !important;
+	box-shadow: none !important;
+	text-shadow: none !important;
+}
+
+body :focus-visible {
+	outline: 2px solid #9dc5ad !important;
+	outline-offset: 3px;
 }

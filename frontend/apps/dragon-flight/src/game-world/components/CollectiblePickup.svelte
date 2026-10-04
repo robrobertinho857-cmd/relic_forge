@@ -47,7 +47,7 @@
 		height: auto;
 		aspect-ratio: 1;
 		object-fit: contain;
-		filter: drop-shadow(0 4px 5px #15262966);
+		filter: none;
 	}
 	.pickup-copy {
 		position: absolute;

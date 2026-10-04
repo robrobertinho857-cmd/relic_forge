@@ -186,7 +186,7 @@
 		inset: 10px 8px;
 		border-radius: 55% 42%;
 		background: #29885a;
-		filter: drop-shadow(0 0 5px rgba(70, 231, 163, 0.35));
+		filter: none;
 	}
 	.preview i::before,
 	.preview i::after {
