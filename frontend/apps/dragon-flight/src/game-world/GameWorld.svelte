@@ -1507,7 +1507,6 @@
 						gapTop={activeGate.gapCenterY - activeGate.gapHeight / 2}
 						gapBottom={activeGate.gapCenterY + activeGate.gapHeight / 2}
 					/>
-					<b class="gate-number">GATE {activeGate.gate} · {HAZARD_LABELS[activeGate.hazard]}</b>
 				</div>
 			{/if}
 
@@ -1893,21 +1892,6 @@
 		z-index: 3;
 		inset-block: 0;
 	}
-	.gate-number {
-		position: absolute;
-		z-index: 2;
-		top: 50%;
-		left: 50%;
-		padding: 5px 7px;
-		background: rgba(4, 20, 14, 0.8);
-		color: #dfbd6c;
-		font:
-			700 0.55rem/1 system-ui,
-			sans-serif;
-		white-space: nowrap;
-		transform: translate(-50%, -50%);
-	}
-
 	.flight-particle {
 		position: absolute;
 		z-index: 7;
