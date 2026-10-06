@@ -1539,6 +1539,7 @@
 
 			{#if eventCallout && !eventWarning}<div
 					class="event-callout"
+					class:pickup-callout={Object.values(PICKUP_LABELS).includes(eventCallout)}
 					role="status"
 					aria-live="polite"
 				>
@@ -2456,6 +2457,18 @@
 	.event-callout small {
 		color: rgba(223, 234, 239, 0.65);
 		font-size: 0.65rem;
+	}
+	.event-callout.pickup-callout {
+		padding: 8px 14px;
+		border-radius: 0;
+		background: rgba(8, 21, 14, 0.82);
+		color: #f2c86d;
+		font-size: 0.68rem;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+	.pickup-callout strong {
+		font-weight: 800;
 	}
 	.world:has(.event-callout) .event-callout {
 		animation: event-callout-in calc(0.24s / var(--playback-speed, 1)) ease-out;
