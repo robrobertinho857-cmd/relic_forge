@@ -417,7 +417,7 @@
 		betInput = formatBetInput(selectedBet);
 	}
 
-	function delay(milliseconds: number) {
+	function delay(milliseconds: number, followFlightSpeed = true) {
 		return new Promise<void>((resolve) => {
 			let settled = false;
 			let timer: ReturnType<typeof setTimeout>;
@@ -428,7 +428,7 @@
 				pendingDelays = pendingDelays.filter((cancelDelay) => cancelDelay !== finish);
 				resolve();
 			};
-			timer = setTimeout(finish, milliseconds / flightPlaybackSpeed);
+			timer = setTimeout(finish, milliseconds / (followFlightSpeed ? flightPlaybackSpeed : 1));
 			pendingDelays = [...pendingDelays, finish];
 		});
 	}
@@ -443,6 +443,7 @@
 		duration: number,
 		update: (progress: number) => void,
 		token: number,
+		followFlightSpeed = true,
 	) {
 		cancelValueAnimation?.();
 
@@ -462,7 +463,8 @@
 					finish();
 					return;
 				}
-				const linearProgress = Math.min(1, ((now - startedAt) * flightPlaybackSpeed) / duration);
+				const speed = followFlightSpeed ? flightPlaybackSpeed : 1;
+				const linearProgress = Math.min(1, ((now - startedAt) * speed) / duration);
 				const easedProgress = 1 - Math.pow(1 - linearProgress, 3);
 				update(easedProgress);
 				if (linearProgress >= 1) finish();
@@ -867,7 +869,7 @@
 		eventLabel = tier.label;
 		eventCallout = round.ending === 'crash' ? 'CRASH' : tier.label;
 
-		if (round.ending === 'crash') {
+		if (round.finalWin <= 0) {
 			status = 'complete';
 			finalMultiplier = round.finalMultiplier;
 			finalWin = round.finalWin;
@@ -890,12 +892,13 @@
 				finalWin = Number((round.finalWin * progress).toFixed(amountDecimals));
 			},
 			token,
+			false,
 		);
 		if (token !== presentationToken) return;
 		finalMultiplier = round.finalMultiplier;
 		finalWin = round.finalWin;
 		currentMultiplier = round.finalMultiplier;
-		if (winCelebrationOpen) await delay(reducedMotion ? 350 : 1000);
+		if (winCelebrationOpen) await delay(reducedMotion ? 1000 : 1400, false);
 		if (token !== presentationToken) return;
 		winCelebrationOpen = false;
 		status = 'complete';
@@ -2855,25 +2858,21 @@
 	.control-dock {
 		position: relative;
 		display: grid;
-		grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1fr) minmax(330px, 1.55fr) minmax(
+		grid-template-columns: minmax(120px, 200px) minmax(140px, 220px) minmax(250px, 1fr) minmax(
 				170px,
-				0.8fr
+				240px
 			);
-		align-items: center;
+		align-items: start;
 		gap: clamp(8px, 1.2vw, 16px);
 		flex: 0 0 auto;
 		padding: 10px clamp(10px, 1.5vw, 18px);
-		border: 1px solid #526e73;
-		border-radius: 10px;
-		background: linear-gradient(145deg, rgba(25, 46, 51, 0.98), rgba(15, 31, 36, 0.99));
-		box-shadow:
-			inset 0 0 28px rgba(26, 177, 108, 0.08),
-			0 12px 28px rgba(0, 0, 0, 0.32);
+		border-radius: 3px;
+		background: #141b21;
 	}
 	.dock-label {
 		display: block;
 		margin-bottom: 6px;
-		color: #809085;
+		color: #7b8592;
 		font:
 			800 0.5rem/1 system-ui,
 			sans-serif;
@@ -2882,7 +2881,10 @@
 	.creature-button {
 		display: flex;
 		width: 100%;
-		min-height: 44px;
+		min-height: 48px;
+		border-radius: 3px;
+		background: #0b1015;
+		color: #d1d5db;
 		align-items: center;
 		justify-content: space-between;
 		gap: 9px;
@@ -2902,21 +2904,25 @@
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 4px;
+		box-sizing: border-box;
+		height: 48px;
+		padding: 4px;
+		border-radius: 3px;
+		background: #0b1015;
 	}
 	.risk-selector button {
-		min-height: 38px;
+		min-height: 40px;
+		border-radius: 3px;
+		background: transparent;
+		color: #89929e;
 		padding: 6px 4px;
 		font-size: 0.59rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
 	.risk-selector button.active {
-		border-color: #9dc5ad;
-		background: linear-gradient(#456857, #304d40);
-		color: #d0e5d7;
-		box-shadow:
-			inset 0 0 13px rgba(45, 232, 151, 0.16),
-			0 0 10px rgba(35, 207, 132, 0.12);
+		background: #557762;
+		color: #fff;
 	}
 	.risk-control p {
 		margin: 6px 1px 0;
@@ -2934,7 +2940,11 @@
 	}
 	.bet-control .bet-stepper {
 		grid-template-columns: 42px minmax(90px, 1fr) 42px;
-		gap: 6px;
+		gap: 0;
+		height: 48px;
+		overflow: hidden;
+		border-radius: 3px;
+		background: #0b1015;
 	}
 	.bet-control .bet-stepper button {
 		display: grid;
@@ -2943,8 +2953,14 @@
 		line-height: 1;
 		letter-spacing: 0;
 		width: 42px;
-		height: 42px;
-		min-height: 42px;
+		height: 48px;
+		min-height: 48px;
+		border-radius: 0;
+		background: transparent;
+		color: #9ca3af;
+	}
+	.bet-control .bet-stepper button:hover:not(:disabled) {
+		background: #16212b;
 	}
 	.bet-stepper button svg {
 		width: 20px;
@@ -2956,23 +2972,27 @@
 		stroke-linecap: round;
 	}
 	.bet-control .bet-input-shell {
-		height: 42px;
+		height: 48px;
 		box-sizing: border-box;
+		padding: 0 3px;
+		background: transparent;
+		color: #e5e7eb;
 	}
 	.bet-control .bet-input {
 		padding: 7px 0;
 		font-size: 1.05rem;
+		width: 5ch;
+		max-width: 100%;
+		color: #e5e7eb;
 	}
 	.control-dock .fly-button {
 		width: 100%;
-		min-height: 58px;
-		margin: 0;
-		border-color: #9dc5ad;
-		background: linear-gradient(#537c69, #365948);
-		font-size: clamp(0.95rem, 1.5vw, 1.2rem);
-		box-shadow:
-			inset 0 0 22px rgba(92, 255, 177, 0.18),
-			0 0 20px rgba(31, 216, 137, 0.18);
+		min-height: 48px;
+		margin: 14px 0 0;
+		border-radius: 3px;
+		background: linear-gradient(#6b9a7a, #4e795c);
+		color: #fff;
+		font-size: 1rem;
 	}
 
 	@media (max-height: 720px) and (min-width: 701px) {
@@ -3000,6 +3020,7 @@
 		.control-dock .fly-button {
 			grid-column: 1 / -1;
 			min-height: 50px;
+			margin-top: 0;
 		}
 	}
 
@@ -3082,11 +3103,12 @@
 			font-size: 0.68rem;
 		}
 		.bet-control .bet-stepper {
-			grid-template-columns: 38px minmax(74px, 1fr) 38px;
-			gap: 4px;
+			grid-template-columns: 36px minmax(0, 1fr) 36px;
+			gap: 0;
+			height: 40px;
 		}
 		.bet-control .bet-stepper button {
-			width: 38px;
+			width: 36px;
 			height: 40px;
 			min-height: 40px;
 		}

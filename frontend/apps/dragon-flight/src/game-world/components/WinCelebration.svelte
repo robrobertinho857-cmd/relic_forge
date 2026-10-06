@@ -46,19 +46,17 @@
 		box-sizing: border-box;
 		padding: 24px;
 		text-align: center;
-		font-family: system-ui, sans-serif;
+		font-family: 'Google Sans', sans-serif;
 	}
 	.win-celebration strong {
 		color: #e2e9df;
 		margin-block: 18px 22px;
 		font-size: clamp(1.3rem, 4vw, 3rem);
 		letter-spacing: 0.16em;
-		text-shadow: 0 0 18px rgba(255, 188, 68, 0.45);
 	}
 	.win-celebration span {
 		margin-top: 28px;
 		padding: 9px 24px;
-		border: 1px solid #93d0ab70;
 		border-radius: 999px;
 		background: #13352c99;
 		color: #72efb2;
@@ -69,16 +67,12 @@
 	.win-celebration b {
 		margin-top: 5px;
 		color: #ffe3a0;
-		font-size: clamp(2.2rem, 10vw, 8rem);
+		font-size: clamp(2.8rem, 14vw, 12rem);
 		font-weight: 900;
 		line-height: 1.15;
 		font-variant-numeric: tabular-nums;
 		overflow-wrap: anywhere;
 		max-width: 100%;
-		text-shadow:
-			0 3px 0 #785b28,
-			0 0 40px #e5b45160,
-			0 8px 35px #0008;
 	}
 	.win-celebration small {
 		margin-top: 5px;
@@ -96,7 +90,6 @@
 		height: 12px;
 		border-radius: 2px;
 		background: #e8c671;
-		box-shadow: 0 0 10px #e8c67460;
 		animation: celebration-particle calc(2.5s + var(--i) * 0.04s) linear var(--delay) infinite;
 	}
 	.win-celebration i:nth-child(3n) {
@@ -129,18 +122,6 @@
 		to {
 			transform: rotate(360deg);
 		}
-	}
-	.big {
-		box-shadow: inset 0 0 28px rgba(255, 167, 52, 0.13);
-	}
-	.great {
-		border-color: rgba(159, 190, 202, 0.65);
-	}
-	.record {
-		border-color: #d6a64d;
-		box-shadow:
-			inset 0 0 34px rgba(223, 178, 75, 0.16),
-			0 0 25px rgba(100, 226, 165, 0.15);
 	}
 	@keyframes celebration-particle {
 		to {
