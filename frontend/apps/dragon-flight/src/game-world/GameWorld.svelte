@@ -1539,24 +1539,10 @@
 
 			{#if eventCallout && !eventWarning}<div
 					class="event-callout"
-					class:pickup-callout={Object.values(PICKUP_LABELS).includes(eventCallout)}
 					role="status"
 					aria-live="polite"
 				>
-					<strong
-						>{eventCallout
-							.split(' · ')[0]
-							.toLowerCase()
-							.replace(/^./, (letter) => letter.toUpperCase())}</strong
-					>
-					{#if eventCallout.includes(' · ')}
-						<small
-							>{eventCallout
-								.split(' · ')[1]
-								.toLowerCase()
-								.replace(/^./, (letter) => letter.toUpperCase())}</small
-						>
-					{/if}
+					{eventCallout}
 				</div>{/if}
 
 			{#if currentRound && status !== 'ready' && status !== 'complete'}
@@ -2434,41 +2420,20 @@
 		left: 50%;
 		top: 19%;
 		max-width: 82%;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		padding: 9px 16px;
+		padding: 8px 14px;
 		border: 0;
-		border-radius: 6px;
-		background: rgba(45, 59, 76, 0.65);
-		color: #f1f5f9;
+		border-radius: 0;
+		background: rgba(8, 21, 14, 0.82);
+		color: #f2c86d;
 		font:
-			600 0.82rem/1.25 'Google Sans',
+			800 0.68rem/1.2 'Google Sans',
 			sans-serif;
-		letter-spacing: 0;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
 		text-align: center;
 		text-shadow: none;
 		transform: translateX(-50%);
 		pointer-events: none;
-	}
-	.event-callout strong {
-		font-weight: 600;
-	}
-	.event-callout small {
-		color: rgba(223, 234, 239, 0.65);
-		font-size: 0.65rem;
-	}
-	.event-callout.pickup-callout {
-		padding: 8px 14px;
-		border-radius: 0;
-		background: rgba(8, 21, 14, 0.82);
-		color: #f2c86d;
-		font-size: 0.68rem;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-	}
-	.pickup-callout strong {
-		font-weight: 800;
 	}
 	.world:has(.event-callout) .event-callout {
 		animation: event-callout-in calc(0.24s / var(--playback-speed, 1)) ease-out;
