@@ -1,3 +1,6 @@
 .tmp/
 **/browser-profiles/
 **/relic-forge-cdp-*/
+
+# Generated Stake frontend upload archives stay local.
+/frontend/apps/dragon-flight/submission/*frontend*.zip
