@@ -56,6 +56,9 @@ test('exported server books render for every base payout and both bonus distribu
 		assert.equal(round.entryCost, STAKE_MODES[fixture.mode]);
 		assert.equal(round.events.at(-1).win, round.finalWin);
 		assert.equal(round.creature, 'eagle');
+		for (const event of round.events.filter((event) => event.type === 'encounter')) {
+			assert.equal(event.encounterType, 'ridgeDragon');
+		}
 		assert.equal(round.ending === 'crash', fixture.payout === 0);
 	}
 	assert.deepEqual([...seen].sort(), Object.keys(STAKE_MODES).sort());

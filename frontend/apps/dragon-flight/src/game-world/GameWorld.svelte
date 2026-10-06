@@ -176,6 +176,8 @@
 	import Atmosphere from './components/Atmosphere.svelte';
 	import Landscape from './components/Landscape.svelte';
 	import DangerEncounter from './components/DangerEncounter.svelte';
+	import DragonVictory from './components/DragonVictory.svelte';
+	import BirdBurst from './components/BirdBurst.svelte';
 	import CreaturePicker from './components/CreaturePicker.svelte';
 	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
@@ -247,6 +249,13 @@
 	let activePickup = $state<ActivePickupPresentation>();
 	let activeCurrent = $state<ActiveCurrentPresentation>();
 	let activeEncounter = $state<ActiveEncounterPresentation>();
+	let dragonVictory = $state<'playing' | 'outcome' | 'result'>();
+	let encounterWinner = $state<'dragon' | 'eagle' | 'archaeopteryx' | 'azure-swift' | 'woodpecker'>(
+		'dragon',
+	);
+	let birdBurst = $state<'playing' | 'finished'>();
+	let birdBurstResolver: (() => void) | undefined;
+	let dragonVictoryResolver: ((played: boolean) => void) | undefined;
 	let activeEnding = $state<Exclude<FlightEnding, 'crash'>>();
 	let landingProgress = $state(0);
 	let eventWarning = $state<WarningPresentation>();
@@ -518,6 +527,12 @@
 	function cancelPresentation() {
 		flightAudio.stopEffects();
 		presentationToken += 1;
+		birdBurstResolver?.();
+		birdBurstResolver = undefined;
+		birdBurst = undefined;
+		dragonVictoryResolver?.(false);
+		dragonVictoryResolver = undefined;
+		dragonVictory = undefined;
 		const resolveGate = gateResolver;
 		gateResolver = undefined;
 		resolveGate?.();
@@ -749,16 +764,46 @@
 		event: Extract<FlightEvent, { type: 'encounter' }>,
 		token: number,
 	) {
+		if (event.encounterType === 'ridgeDragon') {
+			eventWarning = undefined;
+			eventCallout = '';
+			comboFeedback = undefined;
+			stageAnnouncement = undefined;
+			flightAudio.stopEffects();
+			status = 'collided';
+			player = { ...player, velocity: { x: 0, y: 0 } };
+			encounterWinner = event.result === 'pass' ? activeCreature.id : 'dragon';
+			dragonVictory = 'playing';
+			const completed = new Promise<boolean>((resolve) => (dragonVictoryResolver = resolve));
+			let guard: ReturnType<typeof setTimeout>;
+			const fallback = new Promise<boolean>((resolve) => {
+				guard = setTimeout(() => resolve(false), 10500);
+			});
+			const played = await Promise.race([completed, fallback]);
+			clearTimeout(guard!);
+			if (token !== presentationToken) return;
+			dragonVictoryResolver = undefined;
+			if (played) {
+				dragonVictory = 'outcome';
+				currentMultiplier = event.multiplier;
+				await delay(1400, false);
+				if (token !== presentationToken) return;
+				dragonVictory = 'result';
+				if (event.result === 'pass') {
+					void flightAudio.play('predator-pass', 0.3, 'predator');
+					dragonVictory = undefined;
+					status = 'flying';
+				}
+				return;
+			}
+			dragonVictory = undefined;
+		}
 		const encounterLabel = ENCOUNTER_LABELS[event.encounterType];
 		void flightAudio.play('encounter-warning', 0.3);
 		const warningShown = await showWarning(encounterLabel, 'danger', token, 430);
 		if (!warningShown) return;
 		eventLabel = encounterLabel;
-		void flightAudio.play(
-			event.encounterType === 'ridgeDragon' ? 'ridge-dragon-call' : 'raptor-call',
-			0.3,
-			'predator',
-		);
+		void flightAudio.play('ridge-dragon-call', 0.3, 'predator');
 		eventCallout = 'DANGER AHEAD';
 		activeEncounter = { encounterType: event.encounterType, result: event.result, phase: 'enter' };
 		flightTargetY = bounds.floorY * 0.38;
@@ -857,11 +902,7 @@
 			}
 		}
 		flightAudio.stop('wings');
-		void flightAudio.play(
-			resultSound(round.finalWin, round.entryCost ?? round.bet),
-			0.35,
-			'result',
-		);
+		flightAudio.stop('result');
 		if (!isReplay && !flightHistory.some((item) => item.id === round.id)) {
 			flightHistory = [round, ...flightHistory].slice(0, 20);
 		}
@@ -870,6 +911,11 @@
 		eventCallout = round.ending === 'crash' ? 'CRASH' : tier.label;
 
 		if (round.finalWin <= 0) {
+			void flightAudio.play(
+				resultSound(round.finalWin, round.entryCost ?? round.bet),
+				0.35,
+				'result',
+			);
 			status = 'complete';
 			finalMultiplier = round.finalMultiplier;
 			finalWin = round.finalWin;
@@ -885,6 +931,7 @@
 			2,
 			(round.finalWin.toFixed(6).match(/\.(\d*?[1-9])0*$/)?.[1] ?? '').length,
 		);
+		if (!reducedMotion) void flightAudio.play('win-count-loop', 0.35, 'win-counter', true);
 		await animatePresentationValues(
 			reducedMotion ? 1 : Math.max(1800, tier.duration * 3),
 			(progress) => {
@@ -895,6 +942,8 @@
 			false,
 		);
 		if (token !== presentationToken) return;
+		flightAudio.stop('win-counter');
+		void flightAudio.play('win-count-finish', 0.35, 'result');
 		finalMultiplier = round.finalMultiplier;
 		finalWin = round.finalWin;
 		currentMultiplier = round.finalMultiplier;
@@ -943,7 +992,19 @@
 						comboCount = 0;
 						eventCallout = 'CRASH';
 						flightAudio.stop('wings');
-						void flightAudio.play('crash', 0.4);
+						if (
+							activeCreature.id === 'woodpecker' ||
+							activeCreature.id === 'eagle' ||
+							activeCreature.id === 'azure-swift' ||
+							activeCreature.id === 'archaeopteryx'
+						) {
+							const completed = new Promise<void>((resolve) => (birdBurstResolver = resolve));
+							birdBurst = 'playing';
+							await completed;
+							if (token !== presentationToken) return;
+							birdBurstResolver = undefined;
+							birdBurst = 'finished';
+						} else void flightAudio.play('crash', 0.4);
 					}
 					if (event.result === 'crash') await delay(420);
 					break;
@@ -1003,6 +1064,8 @@
 	function beginFlight(round: FlightRound, replay = false) {
 		if (status !== 'ready') return;
 		flightAudio.stopEffects();
+		birdBurst = undefined;
+		dragonVictory = undefined;
 		if (round.bonusFlight) void flightAudio.play('bonus-start', 0.3);
 		isReplay = replay;
 		if (round.ending !== 'crash') {
@@ -1256,7 +1319,9 @@
 			const environmentSpeed = WORLD_SPEED * currentStage.parallaxSpeed;
 			const presentationSpeed = status === 'collided' ? environmentSpeed * 0.22 : environmentSpeed;
 			parallaxOffset =
-				(parallaxOffset + (moving ? flightDelta * presentationSpeed : deltaSeconds * 30)) % 1800;
+				(parallaxOffset +
+					(dragonVictory ? 0 : moving ? flightDelta * presentationSpeed : deltaSeconds * 30)) %
+				1800;
 			updateParticles(moving ? flightDelta : deltaSeconds);
 
 			if (status === 'flying') {
@@ -1389,6 +1454,8 @@
 			bind:this={worldElement}
 			class:has-impact={impactActive}
 			class:has-ending={Boolean(activeEnding)}
+			class:dragon-defeat={Boolean(dragonVictory)}
+			class:bird-burst={Boolean(birdBurst)}
 			class={`world ${currentStage.className} weather-${activeWeather}`}
 			style={`--floor-scroll:${-parallaxOffset}px;`}
 		>
@@ -1475,7 +1542,20 @@
 					role="status"
 					aria-live="polite"
 				>
-					{eventCallout}
+					<strong
+						>{eventCallout
+							.split(' · ')[0]
+							.toLowerCase()
+							.replace(/^./, (letter) => letter.toUpperCase())}</strong
+					>
+					{#if eventCallout.includes(' · ')}
+						<small
+							>{eventCallout
+								.split(' · ')[1]
+								.toLowerCase()
+								.replace(/^./, (letter) => letter.toUpperCase())}</small
+						>
+					{/if}
 				</div>{/if}
 
 			{#if currentRound && status !== 'ready' && status !== 'complete'}
@@ -1534,6 +1614,53 @@
 					encounterType={activeEncounter.encounterType}
 					result={activeEncounter.result}
 					phase={activeEncounter.phase}
+				/>
+			{/if}
+			{#if birdBurst === 'playing'}
+				<BirdBurst
+					bird={activeCreature.id === 'archaeopteryx'
+						? 'archaeopteryx'
+						: activeCreature.id === 'azure-swift'
+							? 'azure-swift'
+							: activeCreature.id === 'eagle'
+								? 'eagle'
+								: 'woodpecker'}
+					x={player.position.x}
+					y={player.position.y}
+					muted={soundMuted}
+					onfallback={() => {
+						void flightAudio.play(
+							activeCreature.id === 'azure-swift'
+								? 'azure-swift-burst'
+								: activeCreature.id === 'eagle' || activeCreature.id === 'archaeopteryx'
+									? 'eagle-burst'
+									: 'woodpecker-burst',
+							0.8,
+							'bird-burst',
+						);
+					}}
+					onfinish={() => {
+						flightAudio.stop('bird-burst');
+						birdBurstResolver?.();
+					}}
+				/>
+			{/if}
+			{#if dragonVictory}
+				<DragonVictory
+					phase={dragonVictory}
+					winner={encounterWinner}
+					bird={activeCreature.id}
+					onstart={() => {
+						const sound =
+							encounterWinner === 'dragon' && activeCreature.id !== 'eagle'
+								? (`dragon-${activeCreature.id}-fight` as const)
+								: (`${encounterWinner}-fight` as const);
+						void flightAudio.play(sound, 0.55, 'fight-video');
+					}}
+					onfinish={(played) => {
+						flightAudio.stop('fight-video');
+						dragonVictoryResolver?.(played);
+					}}
 				/>
 			{/if}
 
@@ -1659,7 +1786,11 @@
 					data-audio-panel
 					onclick={() => (creaturePickerOpen = true)}
 				>
-					<span>{selectedCreature.name}</span><b>▾</b>
+					<span>{selectedCreature.name}</span><svg
+						class="creature-chevron"
+						viewBox="0 0 16 16"
+						aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg
+					>
 				</button>
 			</div>
 
@@ -1810,6 +1941,12 @@
 />
 
 <style>
+	.bird-burst .creature-flight,
+	.dragon-defeat .creature-flight,
+	.dragon-defeat .floor,
+	.dragon-defeat .flight-particle {
+		visibility: hidden;
+	}
 	.prototype-shell,
 	.prototype-shell * {
 		box-sizing: border-box;
@@ -2296,18 +2433,29 @@
 		left: 50%;
 		top: 19%;
 		max-width: 82%;
-		padding: 8px 14px;
-		border: 1px solid rgba(224, 169, 70, 0.72);
-		background: rgba(8, 21, 14, 0.82);
-		color: #f2c86d;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 9px 16px;
+		border: 0;
+		border-radius: 6px;
+		background: rgba(45, 59, 76, 0.65);
+		color: #f1f5f9;
 		font:
-			800 0.68rem/1.2 system-ui,
+			600 0.82rem/1.25 'Google Sans',
 			sans-serif;
-		letter-spacing: 0.14em;
+		letter-spacing: 0;
 		text-align: center;
-		text-shadow: 0 1px 8px #000;
+		text-shadow: none;
 		transform: translateX(-50%);
 		pointer-events: none;
+	}
+	.event-callout strong {
+		font-weight: 600;
+	}
+	.event-callout small {
+		color: rgba(223, 234, 239, 0.65);
+		font-size: 0.65rem;
 	}
 	.world:has(.event-callout) .event-callout {
 		animation: event-callout-in calc(0.24s / var(--playback-speed, 1)) ease-out;
@@ -2897,8 +3045,15 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
-	.creature-button b {
-		color: #55e5a5;
+	.creature-chevron {
+		width: 12px;
+		height: 12px;
+		flex-shrink: 0;
+		fill: none;
+		stroke: #94a6b1;
+		stroke-width: 1.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 	.risk-selector {
 		display: grid;
@@ -3218,7 +3373,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 10px;
+		gap: 8px;
 		width: auto;
 		margin: 0 0 0 auto;
 		padding: 0;
@@ -3235,6 +3390,59 @@
 		order: 2;
 		padding: 8px;
 		width: 40px;
+	}
+	.prototype-header h1 {
+		letter-spacing: 0.01em;
+		text-shadow: none;
+	}
+	.prototype-header .control-tools button,
+	.prototype-header .control-tools select {
+		border: 0;
+		border-radius: 3px;
+		background: #0b1015;
+		box-shadow: none;
+		text-shadow: none;
+		color: #e6eee9;
+	}
+	.prototype-header .control-tools button {
+		padding: 10px 14px;
+		font-size: 0.65rem;
+		letter-spacing: 0.06em;
+	}
+	.prototype-header .control-tools button:hover:not(:disabled),
+	.prototype-header .control-tools select:hover:not(:disabled) {
+		background-color: #1c2b31;
+	}
+	.prototype-header .control-tools button[aria-expanded='true'] {
+		background: #557e69;
+	}
+	.prototype-header .control-tools .bonus-button {
+		color: #f3cc7d;
+	}
+	.prototype-header .control-tools .help-button {
+		padding: 10px;
+		color: #f3cc7d;
+	}
+	.prototype-header .control-tools select {
+		min-height: 40px;
+		padding: 8px 30px 8px 12px;
+		appearance: none;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%2394a6b1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+		background-repeat: no-repeat;
+		background-position: right 11px center;
+		background-size: 12px 12px;
+	}
+	.prototype-header .control-tools label {
+		gap: 7px;
+		color: #94a6b1;
+	}
+	.prototype-header .control-tools label span {
+		margin-left: 0;
+		color: inherit;
+	}
+	.prototype-header .control-tools button:focus-visible {
+		outline: 2px solid #8cbca1;
+		outline-offset: 2px;
 	}
 	@media (max-width: 480px) {
 		.prototype-header .control-tools {

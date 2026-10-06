@@ -256,7 +256,8 @@
 		flex-shrink: 0;
 		width: 44px;
 		height: 44px;
-		padding: 11px;
+		padding: 0;
+		box-sizing: border-box;
 		border: 1px solid #a0bcba30;
 		border-radius: 50%;
 		color: #c5d8d5;
@@ -264,7 +265,9 @@
 		cursor: pointer;
 	}
 	.close-button svg {
+		display: block;
 		width: 20px;
+		height: 20px;
 		fill: none;
 		stroke: currentColor;
 		stroke-width: 1.6;

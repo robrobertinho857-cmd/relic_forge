@@ -2,6 +2,17 @@ import { base } from '$app/paths';
 import type { WeatherCondition } from './types';
 
 export const SOUND_NAMES = [
+	'archaeopteryx-fight',
+	'azure-swift-fight',
+	'woodpecker-fight',
+	'woodpecker-burst',
+	'eagle-burst',
+	'azure-swift-burst',
+	'dragon-fight',
+	'dragon-archaeopteryx-fight',
+	'dragon-azure-swift-fight',
+	'dragon-woodpecker-fight',
+	'eagle-fight',
 	'air-current',
 	'bonus-start',
 	'button-click',
@@ -14,7 +25,6 @@ export const SOUND_NAMES = [
 	'option-select',
 	'predator-pass',
 	'rain-loop',
-	'raptor-call',
 	'result-big-win',
 	'result-loss',
 	'result-outstanding',
@@ -26,6 +36,8 @@ export const SOUND_NAMES = [
 	'thunder',
 	'unavailable',
 	'wind',
+	'win-count-loop',
+	'win-count-finish',
 ] as const;
 export type SoundName = (typeof SOUND_NAMES)[number] | 'wing-loop';
 export const soundUrl = (name: SoundName) => `${base || '.'}/audio/${name}.mp3`;

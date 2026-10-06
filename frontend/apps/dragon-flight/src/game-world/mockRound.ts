@@ -174,7 +174,7 @@ export const generateMockRound = (
 			currentMultiplier = roundToTwoDecimals(currentMultiplier + increment);
 			events.push({
 				type: 'encounter',
-				encounterType: pick(['ridgeDragon', 'mountainRaptor'], random),
+				encounterType: 'ridgeDragon',
 				result: 'pass',
 				multiplier: currentMultiplier,
 			});

@@ -179,11 +179,13 @@ export function decodeStakeRound(
 					multiplier: multiplier(),
 				};
 			case 'encounter': {
+				// Older published books also use mountainRaptor; present both as the dragon.
+				choice(event.encounterType, ['ridgeDragon', 'mountainRaptor']);
 				const result = choice(event.result, ['pass', 'crash']);
 				crashed = result === 'crash';
 				return {
 					type: 'encounter',
-					encounterType: choice(event.encounterType, ['ridgeDragon', 'mountainRaptor']),
+					encounterType: 'ridgeDragon',
 					result,
 					multiplier: multiplier(),
 				};

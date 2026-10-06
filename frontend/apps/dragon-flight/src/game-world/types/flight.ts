@@ -26,7 +26,7 @@ export type PickupType =
 
 export type CurrentType = 'risingCurrent' | 'ridgeCurrent' | 'valleyCurrent' | 'crosswind';
 
-export type EncounterType = 'ridgeDragon' | 'mountainRaptor';
+export type EncounterType = 'ridgeDragon';
 
 export type FlightEnding =
 	| 'crash'

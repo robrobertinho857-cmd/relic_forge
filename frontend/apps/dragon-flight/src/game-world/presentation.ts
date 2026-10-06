@@ -41,7 +41,6 @@ export const CURRENT_LABELS: Record<CurrentType, string> = {
 
 export const ENCOUNTER_LABELS: Record<EncounterType, string> = {
 	ridgeDragon: 'RIDGE DRAGON',
-	mountainRaptor: 'MOUNTAIN RAPTOR',
 };
 
 export const HAZARD_LABELS: Record<HazardType, string> = {

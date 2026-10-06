@@ -49,7 +49,7 @@
 				<h2 id="creature-picker-title">{t('creature')}</h2>
 			</div>
 			<button type="button" aria-label="Close creature picker" data-audio-panel onclick={close}
-				>×</button
+				><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button
 			>
 		</header>
 		<div class="creature-grid">
@@ -126,6 +126,10 @@
 			sans-serif;
 	}
 	header button {
+		display: grid;
+		place-items: center;
+		padding: 0;
+		box-sizing: border-box;
 		width: 36px;
 		min-height: 36px;
 		border: 1px solid #8a6427;
@@ -134,6 +138,15 @@
 		color: #e9c46f;
 		font-size: 1.25rem;
 		cursor: pointer;
+	}
+	header button svg {
+		display: block;
+		width: 18px;
+		height: 18px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
 	}
 	.creature-grid {
 		display: grid;

@@ -57,6 +57,7 @@
 	{#key displayedSrc}
 		<img
 			class="landscape-image"
+			class:fixed-rain={weather === 'rain' && !ending}
 			class:finish-scene={displayedSrc.includes('/finishes/')}
 			src={displayedSrc}
 			alt=""
@@ -94,6 +95,9 @@
 		/* Keep the landing anchor visible with any cover crop. */
 		object-position: var(--landing-x) var(--landing-y);
 		transform: none;
+	}
+	.fixed-rain {
+		transform: scale(1.04);
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.landscape-image {

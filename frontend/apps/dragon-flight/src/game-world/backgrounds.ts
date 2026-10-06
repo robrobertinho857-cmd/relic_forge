@@ -30,6 +30,7 @@ const TIME_BACKGROUNDS: Record<TimeOfDay, string> = {
 };
 
 export function getLandscapeBackground(weather: WeatherCondition, time: TimeOfDay): string {
+	if (weather === 'rain') return `${base || '.'}/backgrounds/rain-scene.png`;
 	const name = weather === 'clear' ? TIME_BACKGROUNDS[time] : weather;
 	return `${base || '.'}/backgrounds/${name}.webp`;
 }

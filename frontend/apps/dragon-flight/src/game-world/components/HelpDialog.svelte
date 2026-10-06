@@ -369,13 +369,15 @@
 		min-height: 42px;
 		flex: 0 0 auto;
 		place-items: center;
-		padding: 9px;
+		padding: 0;
+		box-sizing: border-box;
 		border: 1px solid #b6812f;
 		border-radius: 50%;
 		background: rgba(4, 19, 13, 0.85);
 		color: #e4e9df;
 	}
 	.close-button svg {
+		display: block;
 		width: 21px;
 		height: 21px;
 		fill: none;

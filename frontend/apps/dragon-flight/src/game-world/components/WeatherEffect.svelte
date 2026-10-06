@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getWeather } from '../weather';
+	import EndlessRain from './EndlessRain.svelte';
 	import type { LaunchStyle, WeatherCondition } from '../types';
 
 	type Props = {
@@ -72,12 +73,7 @@
 	<div class="weather-front"></div>
 	{#if weather === 'rain' || weather === 'storm'}
 		<div class="rain-layer" class:storm-rain={weather === 'storm'}>
-			{#each Array.from({ length: 32 }, (_, i) => i) as drop (drop)}
-				<span
-					class="raindrop"
-					style={`--drop-x:${(drop * 37 + 11) % 100}%;--drop-delay:${-((drop * 0.173) % 1.5)}s;--drop-duration:${0.85 + (drop % 5) * 0.13}s;--drop-length:${10 + (drop % 4) * 4}px;--drop-opacity:${0.16 + (drop % 3) * 0.07};`}
-				></span>
-			{/each}
+			<EndlessRain storm={weather === 'storm'} />
 		</div>
 	{/if}
 
@@ -110,29 +106,6 @@
 	.rain-layer {
 		z-index: 8;
 	}
-	.raindrop {
-		position: absolute;
-		left: var(--drop-x);
-		top: -28px;
-		width: 1px;
-		height: calc(100% + 56px);
-		opacity: var(--drop-opacity);
-		animation: rain-fall var(--drop-duration) linear var(--drop-delay) infinite;
-	}
-	.raindrop::before {
-		content: '';
-		position: absolute;
-		width: 100%;
-		height: var(--drop-length);
-		border-radius: 2px;
-		background: linear-gradient(transparent, #dfedff);
-		transform: rotate(12deg);
-	}
-	.storm-rain .raindrop {
-		width: 1.5px;
-		opacity: calc(var(--drop-opacity) + 0.1);
-		animation-duration: calc(var(--drop-duration) * 0.8);
-	}
 	.finish-weather-tone {
 		z-index: 1;
 	}
@@ -144,11 +117,6 @@
 	}
 	.weather-fog .finish-weather-tone {
 		background: linear-gradient(#c4d1d333, #c4d1d388);
-	}
-	@keyframes rain-fall {
-		to {
-			transform: translate3d(-32px, 100%, 0);
-		}
 	}
 
 	.weather-screen-flash {
