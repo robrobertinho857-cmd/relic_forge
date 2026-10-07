@@ -678,11 +678,11 @@
 			return { x: position.x, y: position.y + (hit ? 0 : -80) };
 		};
 		hunterShot = { target: target(), progress: -1, hit };
-		await delay(70);
+		await delay(180);
 		if (token !== presentationToken) return;
 		void flightAudio.play('crash', 0.22, 'hunter-shot');
 		await animatePresentationValues(
-			200,
+			480,
 			(progress) => {
 				hunterShot = { target: target(), progress, hit };
 			},
@@ -699,7 +699,7 @@
 				(event.gate - 1) % activeBirds.filter((bird) => bird.alive).length
 			];
 			if (bird) await presentHunterShot(bird.id, false, presentationToken);
-			await delay(120);
+			await delay(380);
 			return;
 		}
 		activeGate = createPresentedGate(event);
@@ -1020,7 +1020,7 @@
 						'flock-elimination',
 					);
 					focusBirdId = activeBirds.find((bird) => bird.alive)?.id ?? event.bird;
-					await delay(championActive ? 750 : 350);
+					await delay(750);
 					break;
 				case 'championFlight':
 					hunterShot = undefined;
