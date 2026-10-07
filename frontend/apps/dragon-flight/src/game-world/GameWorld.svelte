@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { base } from '$app/paths';
 	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		LANGUAGE_NAMES,
@@ -8,7 +7,6 @@
 		changeLanguage,
 		getRiskNote,
 		language,
-		readyPrompt,
 		stageWord,
 		t,
 		textDirection,
@@ -74,7 +72,7 @@
 		if (recovered) {
 			try {
 				const round = decodeStakeRound(recovered, {
-					creature: selectedCreatureId,
+					creature: legacyCreatureId,
 					launchStyle: selectedLaunchStyle,
 				});
 				resetPresentation();
@@ -92,7 +90,7 @@
 			let round: FlightRound;
 			try {
 				round = decodeStakeRound(response, {
-					creature: selectedCreatureId,
+					creature: legacyCreatureId,
 					launchStyle: selectedLaunchStyle,
 				});
 			} catch (error) {
@@ -101,7 +99,7 @@
 			}
 			if (!bonusId) {
 				round.weather = selectedWeather;
-				round.timeOfDay = selectedTimeOfDay;
+				round.timeOfDay = selectedRisk === 'safe' ? 'day' : selectedTimeOfDay;
 			}
 			bonusOpen = false;
 			beginFlight(round);
@@ -135,7 +133,7 @@
 		);
 	});
 	$effect(() => {
-		const panels = [customizeOpen, helpOpen, bonusOpen, historyOpen, creaturePickerOpen].join(',');
+		const panels = [customizeOpen, helpOpen, bonusOpen, historyOpen].join(',');
 		if (previousPanels && panels !== previousPanels)
 			void flightAudio.play('option-select', 0.22, 'ui');
 		previousPanels = panels;
@@ -152,8 +150,9 @@
 		WORLD_SPEED,
 		GATE_APPROACH_RATE,
 	} from './config';
-	import { clamp, createPlayer, steerPlayer } from './physics';
+	import { clamp, createPlayer } from './physics';
 	import { generateMockRound } from './mockRound';
+	import { createTubeFlight, tubeFlightOffer } from './tubeFlight';
 	import { createBonusRound, drawBonusTicket } from './bonusFlights';
 	import BonusFlightsDialog from './components/BonusFlightsDialog.svelte';
 	import FlightHistory from './components/FlightHistory.svelte';
@@ -177,7 +176,19 @@
 	import DangerEncounter from './components/DangerEncounter.svelte';
 	import DragonVictory from './components/DragonVictory.svelte';
 	import BirdBurst from './components/BirdBurst.svelte';
-	import CreaturePicker from './components/CreaturePicker.svelte';
+	import Flock from './components/Flock.svelte';
+	import Hunter from './components/Hunter.svelte';
+	import type { HunterShot } from './flock/hunter';
+	import FlockStatus from './components/FlockStatus.svelte';
+	import ChampionFlight from './components/ChampionFlight.svelte';
+	import {
+		createFlock,
+		stepFlock,
+		eliminateBird,
+		startChampion,
+		resizeFlock,
+		updateBirdBody,
+	} from './flock/presentation';
 	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
 	import TerrainObstacle from './components/TerrainObstacle.svelte';
@@ -214,29 +225,32 @@
 
 	let worldElement = $state<HTMLDivElement>();
 	let bounds = $state<WorldBounds>(INITIAL_BOUNDS);
-	let player = $state<PlayerBody>(createPlayer(INITIAL_BOUNDS));
+	let activeBirds = $state(createFlock(INITIAL_BOUNDS));
+	let focusBirdId = $state<CreatureId>('archaeopteryx');
+	let championActive = $state(false);
+	let hunterShot = $state<HunterShot>();
+	let championAnnouncement = $state(false);
+	let flockAnnouncement = $state('');
+	const player = $derived(
+		activeBirds.find((bird) => bird.id === focusBirdId)?.body ?? createPlayer(bounds),
+	);
+	function setLeadBody(body: PlayerBody) {
+		activeBirds = updateBirdBody(activeBirds, focusBirdId, body);
+	}
 	let selectedBet = $state(1);
 	let betInput = $state('1.00');
 	const betCurrencySymbol = $derived(getCurrencySymbol(wallet.live ? wallet.currency : 'USD'));
-	let selectedRisk = $state<FlightRisk>('balanced');
-	let selectedCreatureId = $state<CreatureId>('archaeopteryx');
+	let selectedRisk = $state<FlightRisk>('safe');
+	const legacyCreatureId: CreatureId = 'archaeopteryx';
 	let selectedLaunchStyle = $state<LaunchStyle>('glide');
-	let selectedWeather = $state<WeatherCondition>('clear');
+	const selectedWeather = $derived<WeatherCondition>(
+		selectedRisk === 'safe' ? 'clear' : selectedRisk === 'balanced' ? 'rain' : 'storm',
+	);
 	let selectedTimeOfDay = $state<TimeOfDay>('day');
 	let playbackSpeed = $state(1.5);
-	let creaturePickerOpen = $state(false);
 	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
 	let settingsMenuOpen = $state(false);
-	const portraitOffsets: Record<string, number> = {
-		eagle: 66,
-		woodpecker: 190,
-		'azure-swift': 302,
-		archaeopteryx: 414,
-	};
-	const panelCreatures = ['eagle', 'woodpecker', 'azure-swift', 'archaeopteryx'].map(
-		(id) => CREATURES.find((bird) => bird.id === id)!,
-	);
 	async function toggleFullscreen() {
 		try {
 			if (document.fullscreenElement) await document.exitFullscreen();
@@ -253,7 +267,6 @@
 	let currentStageId = $state<FlightStageId>('MOUNTAIN_VALLEY');
 	let flightProgress = $state(0);
 	let stageAnnouncement = $state<StageAnnouncement>();
-	let roundCreatureId = $state<CreatureId>();
 	let status = $state<PrototypeStatus>('ready');
 	let currentRound = $state<FlightRound>();
 	let currentMultiplier = $state(1);
@@ -281,11 +294,8 @@
 	let comboFeedback = $state<ComboPresentation>();
 	let comboCount = $state(0);
 	let multiplierPulse = $state(false);
-	let creatureFrameNumber = $state(1);
-	let creatureFrameCanvas = $state<HTMLCanvasElement>();
 	let loadedCreatureFrames = $state<Partial<Record<CreatureId, readonly ImageBitmap[]>>>({});
 	let impactActive = $state(false);
-	let flapActive = $state(false);
 	let eventLabel = $state('READY');
 	let eventProgress = $state(0);
 	let eventCallout = $state('');
@@ -299,10 +309,8 @@
 	let warningSequence = 0;
 	let comboSequence = 0;
 	let gateResolver: (() => void) | undefined;
-	let flapTimer: ReturnType<typeof setTimeout> | undefined;
 	let stageAnnouncementTimer: ReturnType<typeof setTimeout> | undefined;
 	let comboTimer: ReturnType<typeof setTimeout> | undefined;
-	let flapFrame = 0;
 	let valueAnimationFrame = 0;
 	let cancelValueAnimation: (() => void) | undefined;
 	let pendingDelays: Array<() => void> = [];
@@ -312,7 +320,7 @@
 		wallet.turboDisabled
 			? 1
 			: playbackSpeed *
-					((currentRound?.risk ?? selectedRisk) === 'balanced' && !currentRound?.bonusFlight
+					(currentRound?.flock && currentRound.risk === 'balanced' && !currentRound.bonusFlight
 						? 1.25
 						: 1),
 	);
@@ -324,7 +332,7 @@
 	const betInputIsValid = $derived(
 		wallet.live ? isValidStakeBet(stakeAmount, wallet) : isBetInputValid(betInput),
 	);
-	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
+	const activeCreature = $derived(getCreature(focusBirdId));
 	const selectedPathNote = $derived(getRiskNote(selectedRisk));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(
@@ -332,60 +340,15 @@
 			currentRound ? currentRound.finalWin / (currentRound.entryCost ?? currentRound.bet) : 0,
 		),
 	);
+	// Route atmosphere is cosmetic; it never changes the stored result or payout.
 	const activeWeather = $derived(currentRound?.weather ?? selectedWeather);
-	const activeWeatherConfig = $derived(getWeather(activeWeather));
-	const activeTimeOfDay = $derived(currentRound?.timeOfDay ?? selectedTimeOfDay);
+	const activeTimeOfDay = $derived(
+		currentRound?.timeOfDay ?? (selectedRisk === 'safe' ? 'day' : selectedTimeOfDay),
+	);
 	const activeTimeConfig = $derived(getTimeOfDay(activeTimeOfDay));
-	const activeCreatureFrame = $derived(
-		loadedCreatureFrames[activeCreature.id]?.[creatureFrameNumber - 1],
-	);
-	const rotation = $derived(
-		clamp(
-			player.velocity.y / activeCreature.rotationDivisor,
-			-activeCreature.rotationLimit,
-			activeCreature.rotationLimit,
-		),
-	);
 	// Retain round telemetry without displaying it in the permanent HUD.
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const distanceMetres = $derived(Math.floor(distanceTravelled / 12));
-
-	$effect(() => {
-		const animation = activeCreature.flightAnimation;
-		creatureFrameNumber = animation?.frameOrder[0] ?? 1;
-		if (landed) return;
-		if (!animation || loadedCreatureFrames[activeCreature.id]?.length !== animation.frames.length)
-			return;
-
-		let frameCursor = 0;
-		const frameTimer = setInterval(() => {
-			frameCursor = (frameCursor + 1) % animation.frameOrder.length;
-			creatureFrameNumber = animation.frameOrder[frameCursor] ?? 1;
-		}, 1000 / animation.fps);
-
-		return () => clearInterval(frameTimer);
-	});
-
-	$effect(() => {
-		const canvas = creatureFrameCanvas;
-		const frame = activeCreatureFrame;
-		if (!canvas || !frame) return;
-
-		const context = canvas.getContext('2d');
-		if (!context) return;
-
-		const scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
-		const width = frame.width * scale;
-		const height = frame.height * scale;
-		context.clearRect(0, 0, canvas.width, canvas.height);
-		context.drawImage(
-			frame,
-			(canvas.width - width) / 2,
-			(canvas.height - height) / 2,
-			width,
-			height,
-		);
-	});
 
 	function updateBetInput(input: HTMLInputElement) {
 		if (wallet.live) {
@@ -428,6 +391,11 @@
 		wallet.live
 			? (wallet.levels.at(-1) ?? Math.floor(wallet.maxBet / wallet.stepBet) * wallet.stepBet) / 1e6
 			: MAX_PROTOTYPE_BET,
+	);
+	const tubeOffer = $derived(
+		currentRound
+			? tubeFlightOffer(currentRound, minimumBet, maximumBet, wallet.live, isReplay || replayMode)
+			: undefined,
 	);
 	function moveBet(direction: -1 | 1) {
 		if (controlsLocked) return;
@@ -570,10 +538,6 @@
 		gateResolver = undefined;
 		resolveGate?.();
 		clearPresentationDelays();
-		if (flapFrame) cancelAnimationFrame(flapFrame);
-		flapFrame = 0;
-		if (flapTimer) clearTimeout(flapTimer);
-		flapTimer = undefined;
 		if (stageAnnouncementTimer) clearTimeout(stageAnnouncementTimer);
 		stageAnnouncementTimer = undefined;
 		if (comboTimer) clearTimeout(comboTimer);
@@ -590,7 +554,6 @@
 		activeEnding = undefined;
 		landingProgress = 0;
 		multiplierPulse = false;
-		flapActive = false;
 	}
 
 	function enterStage(stageId: FlightStageId, forceAnnouncement = false) {
@@ -613,23 +576,25 @@
 	}
 
 	function updateFlightProgress(round: FlightRound, eventIndex: number) {
-		const nextStage = stageForEventIndex(round.stagePlan, eventIndex);
+		const nextStage = championActive
+			? 'STORM_HIGHLANDS'
+			: stageForEventIndex(round.stagePlan, eventIndex);
 		enterStage(nextStage, eventIndex === 0);
 		flightProgress = Math.min(100, ((eventIndex + 1) / round.events.length) * 100);
 	}
 
 	function triggerFlap() {
-		flapActive = false;
-		if (flapFrame) cancelAnimationFrame(flapFrame);
-		flapFrame = requestAnimationFrame(() => {
-			flapActive = true;
-			flapFrame = 0;
-		});
-		if (flapTimer) clearTimeout(flapTimer);
-		flapTimer = setTimeout(() => {
-			flapActive = false;
-			flapTimer = undefined;
-		}, activeCreature.flapDuration);
+		activeBirds = activeBirds.map((bird) =>
+			bird.alive && !bird.exiting
+				? {
+						...bird,
+						body: {
+							...bird.body,
+							velocity: { ...bird.body.velocity, y: bird.body.velocity.y - 20 },
+						},
+					}
+				: bird,
+		);
 	}
 
 	function emitParticles(count: number, impact = false) {
@@ -649,12 +614,16 @@
 	}
 
 	function resetPresentation() {
+		hunterShot = undefined;
 		winCelebrationOpen = false;
 		cancelPresentation();
-		player = createPlayer(bounds);
+		activeBirds = createFlock(bounds);
+		focusBirdId = 'archaeopteryx';
+		championActive = false;
+		championAnnouncement = false;
+		flockAnnouncement = '';
 		status = 'ready';
 		currentRound = undefined;
-		roundCreatureId = undefined;
 		currentStageId = 'MOUNTAIN_VALLEY';
 		flightProgress = 0;
 		currentMultiplier = 1;
@@ -669,7 +638,6 @@
 		activeEnding = undefined;
 		comboCount = 0;
 		impactActive = false;
-		flapActive = false;
 		eventLabel = 'READY';
 		eventProgress = 0;
 		eventCallout = '';
@@ -679,7 +647,9 @@
 	}
 
 	function createPresentedGate(event: Extract<FlightEvent, { type: 'gate' }>): ActiveGate {
-		const gapHeight = clamp(bounds.height * 0.35, 145, 215);
+		const routeWidth =
+			currentRound?.risk === 'safe' ? 0.44 : currentRound?.risk === 'danger' ? 0.29 : 0.35;
+		const gapHeight = clamp(bounds.height * routeWidth, 120, 245);
 		const margin = gapHeight / 2 + 36;
 		const gapCenterY = clamp(event.gapRatio * bounds.floorY, margin, bounds.floorY - margin);
 		const width = clamp(bounds.width * 0.19, 95, 210);
@@ -698,7 +668,40 @@
 		};
 	}
 
-	function presentGate(event: Extract<FlightEvent, { type: 'gate' }>) {
+	async function presentHunterShot(birdId: CreatureId, hit: boolean, token: number) {
+		const bird = activeBirds.find((bird) => bird.id === birdId && bird.alive);
+		if (!bird) return;
+		eventCallout = hit ? 'HUNTER TAKES AIM' : 'HUNTER · INCOMING SHOT';
+		const target = () => {
+			const position =
+				activeBirds.find((bird) => bird.id === birdId)?.body.position ?? bird.body.position;
+			return { x: position.x, y: position.y + (hit ? 0 : -80) };
+		};
+		hunterShot = { target: target(), progress: -1, hit };
+		await delay(70);
+		if (token !== presentationToken) return;
+		void flightAudio.play('crash', 0.22, 'hunter-shot');
+		await animatePresentationValues(
+			200,
+			(progress) => {
+				hunterShot = { target: target(), progress, hit };
+			},
+			token,
+		);
+		if (token !== presentationToken) return;
+		hunterShot = undefined;
+		if (!hit) eventCallout = 'SHOT MISSED · FLOCK CONTINUES';
+	}
+
+	async function presentGate(event: Extract<FlightEvent, { type: 'gate' }>) {
+		if (currentRound?.flock && !championActive) {
+			const bird = activeBirds.filter((bird) => bird.alive)[
+				(event.gate - 1) % activeBirds.filter((bird) => bird.alive).length
+			];
+			if (bird) await presentHunterShot(bird.id, false, presentationToken);
+			await delay(120);
+			return;
+		}
 		activeGate = createPresentedGate(event);
 		eventLabel = HAZARD_LABELS[event.hazard];
 		eventCallout = `${HAZARD_LABELS[event.hazard]} · GATE ${event.gate}`;
@@ -804,7 +807,7 @@
 			stageAnnouncement = undefined;
 			flightAudio.stopEffects();
 			status = 'collided';
-			player = { ...player, velocity: { x: 0, y: 0 } };
+			setLeadBody({ ...player, velocity: { x: 0, y: 0 } });
 			encounterWinner = event.result === 'pass' ? activeCreature.id : 'dragon';
 			dragonVictory = 'playing';
 			const completed = new Promise<boolean>((resolve) => (dragonVictoryResolver = resolve));
@@ -862,7 +865,7 @@
 			eventCallout = 'PREDATOR STRIKE';
 			void flightAudio.play('crash', 0.4);
 			status = 'collided';
-			player = { ...player, velocity: { x: 0, y: 0 } };
+			setLeadBody({ ...player, velocity: { x: 0, y: 0 } });
 			emitParticles(38, true);
 		}
 		await delay(event.result === 'crash' ? 420 : 300);
@@ -876,7 +879,7 @@
 		status = 'ending';
 		landingProgress = 0;
 		eventCallout = ENDING_LABELS[event.ending];
-		player = { ...player, velocity: { x: 0, y: 0 } };
+		if (!currentRound?.flock) setLeadBody({ ...player, velocity: { x: 0, y: 0 } });
 		triggerFlap();
 		await animateCurrentMultiplier(event.multiplier, 320, token);
 		if (token !== presentationToken) return;
@@ -885,9 +888,10 @@
 			window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 1 : 1500,
 			(progress) => {
 				landingProgress = progress;
+				if (currentRound?.flock) return;
 				const eased = progress;
 				const target = landingPosition();
-				player = {
+				setLeadBody({
 					...player,
 					position: {
 						x: start.x * bounds.width + (target.x - start.x * bounds.width) * eased,
@@ -897,7 +901,7 @@
 							Math.sin(progress * Math.PI) * bounds.height * 0.09,
 					},
 					velocity: { x: 0, y: 0 },
-				};
+				});
 			},
 			token,
 		);
@@ -922,7 +926,7 @@
 	}
 
 	async function presentFinalResult(round: FlightRound, token: number) {
-		if (wallet.live && !isReplay) {
+		if (wallet.live && !isReplay && !settledRounds.has(round.id)) {
 			try {
 				await stakeSession.settle();
 			} catch {
@@ -940,7 +944,11 @@
 		}
 		const tier = getWinTier(round.finalWin / (round.entryCost ?? round.bet));
 		eventLabel = tier.label;
-		eventCallout = round.ending === 'crash' ? 'CRASH' : tier.label;
+		eventCallout = round.flock?.bonusTriggered
+			? 'CHAMPION FLIGHT COMPLETE'
+			: round.ending === 'crash'
+				? 'CRASH'
+				: tier.label;
 
 		if (round.finalWin <= 0) {
 			void flightAudio.play(
@@ -992,7 +1000,49 @@
 			updateFlightProgress(round, index);
 
 			switch (event.type) {
+				case 'elimination':
+					if (!championActive) await presentHunterShot(event.bird, true, token);
+					if (token !== presentationToken) return;
+					activeBirds = eliminateBird(
+						activeBirds,
+						event.bird,
+						championActive ? event.reason : 'hunter',
+					);
+					flockAnnouncement = `${getCreature(event.bird).name} eliminated. ${activeBirds.filter((bird) => bird.alive).length} of four birds remain.`;
+					eventCallout = `${getCreature(event.bird).name.toUpperCase()} · ${!championActive ? 'HUNTER HIT' : event.reason === 'predator' ? 'PREDATOR STRIKE' : event.reason === 'wind' ? 'STORM KNOCKBACK' : 'TERRAIN IMPACT'}`;
+					void flightAudio.play(
+						event.reason === 'wind'
+							? 'air-current'
+							: event.reason === 'predator'
+								? 'ridge-dragon-call'
+								: 'crash',
+						0.3,
+						'flock-elimination',
+					);
+					focusBirdId = activeBirds.find((bird) => bird.alive)?.id ?? event.bird;
+					await delay(championActive ? 750 : 350);
+					break;
+				case 'championFlight':
+					hunterShot = undefined;
+					championAnnouncement = true;
+					flockAnnouncement = 'All four birds reached the destination. Champion Flight started.';
+					activeEnding = undefined;
+					landingProgress = 0;
+					void flightAudio.play('bonus-start', 0.4);
+					await delay(1300);
+					if (token !== presentationToken) return;
+					activeBirds = startChampion(activeBirds);
+					focusBirdId = 'archaeopteryx';
+					championActive = true;
+					status = 'flying';
+					enterStage('STORM_HIGHLANDS');
+					championAnnouncement = false;
+					flightTargetY = bounds.floorY * 0.45;
+					await delay(450);
+					break;
+
 				case 'launch':
+					void flightAudio.play('wind', 0.5, 'flock-launch');
 					eventLabel = 'LAUNCH';
 					eventCallout = `${round.launchStyle.toUpperCase()} LAUNCH`;
 					status = 'flying';
@@ -1002,13 +1052,13 @@
 							: event.path === 'danger'
 								? bounds.floorY * 0.34
 								: bounds.floorY * 0.5;
-					player = {
+					setLeadBody({
 						...player,
 						velocity: {
 							x: round.launchStyle === 'glide' ? 0 : round.launchStyle === 'boost' ? 20 : -10,
 							y: round.launchStyle === 'boost' ? -155 : round.launchStyle === 'dive' ? 120 : -85,
 						},
-					};
+					});
 					triggerFlap();
 					emitParticles(12);
 					await delay(350);
@@ -1047,7 +1097,15 @@
 					await presentCurrent(event, token);
 					break;
 				case 'encounter':
+					if (round.flock && !championActive) {
+						const bird = activeBirds.find((bird) => bird.alive);
+						if (bird) await presentHunterShot(bird.id, false, token);
+						await animateCurrentMultiplier(event.multiplier, 300, token);
+						break;
+					}
 					await presentEncounter(event, token);
+					if (championActive && event.result === 'crash')
+						activeBirds = eliminateBird(activeBirds, 'archaeopteryx', 'predator');
 					break;
 				case 'ending':
 					eventLabel = ENDING_LABELS[event.ending];
@@ -1055,34 +1113,52 @@
 					await presentEnding(event, token);
 					break;
 				case 'finalWin':
+					flockAnnouncement = round.flock
+						? `${round.flock.survivors} of four birds survived${round.flock.bonusTriggered ? '. Champion Flight complete' : ''}.`
+						: '';
 					await presentFinalResult(round, token);
 					break;
 			}
 		}
 	}
 
-	function startFlight(bonusId?: BonusFlightId) {
+	function startFlight(bonusId?: BonusFlightId, tube = false) {
 		if (controlsLocked || !betInputIsValid) {
 			void flightAudio.play('unavailable', 0.25, 'ui');
 			return;
 		}
 		flightError = '';
 		if (wallet.live) {
+			if (tube) {
+				flightError = 'Fluppy Flight requires a separate server mode.';
+				return;
+			}
 			void startStakeFlight(bonusId);
 			return;
 		}
 		roundSequence += 1;
 		const options = {
-			creature: selectedCreatureId,
+			creature: legacyCreatureId,
 			launchStyle: selectedLaunchStyle,
 		};
 		try {
 			const round: FlightRound = bonusId
 				? createBonusRound(bonusId, selectedBet, roundSequence, drawBonusTicket(), options)
 				: {
-						...generateMockRound(selectedBet, selectedRisk, roundSequence, options),
+						...(tube
+							? createTubeFlight(
+									{
+										risk: selectedRisk,
+										launchStyle: selectedLaunchStyle,
+										weather: selectedWeather,
+										timeOfDay: selectedRisk === 'safe' ? 'day' : selectedTimeOfDay,
+									},
+									selectedBet,
+									roundSequence,
+								)
+							: generateMockRound(selectedBet, selectedRisk, roundSequence, options)),
 						weather: selectedWeather,
-						timeOfDay: selectedTimeOfDay,
+						timeOfDay: selectedRisk === 'safe' ? 'day' : selectedTimeOfDay,
 					};
 			bonusOpen = false;
 			beginFlight(round);
@@ -1095,6 +1171,8 @@
 
 	function beginFlight(round: FlightRound, replay = false) {
 		if (status !== 'ready') return;
+		hunterShot = undefined;
+		settingsMenuOpen = false;
 		flightAudio.stopEffects();
 		birdBurst = undefined;
 		dragonVictory = undefined;
@@ -1110,9 +1188,16 @@
 			void finishImage.decode().catch(() => undefined);
 		}
 		const token = ++presentationToken;
-		player = createPlayer(bounds);
+		championActive = false;
+		championAnnouncement = false;
 		currentRound = round;
-		roundCreatureId = round.creature;
+		activeBirds = createFlock(bounds, round);
+		focusBirdId = round.flock ? 'woodpecker' : round.creature;
+		flockAnnouncement = round.flock
+			? 'Four birds launched.'
+			: round.route === 'tube-flight'
+				? 'Fluppy Flight started. Archaeopteryx launched.'
+				: 'Legacy single-bird round.';
 		currentStageId = round.stagePlan[0]?.stage ?? 'MOUNTAIN_VALLEY';
 		flightProgress = 0;
 		stageAnnouncement = undefined;
@@ -1150,16 +1235,48 @@
 			return;
 		const previous = currentRound;
 		resetPresentation();
+		if (previous.route === 'tube-flight') return;
 		selectedBet = previous.bet;
 		betInput = formatBetInput(previous.bet);
-		selectedCreatureId = previous.creature;
 		selectedLaunchStyle = previous.launchStyle;
 		if (!previous.bonusFlight) {
 			selectedRisk = previous.risk;
-			selectedWeather = previous.weather ?? selectedWeather;
+
 			selectedTimeOfDay = previous.timeOfDay ?? selectedTimeOfDay;
 		}
 		startFlight(previous.bonusFlight);
+	}
+
+	function flyFromMenu() {
+		if (wallet.busy || !wallet.ready || wallet.active || !betInputIsValid || replayMode) return;
+		if (status === 'complete' && currentRound?.bonusFlight) {
+			flyAgain();
+			return;
+		}
+		if (status === 'complete') resetPresentation();
+		startFlight();
+	}
+
+	function playTubeFlight() {
+		if (status !== 'complete' || !currentRound || wallet.busy || !wallet.ready || wallet.active)
+			return;
+		const offer = tubeFlightOffer(
+			currentRound,
+			minimumBet,
+			maximumBet,
+			wallet.live,
+			isReplay || replayMode,
+		);
+		if (!offer || offer.reason) return;
+		const previous = currentRound;
+		resetPresentation();
+		selectedBet = offer.amount;
+		betInput = formatBetInput(offer.amount);
+		selectedRisk = previous.risk;
+		selectedLaunchStyle = previous.launchStyle;
+
+		selectedTimeOfDay = previous.timeOfDay ?? selectedTimeOfDay;
+		startFlight(undefined, true);
 	}
 
 	function replayFlight(round: FlightRound) {
@@ -1207,7 +1324,7 @@
 		) {
 			status = 'collided';
 			impactActive = true;
-			player = { ...player, velocity: { x: 0, y: 0 } };
+			setLeadBody({ ...player, velocity: { x: 0, y: 0 } });
 			emitParticles(28, true);
 			finishActiveGate();
 		}
@@ -1222,23 +1339,18 @@
 		bounds = { width, height, floorY: height - clamp(height * 0.085, 34, 48) };
 		const widthRatio = width / previous.width;
 		const heightRatio = height / previous.height;
-		player =
-			status === 'ready'
-				? createPlayer(bounds)
-				: {
-						...player,
-						position: { x: player.position.x * widthRatio, y: player.position.y * heightRatio },
-						radius: clamp(width * 0.026, 17, 25),
-					};
+		activeBirds =
+			status === 'ready' ? createFlock(bounds) : resizeFlock(activeBirds, previous, bounds);
 		flightTargetY *= heightRatio;
-		if (activeEnding && landingProgress === 1) player = { ...player, position: landingPosition() };
+		if (!currentRound?.flock && activeEnding && landingProgress === 1)
+			setLeadBody({ ...player, position: landingPosition() });
 		if (activeGate) {
 			activeGate = {
 				...activeGate,
 				x: activeGate.x * widthRatio,
 				width: clamp(width * 0.19, 95, 210),
 				gapCenterY: activeGate.gapCenterY * heightRatio,
-				gapHeight: clamp(height * 0.35, 145, 215),
+				gapHeight: activeGate.gapHeight * heightRatio,
 			};
 		}
 	}
@@ -1275,8 +1387,7 @@
 				customizeOpen ||
 				helpOpen ||
 				bonusOpen ||
-				historyOpen ||
-				creaturePickerOpen
+				historyOpen
 			)
 				return;
 			const focused = document.activeElement;
@@ -1354,19 +1465,19 @@
 				1800;
 			updateParticles(moving ? flightDelta : deltaSeconds);
 
+			if (!dragonVictory) {
+				activeBirds = stepFlock(
+					activeBirds,
+					moving ? flightDelta : deltaSeconds,
+					bounds,
+					flightTargetY,
+					status === 'flying',
+					status === 'ending' ? landingProgress : 0,
+					currentRound?.launchStyle,
+				);
+			}
 			if (status === 'flying') {
-				// Small simulation steps keep steering coordinated with faster gate travel,
-				// including at lower frame rates. Do not exceed steerPlayer's delta cap.
-				const steps = Math.ceil(flightDelta / (1 / 60));
-				for (let step = 0; step < steps; step += 1) {
-					player = steerPlayer(player, flightTargetY, flightDelta / steps, bounds, {
-						agility: activeCreature.agility,
-						damping: activeCreature.damping,
-						maxVerticalSpeed: activeCreature.maxVerticalSpeed,
-					});
-					updateActiveGate(flightDelta / steps);
-					if (status !== 'flying') break;
-				}
+				updateActiveGate(flightDelta);
 				distanceTravelled += WORLD_SPEED * flightDelta;
 			}
 			animationFrame = requestAnimationFrame(update);
@@ -1567,17 +1678,23 @@
 			</header>
 			{#if status !== 'complete'}
 				<div class="flight-hud">
-					<span class="round-status" class:danger={status === 'collided'}
-						>{wallet.busy
-							? t('pleaseWait')
-							: !wallet.ready
-								? t('disconnected')
-								: status === 'ready'
-									? t('ready')
-									: status === 'collided'
-										? ENDING_LABELS.crash
-										: t('flightActive')}</span
-					>
+					<div class="flock-hud-group">
+						<span class="round-status" class:danger={status === 'collided'}
+							>{wallet.busy
+								? t('pleaseWait')
+								: !wallet.ready
+									? t('disconnected')
+									: status === 'ready'
+										? t('ready')
+										: status === 'collided'
+											? ENDING_LABELS.crash
+											: t('flightActive')}</span
+						>
+						{#if currentRound?.flock && status !== 'ready'}<FlockStatus
+								birds={activeBirds}
+								champion={championActive}
+							/>{/if}
+					</div>
 					{#if currentRound && status !== 'ready'}
 						<span
 							class="multiplier-readout"
@@ -1642,6 +1759,9 @@
 						gapBottom={activeGate.gapCenterY + activeGate.gapHeight / 2}
 					/>
 				</div>
+			{/if}
+			{#if !championActive && (!currentRound || currentRound.flock) && (status === 'ready' || status === 'flying')}
+				<Hunter {bounds} shot={hunterShot} />
 			{/if}
 
 			{#if activePickup}
@@ -1733,48 +1853,41 @@
 				></span>
 			{/each}
 
-			<div
-				class:is-flapping={flapActive}
-				class:is-hit={status === 'collided'}
-				class:landed
-				class="creature-flight"
-				style={`left:${player.position.x}px;top:${player.position.y}px;transform:translate(-50%,-50%) rotate(${rotation}deg) scale(${activeCreature.sizeScale});`}
-				aria-label={activeCreature.name}
-			>
-				<div
-					class:uses-frame-animation={Boolean(activeCreatureFrame)}
-					class={`creature-sprite ${activeCreature.className}`}
-					style={`--hover-duration:${activeCreature.hoverDuration}ms;--hover-lift:${-activeCreature.hoverLift}px;--flap-burst:${activeCreature.flapDuration}ms;`}
-				>
-					{#if activeCreatureFrame}
-						<canvas
-							bind:this={creatureFrameCanvas}
-							class="creature-frame"
-							width="900"
-							height="600"
-							aria-hidden="true"
-						></canvas>
-					{:else if activeCreature.assets?.flight}
-						<img
-							class="creature-frame"
-							src={activeCreature.assets.flight}
-							alt=""
-							draggable="false"
-						/>
-					{:else}
-						<span class="wing wing-top"></span><span class="dragon-body"></span><span
-							class="dragon-head"><i></i></span
-						><span class="wing wing-bottom"></span><span class="tail"></span><span
-							class="creature-detail"
-						></span>
-					{/if}
-				</div>
-			</div>
+			<Flock
+				birds={activeBirds}
+				frames={loadedCreatureFrames}
+				hidden={Boolean(dragonVictory) || birdBurst === 'playing' || birdBurst === 'finished'}
+			/>
+			<ChampionFlight open={championAnnouncement} />
+			<p class="sr-only" role="status" aria-live="polite">{flockAnnouncement}</p>
 			<div class="floor" style={`height:${bounds.height - bounds.floorY}px;`}></div>
 
-			{#if status === 'ready'}<div class="start-hint">
-					{readyPrompt.toUpperCase()}
-				</div>{/if}
+			{#if status === 'complete' && currentRound}
+				<FlightResult
+					round={currentRound}
+					creature={activeCreature}
+					title={currentRound.flock?.bonusTriggered
+						? 'CHAMPION FLIGHT COMPLETE'
+						: ENDING_LABELS[currentRound.ending]}
+					entryCost={formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}
+					multiplier={finalMultiplier}
+					payout={formatLocalAmount(finalWin)}
+					netResult={formatLocalAmount(
+						currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
+					)}
+					weatherName={getWeather(currentRound.weather ?? selectedWeather).name}
+					timeName={activeTimeConfig.name}
+					live={wallet.live}
+					replay={isReplay || replayMode}
+					tubeAmount={tubeOffer ? formatLocalAmount(tubeOffer.amount) : undefined}
+					tubeReason={tubeOffer?.reason ?? ''}
+					onTubeFlight={playTubeFlight}
+					disabled={wallet.busy || !wallet.ready || wallet.active}
+					settingsDisabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
+					onSettings={resetPresentation}
+				/>
+			{/if}
+			{#if status === 'ready'}<div class="start-hint">CHOOSE YOUR BET AND RISK. THEN FLY.</div>{/if}
 		</div>
 
 		<section
@@ -1798,33 +1911,6 @@
 					aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
 				></button
 			>
-
-			<div class="creature-control">
-				<span class="dock-label">{t('creature')}</span>
-				<div class="bird-card-list" role="group" aria-label="Choose a bird">
-					{#each panelCreatures as creature (creature.id)}
-						<button
-							type="button"
-							class="bird-card"
-							style={`--bird-accent:${creature.id === 'eagle' ? '#ffd471' : creature.id === 'woodpecker' ? '#b1bbc3' : creature.id === 'azure-swift' ? '#45baff' : '#ef6754'};`}
-							class:selected={selectedCreatureId === creature.id}
-							aria-pressed={selectedCreatureId === creature.id}
-							disabled={controlsLocked}
-							onclick={() => (selectedCreatureId = creature.id)}
-						>
-							<span class="bird-portrait"
-								><img
-									src={`${base || '.'}/ui/bet-panel-reference.png`}
-									style={`left:${-portraitOffsets[creature.id]}%;`}
-									alt=""
-									draggable="false"
-								/></span
-							>
-							<span class="bird-name">{creature.name}</span>
-						</button>
-					{/each}
-				</div>
-			</div>
 
 			<div class="bet-control">
 				<div class="bet-heading">
@@ -1946,15 +2032,19 @@
 			{:else}
 				<button
 					class="fly-button"
-					class:launch-ready={wallet.ready && !controlsLocked}
+					class:launch-ready={wallet.ready && (!controlsLocked || status === 'complete')}
 					aria-live="polite"
-					disabled={controlsLocked || !betInputIsValid}
-					onclick={() => startFlight()}
+					disabled={(controlsLocked && status !== 'complete') ||
+						wallet.busy ||
+						!wallet.ready ||
+						wallet.active ||
+						!betInputIsValid}
+					onclick={flyFromMenu}
 					>{wallet.busy
 						? `${t('pleaseWait')}…`
 						: !wallet.ready
 							? t('reconnect').toUpperCase()
-							: controlsLocked
+							: controlsLocked && status !== 'complete'
 								? t('flightActive')
 								: t('fly').toUpperCase()}<small>{formatLocalAmount(selectedBet)}</small></button
 				>
@@ -1975,28 +2065,6 @@
 		<button disabled={wallet.busy} onclick={connectStake}>{t('reconnect')}</button>{/if}
 	{#if flightError}<p role="alert">{flightError}</p>{/if}
 </main>
-
-{#if status === 'complete' && currentRound}
-	<FlightResult
-		round={currentRound}
-		creature={activeCreature}
-		title={ENDING_LABELS[currentRound.ending]}
-		entryCost={formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}
-		multiplier={finalMultiplier}
-		payout={formatLocalAmount(finalWin)}
-		netResult={formatLocalAmount(
-			currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
-		)}
-		weatherName={activeWeatherConfig.name}
-		timeName={activeTimeConfig.name}
-		live={wallet.live}
-		replay={replayMode}
-		disabled={wallet.busy || !wallet.ready || wallet.active}
-		settingsDisabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
-		onAgain={flyAgain}
-		onSettings={resetPresentation}
-	/>
-{/if}
 
 {#if winCelebrationOpen && currentRound}
 	<WinCelebration
@@ -2027,22 +2095,14 @@
 	onClose={() => (historyOpen = false)}
 	onReplay={replayFlight}
 />
-<CreaturePicker
-	open={creaturePickerOpen}
-	selected={selectedCreatureId}
-	disabled={controlsLocked}
-	onSelect={(creature) => (selectedCreatureId = creature)}
-	onClose={() => (creaturePickerOpen = false)}
-/>
+
 <CustomizeDrawer
 	open={customizeOpen}
 	disabled={controlsLocked}
 	weather={selectedWeather}
-	timeOfDay={selectedTimeOfDay}
+	timeOfDay={selectedRisk === 'safe' ? 'day' : selectedTimeOfDay}
 	launchStyle={selectedLaunchStyle}
-	onWeatherSelect={(weather) => {
-		selectedWeather = weather;
-	}}
+	timeLocked={selectedRisk === 'safe'}
 	onTimeSelect={(time) => {
 		selectedTimeOfDay = time;
 	}}
@@ -2051,8 +2111,12 @@
 />
 
 <style>
-	.bird-burst .creature-flight,
-	.dragon-defeat .creature-flight,
+	.flock-hud-group {
+		display: flex;
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 6px;
+	}
 	.dragon-defeat .floor,
 	.dragon-defeat .flight-particle {
 		visibility: hidden;
@@ -2127,101 +2191,6 @@
 		box-shadow: 0 0 5px #c7dfd366;
 		pointer-events: none;
 	}
-	.creature-flight {
-		position: absolute;
-		z-index: 7;
-		width: clamp(58px, 7vw, 86px);
-		height: clamp(38px, 4.6vw, 58px);
-		filter: none;
-		transition: filter 0.12s;
-	}
-	.creature-sprite {
-		position: absolute;
-		inset: 0;
-		animation: creature-hover var(--hover-duration) ease-in-out infinite alternate;
-	}
-	.dragon-body {
-		position: absolute;
-		inset: 24% 19% 17% 20%;
-		border: 2px solid #f4b847;
-		border-radius: 58% 43% 49% 55%;
-		background: radial-gradient(circle at 65% 28%, #78f4a4, #158c54 38%, #063323 72%);
-		box-shadow:
-			inset -8px -7px 12px rgba(0, 0, 0, 0.42),
-			0 0 13px rgba(32, 232, 132, 0.38);
-	}
-	.dragon-head {
-		position: absolute;
-		right: 4%;
-		top: 20%;
-		width: 30%;
-		height: 36%;
-		border: 2px solid #e9ad42;
-		border-radius: 65% 70% 60% 45%;
-		background: #167b49;
-		transform: rotate(-7deg);
-	}
-	.dragon-head:after {
-		content: '';
-		position: absolute;
-		right: 17%;
-		top: 26%;
-		width: 4px;
-		height: 4px;
-		border-radius: 50%;
-		background: #ffe46e;
-		box-shadow: 0 0 7px #fff083;
-	}
-	.dragon-head i {
-		position: absolute;
-		left: 16%;
-		top: -42%;
-		border-right: 7px solid transparent;
-		border-bottom: 14px solid #d49a32;
-		transform: rotate(-28deg);
-	}
-	.wing {
-		position: absolute;
-		left: 25%;
-		width: 42%;
-		height: 44%;
-		border: 2px solid #d79c35;
-		background: linear-gradient(145deg, #104e38, #1fb86d 52%, #073021);
-		transform-origin: 20% 50%;
-	}
-	.wing-top {
-		top: -8%;
-		clip-path: polygon(0 100%, 22% 0, 100% 35%, 58% 100%);
-		animation: wing-top 0.42s ease-in-out infinite alternate;
-	}
-	.wing-bottom {
-		bottom: -8%;
-		clip-path: polygon(0 0, 58% 0, 100% 65%, 22% 100%);
-		animation: wing-bottom 0.42s ease-in-out infinite alternate;
-	}
-	.is-flapping .wing-top {
-		animation: flap-top var(--flap-burst) ease-out;
-	}
-	.is-flapping .wing-bottom {
-		animation: flap-bottom var(--flap-burst) ease-out;
-	}
-	.tail {
-		position: absolute;
-		left: 0;
-		top: 45%;
-		width: 30%;
-		height: 20%;
-		border-top: 4px solid #c99131;
-		border-radius: 70% 0 0;
-		transform: rotate(-9deg);
-	}
-	.creature-detail {
-		position: absolute;
-		pointer-events: none;
-	}
-	.has-impact .creature-flight {
-		filter: grayscale(0.5);
-	}
 	.floor {
 		position: absolute;
 		z-index: 5;
@@ -2250,10 +2219,6 @@
 	}
 	.has-ending .floor {
 		opacity: 0;
-	}
-	.landed .creature-sprite,
-	.landed .wing {
-		animation: none;
 	}
 	button {
 		min-height: 42px;
@@ -2290,30 +2255,6 @@
 		box-shadow:
 			inset 0 0 20px rgba(68, 255, 165, 0.16),
 			0 0 18px rgba(20, 197, 117, 0.16);
-	}
-	@keyframes creature-hover {
-		from {
-			transform: translateY(0);
-		}
-		to {
-			transform: translateY(var(--hover-lift));
-		}
-	}
-	@keyframes wing-top {
-		from {
-			transform: rotate(-12deg) scaleY(0.78);
-		}
-		to {
-			transform: rotate(8deg);
-		}
-	}
-	@keyframes wing-bottom {
-		from {
-			transform: rotate(12deg) scaleY(0.78);
-		}
-		to {
-			transform: rotate(-8deg);
-		}
 	}
 	@keyframes flap-top {
 		50% {
@@ -2352,7 +2293,6 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.wing,
 		.world.has-impact {
 			animation: none;
 		}
@@ -2574,10 +2514,6 @@
 			sans-serif;
 		letter-spacing: 0.16em;
 	}
-	.creature-flight.is-hit {
-		animation: creature-hit calc(0.52s / var(--playback-speed, 1)) ease-out both;
-		filter: sepia(0.8) saturate(2);
-	}
 	@keyframes multiplier-hud-pulse {
 		35% {
 			transform: scale(1.16);
@@ -2599,18 +2535,6 @@
 			transform: translate(12px, -8px) scale(1.03);
 		}
 	}
-	@keyframes creature-hit {
-		20% {
-			transform: translate(-50%, -50%) rotate(-18deg) scale(1.12);
-		}
-		55% {
-			opacity: 0.82;
-			transform: translate(-50%, -50%) rotate(24deg) scale(0.9);
-		}
-		100% {
-			opacity: 0.5;
-		}
-	}
 	@media (max-width: 620px) {
 		.combo-feedback {
 			top: 37%;
@@ -2621,25 +2545,9 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.multiplier-readout.pulse,
-		.combo-feedback,
-		.creature-flight.is-hit {
+		.combo-feedback {
 			animation: none;
 		}
-	}
-
-	.creature-frame {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		display: block;
-		width: 300%;
-		height: 300%;
-		max-width: none;
-		object-fit: contain;
-		object-position: center;
-		transform: translate(-50%, -50%);
-		user-select: none;
-		pointer-events: none;
 	}
 
 	/* Compact setup deck: the flight scene remains primary while setup stays viewport-bound. */
@@ -2958,9 +2866,6 @@
 			gap: 7px;
 			padding: 8px;
 		}
-		.creature-control {
-			grid-column: 1;
-		}
 		.bet-control {
 			grid-column: 2;
 		}
@@ -3178,7 +3083,7 @@
 	}
 	.control-dock {
 		grid-template-columns: minmax(140px, 1fr) minmax(230px, 1.5fr) minmax(190px, 1.1fr) 150px 170px;
-		grid-template-areas: 'creature risk bet quick action' 'details details details details details';
+		grid-template-areas: 'risk bet quick action' 'details details details details';
 		align-items: end;
 		gap: 14px 18px;
 		padding: 16px;
@@ -3191,10 +3096,6 @@
 	}
 	.control-dock.danger {
 		--risk-color: #ef4444;
-	}
-	.creature-control {
-		grid-area: creature;
-		min-width: 0;
 	}
 	.risk-control {
 		grid-area: risk;
@@ -3436,7 +3337,7 @@
 				145px,
 				0.75fr
 			);
-		grid-template-areas: 'creature risk bet customize action' 'creature risk quick customize action' 'bonus details details details details';
+		grid-template-areas: 'risk bet customize action' 'risk quick customize action' 'bonus details details details';
 		align-items: stretch;
 		gap: 12px 20px;
 		padding: 20px;
@@ -3454,65 +3355,9 @@
 		color: #dfc8a9;
 		margin-bottom: 16px;
 	}
-	.creature-control,
 	.risk-control,
 	.bet-control {
 		min-width: 0;
-	}
-	.bird-card-list {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 10px;
-	}
-	.bird-card {
-		min-width: 0;
-		padding: 0;
-		border: 0;
-		background: transparent;
-		text-transform: none;
-		letter-spacing: 0;
-		box-shadow: none;
-	}
-	.bird-portrait {
-		position: relative;
-		display: block;
-		aspect-ratio: 100 / 108;
-		overflow: hidden;
-		border: 1px solid #62696d;
-		border-radius: 12px;
-		background: #0a1217;
-	}
-	.bird-portrait img {
-		position: absolute;
-		top: -131.481%;
-		width: 1553%;
-		height: auto;
-		max-width: none;
-		pointer-events: none;
-	}
-	.bird-name {
-		display: block;
-		margin-top: 8px;
-		color: #aeb4b7;
-		font-size: clamp(0.6rem, 0.9vw, 0.82rem);
-		line-height: 1.25;
-	}
-	.bird-card.selected .bird-portrait {
-		border: 2px solid var(--bird-accent);
-		box-shadow:
-			0 0 0 1px var(--bird-accent),
-			0 0 16px color-mix(in srgb, var(--bird-accent) 40%, transparent);
-	}
-	.bird-card.selected .bird-name {
-		color: var(--bird-accent);
-	}
-	.bird-card:disabled {
-		opacity: 0.75;
-	}
-	.bird-card:focus-visible {
-		outline: 2px solid #ffe0a1;
-		outline-offset: 4px;
-		border-radius: 12px;
 	}
 	.control-dock .risk-selector {
 		display: grid;
@@ -3718,7 +3563,7 @@
 	@media (max-width: 1100px) {
 		.control-dock {
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 112px minmax(145px, 0.8fr);
-			grid-template-areas: 'creature creature risk risk' 'bet quick customize action' 'bonus details details details';
+			grid-template-areas: 'risk risk risk risk' 'bet quick customize action' 'bonus details details details';
 			gap: 14px;
 			padding: 16px;
 		}
@@ -3758,7 +3603,7 @@
 		}
 		.control-dock {
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-			grid-template-areas: 'creature creature' 'risk risk' 'bet action' 'quick action' 'customize customize' 'bonus bonus' 'details details';
+			grid-template-areas: 'risk risk' 'bet action' 'quick action' 'customize customize' 'bonus bonus' 'details details';
 			padding: 14px;
 			gap: 14px;
 			border-radius: 18px;
@@ -3766,18 +3611,6 @@
 		.control-dock .dock-label {
 			margin-bottom: 10px;
 			font-size: 0.75rem;
-		}
-		.bird-card-list {
-			gap: 8px;
-		}
-		.bird-name {
-			font-size: 0.7rem;
-		}
-		.bird-portrait {
-			aspect-ratio: 1;
-		}
-		.bird-portrait img {
-			top: -140%;
 		}
 		.control-dock .risk-selector {
 			min-height: 110px;
@@ -3948,20 +3781,6 @@
 			margin-bottom: 7px;
 			font-size: 0.65rem;
 		}
-		.bird-card-list {
-			gap: 8px;
-		}
-		.bird-portrait {
-			aspect-ratio: 1.1;
-			border-radius: 9px;
-		}
-		.bird-portrait img {
-			top: -154%;
-		}
-		.bird-name {
-			font-size: 0.58rem;
-			margin-top: 5px;
-		}
 		.control-dock .risk-selector {
 			min-height: 78px;
 			gap: 8px;
@@ -4087,7 +3906,7 @@
 	/* Permanent flight HUD: status, multiplier, and visual progress only. */
 	.flight-hud {
 		position: absolute;
-		z-index: 11;
+		z-index: 80;
 		top: 100px;
 		left: 16px;
 		right: 16px;
@@ -4186,6 +4005,26 @@
 		.flight-progress i,
 		.flight-progress b {
 			transition: none;
+		}
+	}
+
+	/* Four-bird gameplay has no creature-selection column. */
+	.control-dock {
+		grid-template-columns: minmax(240px, 1.2fr) minmax(220px, 1fr) 112px minmax(160px, 0.8fr);
+		grid-template-areas: 'risk bet customize action' 'risk quick customize action' 'bonus details details details';
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+	@media (max-width: 700px) {
+		.control-dock {
+			grid-template-columns: 1fr 1fr;
+			grid-template-areas: 'risk risk' 'bet action' 'quick action' 'customize customize' 'bonus bonus' 'details details';
 		}
 	}
 </style>

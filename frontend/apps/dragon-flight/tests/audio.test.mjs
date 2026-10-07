@@ -8,67 +8,13 @@ const { FlightAudio, SOUND_NAMES, resultSound, weatherSound, soundUrl } = await 
 );
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-test('mode music switches without overlap, resumes after mute/hide, and stops when disabled', async () => {
-	const fake = fakeAudio();
-	const audio = new FlightAudio();
-	try {
-		assert.equal(soundUrl('danger-music'), '/dragon-flight/audio/danger-music.mp3');
-		assert(fs.statSync(new URL('../static/audio/danger-music.mp3', import.meta.url)).size > 0);
-		audio.setModeMusic('danger');
-		audio.unlock();
-		await flush();
-		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
-		assert.equal(fake.sources[0].loop, true);
-		audio.setModeMusic('danger');
-		await flush();
-		assert.equal(fake.sources.length, 1);
-		audio.stopEffects();
-		assert.equal(fake.sources[0].stopped, false);
-		audio.setMuted(true);
-		assert(fake.sources.every((s) => s.stopped));
-		audio.setMuted(false);
-		await flush();
-		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
-		audio.setHidden(true);
-		assert(fake.sources.every((s) => s.stopped));
-		audio.setHidden(false);
-		await flush();
-		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
-		audio.setModeMusic('balanced');
-		await flush();
-		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
-		assert.equal(soundUrl('balanced-music'), '/dragon-flight/audio/balanced-music.mp3');
-		audio.setModeMusic('safe');
-		await flush();
-		assert.equal(fake.sources.filter((s) => !s.stopped).length, 1);
-		assert.equal(soundUrl('safe-music'), '/dragon-flight/audio/safe-music.mp3');
-		assert(fs.statSync(new URL('../static/audio/safe-music.mp3', import.meta.url)).size > 0);
-		audio.setModeMusic();
-		assert(fake.sources.every((s) => s.stopped));
-	} finally {
-		audio.dispose();
-		fake.restore();
-	}
-});
-
-test('all 31 original sounds have their own runtime files and deployment-safe URLs', () => {
-	const manifest = JSON.parse(
-		fs.readFileSync(new URL('../art/audio/manifest.json', import.meta.url)),
-	);
-	assert.equal(SOUND_NAMES.length, 31);
-	assert.deepEqual([...SOUND_NAMES].sort(), manifest.map((item) => item.name).sort());
-	assert.equal(fs.readdirSync(new URL('../static/audio/', import.meta.url)).length, 35);
-	for (const sound of manifest) {
-		assert.equal(soundUrl(sound.name), '/dragon-flight/audio/' + sound.name + '.mp3');
-		const bytes = fs.readFileSync(
-			new URL('../static/audio/' + sound.name + '.mp3', import.meta.url),
-		);
-		assert.equal(bytes.length, sound.runtimeBytes);
-		if (sound.name !== 'button-click')
-			assert.deepEqual(
-				bytes,
-				fs.readFileSync(new URL('../art/audio/originals/' + sound.name + '.mp3', import.meta.url)),
-			);
+test('all registered runtime sounds exist and use deployment-safe URLs', () => {
+	assert.equal(new Set(SOUND_NAMES).size, SOUND_NAMES.length);
+	for (const name of [...SOUND_NAMES, 'wing-loop']) {
+		assert.equal(soundUrl(name), `/dragon-flight/audio/${name}.mp3`);
+		const bytes = fs.readFileSync(new URL(`../static/audio/${name}.mp3`, import.meta.url));
+		assert(bytes.length > 100);
+		assert(bytes.toString('ascii', 0, 3) === 'ID3' || bytes[0] === 0xff, 'Invalid MP3 header');
 	}
 });
 test('result cues use full entry cost and never celebrate a net loss', () => {

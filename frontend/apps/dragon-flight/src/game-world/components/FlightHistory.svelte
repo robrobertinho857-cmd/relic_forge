@@ -37,7 +37,7 @@
 					<strong
 						>{round.bonusFlight
 							? getBonusFlight(round.bonusFlight).name
-							: `${round.risk.toUpperCase()} flight`}</strong
+							: `${round.route === 'tube-flight' ? 'FLUPPY FLIGHT · ' : ''}${round.risk.toUpperCase()} flight`}</strong
 					><span>#{round.id}</span>
 				</div>
 				<dl>
@@ -58,6 +58,11 @@
 						<dd>{round.finalMultiplier}×</dd>
 					</div>
 				</dl>
+				{#if round.flock}<p>
+						{round.flock.survivors}/4 survived · {round.flock.bonusTriggered
+							? 'Champion Flight'
+							: 'Normal flight'}
+					</p>{/if}
 				<div class="actions">
 					<button type="button" {disabled} onclick={() => onReplay(round)}
 						>{t('playReplay')} #{round.id} · {t('replayNoCost')}</button

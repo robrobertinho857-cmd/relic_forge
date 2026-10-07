@@ -6,6 +6,7 @@
 		x,
 		y,
 		muted,
+		compact = false,
 		onfallback,
 		onfinish,
 	}: {
@@ -13,12 +14,15 @@
 		x: number;
 		y: number;
 		muted: boolean;
+		compact?: boolean;
 		onfallback: () => void;
 		onfinish: () => void;
 	} = $props();
 	let video: HTMLVideoElement;
 	let hidden = $state(false);
 	onMount(() => {
+		// Compact flock hits must reach the feather burst before their short exit ends.
+		if (compact) video.playbackRate = 4;
 		let done = false;
 		const visibility = () => (hidden = document.hidden);
 		visibility();
@@ -61,6 +65,7 @@
 </script>
 
 <video
+	class:compact
 	bind:this={video}
 	src={`${base || '.'}/bursts/${bird}.webm`}
 	muted={muted || hidden}
@@ -72,6 +77,9 @@
 ></video>
 
 <style>
+	video.compact {
+		width: clamp(110px, 18vw, 190px);
+	}
 	video {
 		position: absolute;
 		width: clamp(250px, 38vw, 460px);

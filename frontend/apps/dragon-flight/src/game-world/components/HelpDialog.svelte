@@ -99,19 +99,21 @@
 			<section aria-labelledby="help-play">
 				<h3 id="help-play">YOUR FLIGHT</h3>
 				<ol>
-					<li>Choose a creature.</li>
 					<li>Set your bet.</li>
 					<li>Choose Safe, Balanced or Danger.</li>
 					<li>Adjust weather, time and launch in Customize.</li>
 					<li>
-						Press <strong>FLY</strong> and watch the flight. Space also starts a flight when permitted
-						and no menu or control has focus.
+						Press <strong>FLY</strong> to launch your four-bird flock. Space also starts a flight when
+						permitted and no menu or control has focus.
 					</li>
 					<li>See your result, then choose Fly Again or Change Settings.</li>
 				</ol>
 				<p>
-					Collect feathers and crystals, ride air currents and pass natural obstacles. A flight ends
-					in a landing or a crash.
+					Watch the survivor count as the flock dodges hunter shots and rides currents. A bullet hit
+					bursts the scheduled bird into feathers. If all four reach the destination, Archaeopteryx
+					continues alone in Champion Flight within the same paid round. No extra bet is charged. A
+					Champion crash keeps the normal flight payout. Existing feature-buy routes and older
+					server books can present a single bird.
 				</p>
 			</section>
 
@@ -125,7 +127,9 @@
 					{/each}
 				</div>
 				<p class="note">
-					Creature choice changes appearance and movement, with the same chances and payouts.
+					The flock always launches Woodpecker, Azure Swift, Eagle and Archaeopteryx in that order.
+					Movement, weather, time and launch style only change presentation. Outcomes are determined
+					before the animation; connected play uses the server result.
 				</p>
 			</section>
 
@@ -152,8 +156,9 @@
 				</div>
 				<div class="formula">Final win = bet × final multiplier</div>
 				<p class="note">
-					A crash ends at x0, including when you collected items earlier. Setup stays locked until
-					you choose Change Settings.
+					An empty flock pays x0. Surviving birds receive the round's multiplier, which is
+					independent of the survivor count. Final multiplier = base + Champion bonus. Setup stays
+					locked until you choose Change Settings.
 				</p>
 			</section>
 

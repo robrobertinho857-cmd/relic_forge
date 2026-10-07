@@ -7,6 +7,8 @@ import type {
 	FlightEvent,
 	FlightStageId,
 } from './types';
+import { readStakeFlock } from './flock/stakeOutcome';
+import { validateFlock } from './flock/outcome';
 
 export const STAKE_MODES = {
 	safe: 1,
@@ -106,9 +108,12 @@ export function decodeStakeRound(
 	const mode = choice(round.mode, Object.keys(STAKE_MODES) as StakeMode[]);
 	const amount = integer(round.amount);
 	const payout = integer(round.payout);
-	if (!amount || !Array.isArray(round.state) || round.state.length < 2 || round.state.length > 100)
+	const flockBook = Array.isArray(round.state) ? undefined : readStakeFlock(round.state);
+	const rawEvents = flockBook?.events ?? round.state;
+	if (!amount || !Array.isArray(rawEvents) || rawEvents.length < 2 || rawEvents.length > 100)
 		throw new Error('Invalid flight book');
-	const source = round.state.map(object);
+	if (flockBook && STAKE_MODES[mode] !== 1) throw new Error('Flock book is not a feature buy');
+	const source = rawEvents.map(object);
 	const risk = mode === 'storm-run' || mode === 'summit-expedition' ? 'danger' : mode;
 	const stagePlan: FlightRound['stagePlan'] = [{ stage: 'MOUNTAIN_VALLEY', eventIndex: 0 }];
 	let crashed = false;
@@ -121,7 +126,7 @@ export function decodeStakeRound(
 			(index === source.length - 1 && event.type !== 'finalWin')
 		)
 			throw new Error('Invalid event order');
-		if ((crashed || landed) && event.type !== 'finalWin')
+		if (!flockBook && (crashed || landed) && event.type !== 'finalWin')
 			throw new Error('Events after flight ended');
 		if (event.stage !== undefined) {
 			const stage = choice(event.stage, stages);
@@ -129,6 +134,16 @@ export function decodeStakeRound(
 		}
 		const multiplier = () => integer(event.multiplierUnits) / 100;
 		switch (event.type) {
+			case 'elimination':
+				if (!flockBook) throw new Error('Flock event in legacy book');
+				return {
+					type: 'elimination',
+					bird: choice(event.bird, ['woodpecker', 'azure-swift', 'eagle', 'archaeopteryx']),
+					reason: choice(event.reason, ['terrain', 'wind', 'predator', 'hunter']),
+				};
+			case 'championFlight':
+				if (!flockBook) throw new Error('Champion event in legacy book');
+				return { type: 'championFlight', multiplier: multiplier() };
 			case 'launch':
 				if (index !== 0 || event.path !== risk) throw new Error('Invalid launch mode');
 				return { type: 'launch', path: risk as FlightRisk };
@@ -194,10 +209,16 @@ export function decodeStakeRound(
 				landed = true;
 				return { type: 'ending', ending: choice(event.ending, endings), multiplier: multiplier() };
 			case 'finalWin':
-				if (index !== source.length - 1 || (!crashed && !landed))
+				if (
+					index !== source.length - 1 ||
+					(!crashed && !landed && flockBook?.flock.survivors !== 0)
+				)
 					throw new Error('Missing terminal outcome');
 				finalUnits = integer(event.payoutMultiplier);
-				if (integer(event.multiplierUnits) !== finalUnits || (crashed && finalUnits !== 0))
+				if (
+					integer(event.multiplierUnits) !== finalUnits ||
+					(!flockBook && crashed && finalUnits !== 0)
+				)
 					throw new Error('Inconsistent payout');
 				// Allow only the sub-millionth truncation/rounding required by the wallet.
 				if (Math.abs(payout - (amount * finalUnits) / 100) > 1)
@@ -207,10 +228,10 @@ export function decodeStakeRound(
 				throw new Error('Unknown flight event');
 		}
 	});
-	const endingEvent = events.find((event) => event.type === 'ending');
-	if (endingEvent && endingEvent.multiplier !== finalUnits / 100)
+	const endingEvent = events.findLast((event) => event.type === 'ending');
+	if (endingEvent && endingEvent.multiplier !== finalUnits / 100 && !flockBook)
 		throw new Error('Landing payout mismatch');
-	return {
+	const decoded: FlightRound = {
 		id: integer(round.betID ?? round.roundID),
 		seed: 0,
 		bet: amount / 1e6,
@@ -226,10 +247,13 @@ export function decodeStakeRound(
 		entryCost: (amount * STAKE_MODES[mode]) / 1e6,
 		events,
 		stagePlan,
-		ending: crashed ? 'crash' : endingEvent!.ending,
+		ending: crashed || flockBook?.flock.survivors === 0 ? 'crash' : endingEvent!.ending,
 		finalMultiplier: finalUnits / 100,
 		finalWin: payout / 1e6,
+		...(flockBook ? { flock: flockBook.flock, creature: 'archaeopteryx' as const } : {}),
 	};
+	if (flockBook) validateFlock(decoded);
+	return decoded;
 }
 
 export function isValidStakeBet(

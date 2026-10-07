@@ -1,6 +1,6 @@
 # Natural terrain artwork
 
-The active 1024 × 1536 WebP assets in `static/terrain/natural/` are upper and lower rock formations and pine trees, each with a matching snow variant. The upper cliff uses `rock-upper-sharp`; the lower mountain uses `rock-lower-rounded`. Both retain complete side contours. See [sharp upper cliff prompts](SHARP-UPPER-PROMPTS.md), [lower mountain prompts](UNCUT-PROMPTS.md) and [original tree and rock prompts](PROMPTS.md). Earlier rock artwork is retained as WebP.
+The active assets are `rock-lower-rounded` (also flipped vertically for upper cliffs), `tree-upper`, and `tree-lower`, with their matching snow variants. Earlier unused rock variants have been removed from runtime assets. Generation prompts remain as historical records.
 
 These replace the previous granite and bark polygon cutouts. Forest passes use pine trees; other hazards use weathered mountain rock. Snow weather and Sky Peaks use snowy artwork. Existing time and weather lighting still applies.
 

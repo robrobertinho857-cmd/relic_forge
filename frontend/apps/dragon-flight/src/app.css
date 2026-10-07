@@ -33,6 +33,7 @@ body
 			.prototype-header *,
 			.flight-result,
 			.flight-result *,
+			.champion-announcement,
 			.stage-transition,
 			.stage-transition *
 		)
@@ -46,4 +47,3 @@ body :focus-visible {
 	outline: 2px solid #9dc5ad !important;
 	outline-offset: 3px;
 }
-

@@ -9,6 +9,17 @@ const { createPlayer } = await loadTypescript(
 	new URL('../src/game-world/physics.ts', import.meta.url),
 );
 
+const { createFlock, eliminateBird, startChampion } = await loadTypescript(
+	new URL('../src/game-world/flock/presentation.ts', import.meta.url),
+);
+const { generateMockRound } = await loadTypescript(
+	new URL('../src/game-world/mockRound.ts', import.meta.url),
+);
+
+const { createTubeFlight, tubeFlightOffer } = await loadTypescript(
+	new URL('../src/game-world/tubeFlight.ts', import.meta.url),
+);
+
 // Exercise the component's real action bodies, with only rendering/animation boundaries stubbed.
 const source = fs.readFileSync(
 	new URL('../src/game-world/GameWorld.svelte', import.meta.url),
@@ -20,8 +31,12 @@ for (const name of [
 	'startFlight',
 	'beginFlight',
 	'flyAgain',
+	'flyFromMenu',
+	'playTubeFlight',
 	'replayFlight',
 	'presentFinalResult',
+	'presentRound',
+	'presentHunterShot',
 ]) {
 	const text = source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n\\t}`))[0];
 	actions[name] = await transpile(text);
@@ -34,9 +49,10 @@ function setup(ticket = 9999) {
 		status: 'ready',
 		selectedBet: 1,
 		betInput: '1.00',
+		formatBetInput: (value) => value.toFixed(2),
 		betInputIsValid: true,
 		selectedRisk: 'safe',
-		selectedCreatureId: 'archaeopteryx',
+		legacyCreatureId: 'archaeopteryx',
 		selectedLaunchStyle: 'glide',
 		selectedWeather: 'clear',
 		selectedTimeOfDay: 'night',
@@ -47,6 +63,32 @@ function setup(ticket = 9999) {
 		bonusOpen: true,
 		bounds: { width: 900, height: 520, floorY: 478 },
 		createPlayer,
+		createFlock,
+		eliminateBird,
+		startChampion,
+		getCreature: (id) => ({ name: id }),
+		ENDING_LABELS: {},
+		updateFlightProgress: () => {},
+		enterStage: () => {},
+		setLeadBody: () => {},
+		player: createPlayer({ width: 900, height: 520, floorY: 478 }),
+		triggerFlap: () => {},
+		emitParticles: () => {},
+		presentGate: async () => {},
+		presentHunterShot: async () => {},
+		animateCurrentMultiplier: async () => {},
+		showCombo: () => {},
+		presentPickup: async () => {},
+		presentCurrent: async () => {},
+		presentEncounter: async () => {},
+		presentEnding: async () => {},
+		generateMockRound,
+		createTubeFlight,
+		tubeFlightOffer,
+		minimumBet: 0.1,
+		maximumBet: 10000,
+		window: { matchMedia: () => ({ matches: true }) },
+		delay: async () => {},
 		createBonusRound,
 		drawBonusTicket: () => ticket,
 		getFinishBackground: () => '/finish.webp',
@@ -58,7 +100,6 @@ function setup(ticket = 9999) {
 		},
 		getWinTier: (multiple) => ({ label: multiple >= 2 ? 'WIN' : 'RESULT', duration: 0 }),
 		animatePresentationValues: async (_duration, update) => update(1),
-		presentRound: () => {},
 	};
 	Object.defineProperty(ctx, 'controlsLocked', { get: () => ctx.status !== 'ready' });
 	const scope = new Proxy(ctx, {
@@ -73,6 +114,10 @@ function setup(ticket = 9999) {
 	for (const [name, js] of Object.entries(actions)) {
 		ctx[name] = new Function('scope', `with(scope){ return (${js}); }`)(scope);
 	}
+	ctx.runRound = ctx.presentRound;
+	ctx.presentRound = () => {};
+	ctx.runShot = ctx.presentHunterShot;
+	ctx.presentHunterShot = async () => {};
 	return ctx;
 }
 test('buy locks controls, repeated click cannot generate another round, and history records once', async () => {
@@ -88,6 +133,35 @@ test('buy locks controls, repeated click cannot generate another round, and hist
 	await ctx.presentFinalResult(ctx.currentRound, ctx.presentationToken);
 	assert.equal(ctx.flightHistory.length, 1);
 	assert.equal(ctx.finalWin, 300);
+});
+
+test('hunter hit animation never decides survival; only the scheduled elimination does', async () => {
+	const ctx = setup();
+	ctx.startFlight();
+	const before = ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive }));
+	await ctx.runShot('woodpecker', false, ctx.presentationToken);
+	assert.deepEqual(
+		ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive })),
+		before,
+	);
+	assert.equal(ctx.eventCallout, 'SHOT MISSED · FLOCK CONTINUES');
+	await ctx.runShot('woodpecker', true, ctx.presentationToken);
+	assert.deepEqual(
+		ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive })),
+		before,
+	);
+	ctx.presentHunterShot = ctx.runShot;
+	await ctx.runRound(ctx.currentRound, ctx.presentationToken);
+	assert.equal(
+		ctx.activeBirds.filter((bird) => bird.alive).length,
+		ctx.currentRound.flock.survivors,
+	);
+	assert(
+		ctx.activeBirds
+			.filter((bird) => !bird.alive)
+			.every((bird) => bird.elimination.reason === 'hunter'),
+	);
+	assert.equal(ctx.hunterShot, undefined);
 });
 test('history replay keeps original outcome, charges no new entry and never duplicates history', async () => {
 	const ctx = setup(0);
@@ -142,4 +216,126 @@ test('randomness failure leaves the flight ready and reports an error', () => {
 	assert.equal(ctx.status, 'ready');
 	assert.equal(ctx.currentRound, undefined);
 	assert(ctx.flightError);
+});
+
+test('normal flock locks repeated Fly, records exact outcome once and replays without new entry', async () => {
+	const ctx = setup();
+	ctx.startFlight();
+	const round = ctx.currentRound;
+	assert.equal(round.flock.birds.length, 4);
+	assert.equal(ctx.activeBirds.length, 4);
+	ctx.startFlight();
+	assert.equal(ctx.roundSequence, 1);
+	assert.equal(ctx.currentRound, round);
+	await ctx.runRound(round, ctx.presentationToken);
+	assert.equal(ctx.status, 'complete');
+	assert.equal(ctx.flightHistory.length, 1);
+	ctx.replayFlight(round);
+	assert.equal(ctx.currentRound, round);
+	assert.equal(ctx.roundSequence, 1);
+	await ctx.runRound(round, ctx.presentationToken);
+	assert.equal(ctx.flightHistory.length, 1);
+	assert.equal(ctx.finalWin, round.finalWin);
+});
+test('Champion sequencing settles one paid round and preserves base return after a bonus loss', async () => {
+	for (const ending of ['summitLanding', 'crash']) {
+		const ctx = setup();
+		let round;
+		for (let id = 1; id < 10000; id++) {
+			const candidate = generateMockRound(1, 'balanced', id, {
+				creature: 'eagle',
+				launchStyle: 'boost',
+			});
+			if (candidate.flock.bonus?.ending === ending) {
+				round = candidate;
+				break;
+			}
+		}
+		assert(round);
+		ctx.wallet.live = true;
+		ctx.settledRounds = new Set();
+		let settlements = 0;
+		ctx.stakeSession = {
+			settle: async () => {
+				settlements++;
+			},
+		};
+		ctx.beginFlight(round);
+		await ctx.runRound(round, ctx.presentationToken);
+		assert.equal(ctx.championActive, true);
+		assert.equal(ctx.focusBirdId, 'archaeopteryx');
+		assert.equal(ctx.activeBirds.filter((b) => !b.exiting).length, 1);
+		assert.equal(ctx.roundSequence, 0);
+		assert.equal(ctx.finalWin, round.finalWin);
+		assert.equal(ctx.flightHistory.length, 1);
+		assert.equal(settlements, 1);
+		await ctx.presentFinalResult(round, ctx.presentationToken);
+		assert.equal(settlements, 1);
+		ctx.replayFlight(round);
+		await ctx.runRound(round, ctx.presentationToken);
+		assert.equal(settlements, 1);
+		assert.equal(ctx.flightHistory.length, 1);
+		if (ending === 'crash') assert.equal(ctx.finalWin, round.flock.baseMultiplier * round.bet);
+	}
+});
+
+test('hunter win unlocks one half-net-profit Fluppy attempt; result cannot restart it', async () => {
+	const ctx = setup();
+	const hunter = generateMockRound(1, 'balanced', 2, { creature: 'eagle', launchStyle: 'glide' });
+	assert.equal(hunter.finalWin, 6.25);
+	ctx.roundSequence = 2;
+	ctx.beginFlight(hunter);
+	await ctx.presentFinalResult(hunter, ctx.presentationToken);
+	ctx.playTubeFlight();
+	const fluppy = ctx.currentRound;
+	assert.equal(fluppy.route, 'tube-flight');
+	assert.equal(fluppy.flock, undefined);
+	assert.equal(fluppy.bet, 2.62);
+	ctx.playTubeFlight();
+	assert.equal(ctx.currentRound, fluppy);
+	assert.equal(ctx.roundSequence, 3);
+	await ctx.presentFinalResult(fluppy, ctx.presentationToken);
+	assert.equal(ctx.flightHistory.length, 2);
+	assert.equal(ctx.flightHistory[1], hunter);
+	ctx.playTubeFlight();
+	assert.equal(ctx.roundSequence, 3);
+	ctx.flyAgain();
+	assert.equal(ctx.status, 'ready');
+	assert.equal(ctx.roundSequence, 3);
+	ctx.startFlight();
+	assert(ctx.currentRound.flock);
+	assert.equal(ctx.currentRound.route, undefined);
+});
+
+test('Fluppy offer rejects losses, history replays and invalid or connected stakes', () => {
+	const round = generateMockRound(1, 'balanced', 2, { creature: 'eagle', launchStyle: 'glide' });
+	assert.equal(tubeFlightOffer(round, 0.1, 10000, false, false).amount, 2.62);
+	assert.equal(tubeFlightOffer(round, 0.1, 10000, false, true), undefined);
+	assert.equal(tubeFlightOffer({ ...round, finalWin: 0.8 }, 0.1, 10000, false, false), undefined);
+	assert(tubeFlightOffer(round, 5, 10000, false, false).reason);
+	assert(tubeFlightOffer(round, 0.1, 2, false, false).reason);
+	assert(tubeFlightOffer(round, 0.1, 10000, true, false).reason);
+	const fluppy = createTubeFlight(round, 2.62, 3);
+	assert.equal(tubeFlightOffer(fluppy, 0.1, 10000, false, false), undefined);
+});
+
+
+test('main Fly starts a fresh hunter round from inline results and never repeats Fluppy', async () => {
+ const ctx=setup();
+ ctx.startFlight();
+ await ctx.presentFinalResult(ctx.currentRound,ctx.presentationToken);
+ ctx.flyFromMenu();
+ assert.equal(ctx.roundSequence,2);
+ assert.equal(ctx.status,'flying');
+ assert(ctx.currentRound.flock);
+ ctx.flyFromMenu();
+ assert.equal(ctx.roundSequence,2);
+ await ctx.presentFinalResult(ctx.currentRound,ctx.presentationToken);
+ const fluppy=createTubeFlight(ctx.currentRound,1,3);
+ ctx.resetPresentation();
+ ctx.beginFlight(fluppy);
+ await ctx.presentFinalResult(fluppy,ctx.presentationToken);
+ ctx.flyFromMenu();
+ assert(ctx.currentRound.flock);
+ assert.equal(ctx.currentRound.route,undefined);
 });

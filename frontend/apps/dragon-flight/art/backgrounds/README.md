@@ -16,7 +16,7 @@ files are preserved without resizing. The game uses these images in
 | Sunset | [sunset.webp](../../static/backgrounds/sunset.webp) |
 | Night | [night.webp](../../static/backgrounds/night.webp) |
 | Eclipse | [eclipse.webp](../../static/backgrounds/eclipse.webp) |
-| Rain | [rain.webp](../../static/backgrounds/rain.webp) |
+| Rain | [rain-scene.png](../../static/backgrounds/rain-scene.png) |
 | Storm | [storm.webp](../../static/backgrounds/storm.webp) |
 | Fog | [fog.webp](../../static/backgrounds/fog.webp) |
 | Snow | [snow.webp](../../static/backgrounds/snow.webp) |
@@ -37,3 +37,5 @@ small bounded drift. A replacement is decoded before switching; rapid selection
 changes cancel stale swaps. Reduced motion disables the drift and crossfade.
 
 Full generation/edit prompts are recorded in [PROMPTS.md](PROMPTS.md).
+
+The runtime rain background now uses `rain-scene.png`; the superseded rain WebP and duplicate storm JPG have been removed.

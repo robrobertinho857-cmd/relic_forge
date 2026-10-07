@@ -12,6 +12,7 @@ import type {
 import { createFlightStagePlan } from './stages';
 import { payoutForMultiplier, roundToTwoDecimals } from './utils/number';
 import { isBetInputValid } from './utils/bet';
+import { createDemoFlock } from './flock/outcome';
 
 // This is deliberately local prototype behavior. Replace this module with an
 // authoritative game result later without moving selection or presentation code.
@@ -108,7 +109,7 @@ const createRandom = (seed: number) => {
 const pick = <T>(values: T[], random: () => number) =>
 	values[Math.min(values.length - 1, Math.floor(random() * values.length))];
 
-export const generateMockRound = (
+export const generateLegacyMockRound = (
 	bet: number,
 	risk: FlightRisk,
 	roundId: number,
@@ -209,3 +210,6 @@ export const generateMockRound = (
 		finalWin,
 	};
 };
+
+export const generateMockRound: typeof generateLegacyMockRound = (...args) =>
+	createDemoFlock(generateLegacyMockRound(...args));

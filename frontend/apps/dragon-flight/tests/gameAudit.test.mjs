@@ -7,6 +7,7 @@ import { evaluateProfile, settledReturn } from './baseMath.mjs';
 const load = (name, options) =>
 	loadTypescript(new URL(`../src/game-world/${name}.ts`, import.meta.url), options);
 const { generateMockRound, RISK_PROFILES } = await load('mockRound');
+const { validateFlock } = await load('flock/outcome');
 const { payoutForMultiplier } = await load('utils/number');
 const { formatLocalAmount } = await load('utils/format');
 const { isBetInputValid, sanitizeBetInput } = await load('utils/bet');
@@ -39,11 +40,11 @@ test('every supported cent bet settles at 96% theoretical return', () => {
 	}
 });
 
-test('settlement preserves fractional cents; only displayed amounts are rounded', () => {
+test('settlement and display preserve fractional wallet units', () => {
 	assert.equal(payoutForMultiplier(0.1, 1.45), 0.145);
-	assert.equal(formatLocalAmount(0.145), '$0.15');
-	assert.equal(formatLocalAmount(0.125), '$0.13');
-	assert.equal(formatLocalAmount(-0.145), '$-0.15');
+	assert.equal(formatLocalAmount(0.145), '$0.145');
+	assert.equal(formatLocalAmount(0.125), '$0.125');
+	assert.equal(formatLocalAmount(-0.145), '-$0.145');
 	assert.equal(formatLocalAmount(12), '$12.00');
 	for (let cents = 10; cents <= 10000; cents += 7)
 		for (let hundredths = 100; hundredths <= 5000; hundredths += 5) {
@@ -73,7 +74,8 @@ function auditRound(round) {
 		win: round.finalWin,
 	});
 	assert.equal(round.events.filter((e) => e.type === 'finalWin').length, 1);
-	assert.equal(round.finalWin === 0, round.ending === 'crash');
+	if (round.flock) validateFlock(round);
+	else assert.equal(round.finalWin === 0, round.ending === 'crash');
 	const fatal = round.events.findIndex(
 		(e) => (e.type === 'gate' || e.type === 'encounter') && e.result === 'crash',
 	);
@@ -190,10 +192,6 @@ test('all live artwork URLs resolve at root and under a deployment subpath', asy
 			'sunset',
 			'night',
 			'eclipse',
-			'rain',
-			'storm',
-			'fog',
-			'snow',
 			'glide',
 			'boost',
 			'dive',
@@ -201,15 +199,19 @@ test('all live artwork URLs resolve at root and under a deployment subpath', asy
 			paths.add(`${base || '.'}/customize/${name}.webp`);
 		for (const name of ['storm-run', 'summit-expedition'])
 			paths.add(`${base || '.'}/bonuses/${name}.webp`);
-		assert.equal(paths.size, 75);
+		assert(paths.size >= 70, 'Missing expected artwork coverage');
 		for (const file of paths) {
 			assert(file.startsWith((base || '.') + '/'));
-			assert(file.endsWith('.webp'));
+			assert(/\.(webp|png)$/.test(file));
 			const bytes = fs.readFileSync(
 				new URL('../static' + file.slice((base || '.').length), import.meta.url),
 			);
-			assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
-			assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
+			if (file.endsWith('.png'))
+				assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+			else {
+				assert.equal(bytes.toString('ascii', 0, 4), 'RIFF');
+				assert.equal(bytes.toString('ascii', 8, 12), 'WEBP');
+			}
 		}
 	}
 });

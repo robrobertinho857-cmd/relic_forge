@@ -53,3 +53,5 @@ Use case: stylized-concept. Asset type: small weather selection-button illustrat
 ## snow.png
 
 Use case: stylized-concept. Asset type: small weather selection-button illustration for a premium mountain game menu. One soft blue-gray winter cloud with three distinct delicate ivory snowflakes below it. A single centered compact pictorial symbol, beautifully hand-painted with soft dimensional shading, restrained luminous edges, warm ivory and gold highlights, cool muted blue shadows. Large simple shapes clearly recognizable at 48 pixels. The symbol occupies the central 65 percent of a square canvas, generous clear margins. Solid uniform deep teal background color #14262d, no landscape except the explicitly requested tiny ridge or peak. No bird, animal, feather, person, text, lettering, border, frame, round badge, UI, logo, watermark or extra symbols. One menu illustration only.
+
+Runtime cleanup: weather follows risk now, so the unused rain, storm, fog, and snow picker previews were removed. The time and launch previews remain. Prompts above are historical records.

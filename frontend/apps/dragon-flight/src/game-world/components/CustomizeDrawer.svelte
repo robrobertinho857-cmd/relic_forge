@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { getWeather, WEATHER_OPTIONS } from '../weather';
+	import { getWeather } from '../weather';
 	import { getTimeOfDay, TIME_OF_DAY_OPTIONS } from '../timeOfDay';
 	import { LAUNCH_OPTIONS } from '../config';
 	import type { LaunchStyle, TimeOfDay, WeatherCondition } from '../types';
@@ -12,7 +12,7 @@
 		weather: WeatherCondition;
 		timeOfDay: TimeOfDay;
 		launchStyle: LaunchStyle;
-		onWeatherSelect: (weather: WeatherCondition) => void;
+		timeLocked?: boolean;
 		onTimeSelect: (time: TimeOfDay) => void;
 		onLaunchSelect: (launch: LaunchStyle) => void;
 		onClose: () => void;
@@ -24,7 +24,7 @@
 		weather,
 		timeOfDay,
 		launchStyle,
-		onWeatherSelect,
+		timeLocked = false,
 		onTimeSelect,
 		onLaunchSelect,
 		onClose,
@@ -53,7 +53,7 @@
 	function resetDefaults() {
 		if (disabled) return;
 		onTimeSelect('day');
-		onWeatherSelect('clear');
+
 		onLaunchSelect('glide');
 	}
 </script>
@@ -91,7 +91,11 @@
 			>
 		</header>
 		<div class="customize-content">
-			<fieldset class="option-section" {disabled} aria-describedby="customize-time-note">
+			<fieldset
+				class="option-section"
+				disabled={disabled || timeLocked}
+				aria-describedby="customize-time-note"
+			>
 				<legend>{t('time')} <span>{getTimeOfDay(timeOfDay).name.toLowerCase()}</span></legend>
 				<p id="customize-time-note" class="option-note">{getTimeOfDay(timeOfDay).description}</p>
 				<div class="option-grid time-grid">
@@ -118,35 +122,10 @@
 					{/each}
 				</div>
 			</fieldset>
-			<fieldset class="option-section" {disabled} aria-describedby="customize-weather-note">
-				<legend>{t('weather')} <span>{getWeather(weather).name.toLowerCase()}</span></legend>
-				<p id="customize-weather-note" class="option-note">
-					Mix any weather with your chosen time.
-				</p>
-				<div class="option-grid weather-grid">
-					{#each WEATHER_OPTIONS as option (option.id)}
-						<label
-							><input
-								type="radio"
-								name="flight-weather"
-								value={option.id}
-								checked={weather === option.id}
-								onchange={() => onWeatherSelect(option.id)}
-							/>
-							<span class="option-content"
-								><span class="preview"
-									><img
-										src={`${base || '.'}/customize/${option.id === 'clear' ? 'day' : option.id}.webp`}
-										alt=""
-										loading="lazy"
-										decoding="async"
-									/>{@render selectionMark()}</span
-								><span class="option-name">{option.name.toLowerCase()}</span></span
-							></label
-						>
-					{/each}
-				</div>
-			</fieldset>
+			<p class="option-note">
+				Weather: {getWeather(weather).name}. Safe uses clear daylight, Balanced uses rain, and
+				Danger uses a storm.
+			</p>
 			<fieldset
 				class="option-section launch-section"
 				{disabled}

@@ -1,4 +1,5 @@
 import type { CreatureId } from './creature';
+import type { EliminationReason, FlockOutcome } from '../flock/types';
 
 export type FlightRisk = 'safe' | 'balanced' | 'danger';
 export type BonusFlightId = 'storm-run' | 'summit-expedition';
@@ -56,6 +57,8 @@ type GateEventBase = {
 };
 
 export type FlightEvent =
+	| { type: 'elimination'; bird: CreatureId; reason: EliminationReason }
+	| { type: 'championFlight'; multiplier: number }
 	| { type: 'launch'; path: FlightRisk }
 	| (GateEventBase & { result: 'pass' })
 	| (GateEventBase & { result: 'crash'; crashSide: 'upper' | 'lower' })
@@ -71,6 +74,9 @@ export type FlightEvent =
 	| { type: 'finalWin'; multiplier: number; win: number };
 
 export type FlightRound = {
+	route?: 'tube-flight';
+	// Absent only for legacy published books and existing feature-buy routes.
+	flock?: FlockOutcome;
 	bonusFlight?: BonusFlightId;
 	entryCost?: number;
 	id: number;
