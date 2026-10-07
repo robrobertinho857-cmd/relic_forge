@@ -21,6 +21,22 @@ body *,
 body *::before,
 body *::after {
 	font-family: 'Google Sans', sans-serif !important;
+}
+
+/* Preserve the new framed game controls while keeping dialog surfaces flat. */
+body
+	*:not(
+		:where(
+			.control-dock,
+			.control-dock *,
+			.prototype-header,
+			.prototype-header *,
+			.flight-result,
+			.flight-result *,
+			.stage-transition,
+			.stage-transition *
+		)
+	) {
 	border-style: none !important;
 	box-shadow: none !important;
 	text-shadow: none !important;
@@ -30,3 +46,4 @@ body :focus-visible {
 	outline: 2px solid #9dc5ad !important;
 	outline-offset: 3px;
 }
+

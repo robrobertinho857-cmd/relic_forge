@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { base } from '$app/paths';
 	import { SvelteSet } from 'svelte/reactivity';
 	import {
 		LANGUAGE_NAMES,
@@ -21,8 +22,6 @@
 		stakeBetUnits,
 	} from './stake';
 	let wallet = $state(initialWallet());
-	let sessionSeconds = $state(0);
-	let sessionNet = $state(0);
 	const settledRounds = new SvelteSet<number>();
 	let stakeSession: StakeSession;
 	let replayMode = $state(false);
@@ -155,7 +154,7 @@
 	} from './config';
 	import { clamp, createPlayer, steerPlayer } from './physics';
 	import { generateMockRound } from './mockRound';
-	import { createBonusRound, drawBonusTicket, getBonusFlight } from './bonusFlights';
+	import { createBonusRound, drawBonusTicket } from './bonusFlights';
 	import BonusFlightsDialog from './components/BonusFlightsDialog.svelte';
 	import FlightHistory from './components/FlightHistory.svelte';
 	import { CREATURES, getCreature, loadDecodedFlightFrames } from './creatures';
@@ -183,7 +182,7 @@
 	import EndingEffect from './components/EndingEffect.svelte';
 	import TerrainObstacle from './components/TerrainObstacle.svelte';
 	import { getTerrainVisualWidth } from './terrainArtwork';
-	import ResultScenery from './components/ResultScenery.svelte';
+	import FlightResult from './components/FlightResult.svelte';
 	import EventWarning from './components/EventWarning.svelte';
 	import HelpDialog from './components/HelpDialog.svelte';
 	import AirCurrentEffect from './components/AirCurrentEffect.svelte';
@@ -228,6 +227,24 @@
 	let creaturePickerOpen = $state(false);
 	let customizeOpen = $state(false);
 	let helpOpen = $state(false);
+	let settingsMenuOpen = $state(false);
+	const portraitOffsets: Record<string, number> = {
+		eagle: 66,
+		woodpecker: 190,
+		'azure-swift': 302,
+		archaeopteryx: 414,
+	};
+	const panelCreatures = ['eagle', 'woodpecker', 'azure-swift', 'archaeopteryx'].map(
+		(id) => CREATURES.find((bird) => bird.id === id)!,
+	);
+	async function toggleFullscreen() {
+		try {
+			if (document.fullscreenElement) await document.exitFullscreen();
+			else await document.documentElement.requestFullscreen();
+		} catch {
+			/* Fullscreen may be unavailable in the host frame. */
+		}
+	}
 	let bonusOpen = $state(false);
 	let historyOpen = $state(false);
 	let flightHistory = $state<FlightRound[]>([]);
@@ -243,6 +260,8 @@
 	let finalMultiplier = $state(0);
 	let finalWin = $state(0);
 	let winCelebrationOpen = $state(false);
+	// Retain round telemetry without displaying it in the permanent HUD.
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	let gatesPassed = $state(0);
 	let distanceTravelled = $state(0);
 	let activeGate = $state<ActiveGate>();
@@ -306,7 +325,6 @@
 		wallet.live ? isValidStakeBet(stakeAmount, wallet) : isBetInputValid(betInput),
 	);
 	const activeCreature = $derived(getCreature(roundCreatureId ?? selectedCreatureId));
-	const selectedCreature = $derived(getCreature(selectedCreatureId));
 	const selectedPathNote = $derived(getRiskNote(selectedRisk));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(
@@ -328,6 +346,8 @@
 			activeCreature.rotationLimit,
 		),
 	);
+	// Retain round telemetry without displaying it in the permanent HUD.
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const distanceMetres = $derived(Math.floor(distanceTravelled / 12));
 
 	$effect(() => {
@@ -423,6 +443,19 @@
 			return;
 		}
 		selectedBet = clampBet(selectedBet + direction * PROTOTYPE_BET_STEP);
+		betInput = formatBetInput(selectedBet);
+	}
+	function setQuickBet(target: number) {
+		if (controlsLocked || !Number.isFinite(target)) return;
+		if (wallet.live) {
+			const ceiling = Math.min(wallet.maxBet, wallet.amount);
+			const desired = Math.min(Math.round(target * 1e6), ceiling);
+			const units = wallet.levels.length
+				? wallet.levels.filter((level) => level <= desired).at(-1)
+				: Math.floor(desired / wallet.stepBet) * wallet.stepBet;
+			if (!isValidStakeBet(units, wallet)) return;
+			selectedBet = units / 1e6;
+		} else selectedBet = clampBet(target);
 		betInput = formatBetInput(selectedBet);
 	}
 
@@ -898,7 +931,6 @@
 			if (token !== presentationToken) return;
 			if (!settledRounds.has(round.id)) {
 				settledRounds.add(round.id);
-				sessionNet += round.finalWin - (round.entryCost ?? round.bet);
 			}
 		}
 		flightAudio.stop('wings');
@@ -1307,10 +1339,8 @@
 		resizeWorld();
 		let animationFrame = 0;
 		let lastTime = performance.now();
-		const sessionStart = Date.now();
 
 		const update = (now: number) => {
-			sessionSeconds = Math.floor((Date.now() - sessionStart) / 1000);
 			const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
 			lastTime = now;
 			const moving = status === 'flying' || status === 'ending' || status === 'collided';
@@ -1367,88 +1397,13 @@
 	{/each}
 </svelte:head>
 
-<main class="prototype-shell" style={`--playback-speed:${flightPlaybackSpeed};`}>
-	<header class="prototype-header">
-		<h1>Lucky Flight</h1>
-		<div
-			class="control-tools header-actions flight-extras"
-			role="group"
-			aria-label="Flight options"
-		>
-			<button
-				type="button"
-				class="header-button"
-				data-audio-toggle
-				aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
-				aria-pressed={!soundMuted}
-				onclick={toggleSound}>{soundMuted ? t('soundOff') : t('soundOn')}</button
-			>
-			<label class="playback-control" title="Animation speed only. Odds and payouts stay the same.">
-				<span>{t('speed')}</span>
-				<select
-					aria-label="Flight playback speed"
-					bind:value={playbackSpeed}
-					disabled={controlsLocked || wallet.turboDisabled}
-				>
-					<option value={1}>1×</option>
-					<option value={1.5}>1.5×</option>
-					<option value={2}>2×</option>
-				</select>
-			</label>
-			<button
-				class="header-button"
-				type="button"
-				aria-haspopup="dialog"
-				aria-controls="customize-flight"
-				data-audio-panel
-				aria-expanded={customizeOpen}
-				disabled={controlsLocked}
-				onclick={() => (customizeOpen = true)}>{t('customize')}</button
-			>
-			<button
-				class="help-button"
-				type="button"
-				aria-label={t('guide')}
-				data-audio-panel
-				onclick={() => (helpOpen = true)}
-			>
-				<svg viewBox="0 0 24 24" aria-hidden="true"
-					><circle cx="12" cy="12" r="9" /><path
-						d="M9.7 9.2a2.45 2.45 0 1 1 3.7 2.1c-.9.5-1.4 1-1.4 2"
-					/><path d="M12 16.8h.01" /></svg
-				>
-			</button>
-			<button
-				class="bonus-button"
-				disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
-				data-audio-panel
-				onclick={() => (bonusOpen = true)}>{t('bonusFlights')} <span>2 {t('routes')}</span></button
-			>
-			<button
-				disabled={wallet.busy ||
-					!wallet.ready ||
-					wallet.active ||
-					(status !== 'ready' && status !== 'complete')}
-				data-audio-panel
-				onclick={() => (historyOpen = true)}
-				>{t('history')} <span>{flightHistory.length}</span></button
-			>
-			<label class="language-control">
-				<span>{t('language')}</span>
-				<select
-					aria-label={t('language')}
-					value={language}
-					onchange={(event) =>
-						changeLanguage(event.currentTarget.value as (typeof SUPPORTED_LANGUAGES)[number])}
-				>
-					{#each SUPPORTED_LANGUAGES as code (code)}<option value={code}
-							>{LANGUAGE_NAMES[code]}</option
-						>{/each}
-				</select>
-			</label>
-		</div>
-	</header>
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') settingsMenuOpen = false;
+	}}
+/>
 
+<main class="prototype-shell" style={`--playback-speed:${flightPlaybackSpeed};`}>
 	<section class="game-layout">
 		<div
 			bind:this={worldElement}
@@ -1478,48 +1433,161 @@
 				launchStyle={currentRound?.launchStyle ?? selectedLaunchStyle}
 				active={status !== 'ready' && status !== 'complete'}
 			/>
-			<div class="flight-hud">
-				<div class="hud-selection">
+			<header class="prototype-header">
+				<div class="header-balance">
+					<span class="currency-medallion" aria-hidden="true">{betCurrencySymbol}</span>
+					<div>
+						<span>{wallet.live ? t('balance') : 'Demo mode'}</span><strong
+							>{wallet.live ? formatLocalAmount(wallet.amount / 1e6) : '—'}</strong
+						>
+					</div>
+				</div>
+				<h1 class="flight-title">
 					<span
-						class:danger={status === 'collided' ||
-							(status === 'complete' && currentRound?.ending === 'crash')}
-						class="round-status"
+						><svg viewBox="0 0 70 55" aria-hidden="true"
+							><path
+								d="M65 43C44 39 20 25 4 4c3 22 24 34 48 40M12 28c7 16 25 21 43 20M25 43c8 9 22 11 33 8"
+							/></svg
+						></span
+					><span>Lucky<br />Flight</span><span
+						><svg viewBox="0 0 70 55" aria-hidden="true"
+							><path
+								d="M65 43C44 39 20 25 4 4c3 22 24 34 48 40M12 28c7 16 25 21 43 20M25 43c8 9 22 11 33 8"
+							/></svg
+						></span
+					>
+				</h1>
+				<div class="top-icons">
+					<button
+						type="button"
+						aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
+						aria-pressed={!soundMuted}
+						onclick={toggleSound}
+						><svg viewBox="0 0 24 24" aria-hidden="true"
+							><path d="M11 5 6 9H3v6h3l5 4z" />{#if soundMuted}<path
+									d="m16 9 5 6m0-6-5 6"
+								/>{:else}<path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14" />{/if}</svg
+						></button
+					>
+					<button
+						type="button"
+						aria-label="Game settings"
+						aria-expanded={settingsMenuOpen}
+						aria-controls="flight-settings-menu"
+						onclick={() => (settingsMenuOpen = !settingsMenuOpen)}
+						><svg viewBox="0 0 24 24" aria-hidden="true"
+							><path
+								d="m9 3-.6 2.5-2 .9L4 5.7 2 9l1.9 1.8v2.4L2 15l2 3.3 2.4-.7 2 .9L9 21h6l.6-2.5 2-.9 2.4.7 2-3.3-1.9-1.8v-2.4L22 9l-2-3.3-2.4.7-2-.9L15 3z"
+							/><circle cx="12" cy="12" r="3" /></svg
+						></button
+					>
+					<button type="button" aria-label="Toggle fullscreen" onclick={toggleFullscreen}
+						><svg viewBox="0 0 24 24" aria-hidden="true"
+							><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg
+						></button
+					>
+				</div>
+				<div
+					class="control-tools header-actions flight-extras"
+					hidden={!settingsMenuOpen}
+					id="flight-settings-menu"
+					role="group"
+					aria-label="Flight options"
+				>
+					<button
+						type="button"
+						class="header-button"
+						data-audio-toggle
+						aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
+						aria-pressed={!soundMuted}
+						onclick={toggleSound}>{soundMuted ? t('soundOff') : t('soundOn')}</button
+					>
+					<label
+						class="playback-control"
+						title="Animation speed only. Odds and payouts stay the same."
+					>
+						<span>{t('speed')}</span>
+						<select
+							aria-label="Flight playback speed"
+							bind:value={playbackSpeed}
+							disabled={controlsLocked || wallet.turboDisabled}
+						>
+							<option value={1}>1×</option>
+							<option value={1.5}>1.5×</option>
+							<option value={2}>2×</option>
+						</select>
+					</label>
+					<button
+						class="header-button"
+						type="button"
+						aria-haspopup="dialog"
+						aria-controls="customize-flight"
+						data-audio-panel
+						aria-expanded={customizeOpen}
+						disabled={controlsLocked}
+						onclick={() => (customizeOpen = true)}>{t('customize')}</button
+					>
+					<button
+						class="help-button"
+						type="button"
+						aria-label={t('guide')}
+						data-audio-panel
+						onclick={() => (helpOpen = true)}
+					>
+						<svg viewBox="0 0 24 24" aria-hidden="true"
+							><circle cx="12" cy="12" r="9" /><path
+								d="M9.7 9.2a2.45 2.45 0 1 1 3.7 2.1c-.9.5-1.4 1-1.4 2"
+							/><path d="M12 16.8h.01" /></svg
+						>
+					</button>
+
+					<button
+						disabled={wallet.busy ||
+							!wallet.ready ||
+							wallet.active ||
+							(status !== 'ready' && status !== 'complete')}
+						data-audio-panel
+						onclick={() => (historyOpen = true)}
+						>{t('history')} <span>{flightHistory.length}</span></button
+					>
+					<label class="language-control">
+						<span>{t('language')}</span>
+						<select
+							aria-label={t('language')}
+							value={language}
+							onchange={(event) =>
+								changeLanguage(event.currentTarget.value as (typeof SUPPORTED_LANGUAGES)[number])}
+						>
+							{#each SUPPORTED_LANGUAGES as code (code)}<option value={code}
+									>{LANGUAGE_NAMES[code]}</option
+								>{/each}
+						</select>
+					</label>
+				</div>
+			</header>
+			{#if status !== 'complete'}
+				<div class="flight-hud">
+					<span class="round-status" class:danger={status === 'collided'}
 						>{wallet.busy
 							? t('pleaseWait')
 							: !wallet.ready
 								? t('disconnected')
 								: status === 'ready'
 									? t('ready')
-									: status === 'complete' && currentRound
-										? ENDING_LABELS[currentRound.ending]
+									: status === 'collided'
+										? ENDING_LABELS.crash
 										: t('flightActive')}</span
 					>
-					<span
-						>{currentRound?.bonusFlight ? t('entryCost') : t('bet')}
-						<strong
-							>{formatLocalAmount(
-								currentRound?.entryCost ?? currentRound?.bet ?? selectedBet,
-							)}</strong
-						></span
-					>
-					<span
-						>{currentRound?.bonusFlight ? t('routes').toUpperCase() : t('risk')}
-						<strong
-							>{currentRound?.bonusFlight
-								? getBonusFlight(currentRound.bonusFlight).name
-								: t(currentRound?.risk ?? selectedRisk)}</strong
-						></span
-					>
-					<span>{t('creature')} <strong>{activeCreature.name}</strong></span>
-					<span>{t('run')} <strong>{gatesPassed} · {distanceMetres}m</strong></span>
+					{#if currentRound && status !== 'ready'}
+						<span
+							class="multiplier-readout"
+							class:pulse={multiplierPulse}
+							aria-label={`${t('current')} ×${currentMultiplier.toFixed(2)}`}
+							><strong>×{currentMultiplier.toFixed(2)}</strong></span
+						>
+					{/if}
 				</div>
-				<span class="stage-readout"
-					>{stageWord} {currentStage.order}<strong>{currentStage.name}</strong></span
-				>
-				<span class:pulse={multiplierPulse} class="multiplier-readout"
-					>{t('current')}<strong>x{currentMultiplier.toFixed(2)}</strong></span
-				>
-			</div>
+			{/if}
 			{#if isReplay && status !== 'ready'}<div class="replay-label">{t('replayNoCost')}</div>{/if}
 
 			{#if stageAnnouncement}
@@ -1547,20 +1615,16 @@
 
 			{#if currentRound && status !== 'ready' && status !== 'complete'}
 				<div
-					class="flight-meter"
+					class="flight-progress"
 					role="progressbar"
 					aria-label="Flight progress"
 					aria-valuemin="0"
 					aria-valuemax="100"
 					aria-valuenow={Math.round(flightProgress)}
+					aria-valuetext={`${Math.round(flightProgress)}% · ${eventProgress}/${currentRound.events.length} · ${eventLabel}`}
 				>
-					<span>{t('start')}</span>
-					<div class="flight-meter-track">
-						<i style={`width:${flightProgress}%;`}></i>
-						<b style={`left:${flightProgress}%;`}></b>
-					</div>
-					<span>{t('destination')}</span>
-					<small>{eventProgress}/{currentRound.events.length} · {eventLabel}</small>
+					<i style={`width:${flightProgress}%;`}></i>
+					<b style={`left:${flightProgress}%;`}></b>
 				</div>
 			{/if}
 
@@ -1711,78 +1775,63 @@
 			{#if status === 'ready'}<div class="start-hint">
 					{readyPrompt.toUpperCase()}
 				</div>{/if}
-			{#if status === 'complete' && currentRound}
-				<div
-					class:success={currentRound.ending !== 'crash'}
-					class="result-panel"
-					aria-labelledby="flight-result-title"
-				>
-					{#if currentRound.ending !== 'crash'}
-						<ResultScenery
-							ending={currentRound.ending}
-							weather={activeWeather}
-							timeOfDay={activeTimeOfDay}
-						/>
-					{/if}
-					<strong id="flight-result-title">{ENDING_LABELS[currentRound.ending]}</strong>
-					<div>
-						<span>{t('entryCost')}</span><b
-							>{formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}</b
-						>
-					</div>
-					<div><span>{t('multiplier')}</span><b>x{finalMultiplier.toFixed(2)}</b></div>
-					<div><span>{t('payout')}</span><b>{formatLocalAmount(finalWin)}</b></div>
-					<div>
-						<span>{t('netResult')}</span><b
-							>{formatLocalAmount(
-								currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
-							)}</b
-						>
-					</div>
-					<div class="result-creature">
-						<span>{t('creature')}</span><b>{activeCreature.name}</b>
-					</div>
-					<div><span>{t('launch')}</span><b>{currentRound.launchStyle.toUpperCase()}</b></div>
-					<div><span>{t('weather')}</span><b>{activeWeatherConfig.name}</b></div>
-					<div><span>{t('time')}</span><b>{activeTimeConfig.name}</b></div>
-					<small>{wallet.live ? 'SERVER RESULT' : 'DEMO RESULT - NO REAL MONEY'}</small>
-					<button onclick={flyAgain}
-						>{replayMode
-							? t('playAgain')
-							: currentRound.bonusFlight
-								? t('buyAgain')
-								: t('flyAgain')} · {formatLocalAmount(
-							currentRound.entryCost ?? currentRound.bet,
-						)}</button
-					>
-					<button
-						disabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
-						onclick={resetPresentation}>{t('changeSettings')}</button
-					>
-				</div>
-			{/if}
 		</div>
 
-		<section class="control-dock" aria-label="Flight controls">
+		<section
+			class="control-dock"
+			class:safe={selectedRisk === 'safe'}
+			class:danger={selectedRisk === 'danger'}
+			aria-label="Flight controls"
+		>
+			<button
+				class="bonus-button dock-bonus"
+				disabled={controlsLocked || !betInputIsValid || wallet.buyDisabled}
+				data-audio-panel
+				onclick={() => (bonusOpen = true)}
+				><svg class="bonus-gift" viewBox="0 0 24 24" aria-hidden="true"
+					><path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14" /><path
+						d="M12 7C5 7 5 1 8 2c2 0 4 5 4 5Zm0 0c7 0 7-6 4-5-2 0-4 5-4 5Z"
+					/></svg
+				>{t('bonusFlights')} <span>2 {t('routes')}</span><svg
+					class="bonus-arrow"
+					viewBox="0 0 16 16"
+					aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+				></button
+			>
+
 			<div class="creature-control">
 				<span class="dock-label">{t('creature')}</span>
-				<button
-					class="creature-button"
-					type="button"
-					disabled={controlsLocked}
-					data-audio-panel
-					onclick={() => (creaturePickerOpen = true)}
-				>
-					<span>{selectedCreature.name}</span><svg
-						class="creature-chevron"
-						viewBox="0 0 16 16"
-						aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg
-					>
-				</button>
+				<div class="bird-card-list" role="group" aria-label="Choose a bird">
+					{#each panelCreatures as creature (creature.id)}
+						<button
+							type="button"
+							class="bird-card"
+							style={`--bird-accent:${creature.id === 'eagle' ? '#ffd471' : creature.id === 'woodpecker' ? '#b1bbc3' : creature.id === 'azure-swift' ? '#45baff' : '#ef6754'};`}
+							class:selected={selectedCreatureId === creature.id}
+							aria-pressed={selectedCreatureId === creature.id}
+							disabled={controlsLocked}
+							onclick={() => (selectedCreatureId = creature.id)}
+						>
+							<span class="bird-portrait"
+								><img
+									src={`${base || '.'}/ui/bet-panel-reference.png`}
+									style={`left:${-portraitOffsets[creature.id]}%;`}
+									alt=""
+									draggable="false"
+								/></span
+							>
+							<span class="bird-name">{creature.name}</span>
+						</button>
+					{/each}
+				</div>
 			</div>
 
 			<div class="bet-control">
-				<span class="dock-label">{t('bet')}</span>
+				<div class="bet-heading">
+					<span class="dock-label">{t('bet')}</span>{#if wallet.live}<small
+							>{t('balance')}: {formatLocalAmount(wallet.amount / 1e6)}</small
+						>{/if}
+				</div>
 				<div class="bet-stepper">
 					<button
 						aria-label="Decrease bet"
@@ -1825,13 +1874,64 @@
 							type="button"
 							disabled={controlsLocked}
 							aria-pressed={selectedRisk === path.risk}
+							data-risk={path.risk}
 							class:active={selectedRisk === path.risk}
-							onclick={() => (selectedRisk = path.risk)}>{t(path.risk)}</button
+							onclick={() => (selectedRisk = path.risk)}
+							><svg class="risk-mountains" viewBox="0 0 80 50" aria-hidden="true"
+								><path d="M3 43 24 12 44 43z" fill="currentColor" opacity=".7" /><path
+									d="M23 43 45 3 68 43z"
+									fill="currentColor"
+								/><path d="m45 3 0 40H23z" fill="currentColor" opacity=".55" /><path
+									d="m53 43 13-22 13 22z"
+									fill="currentColor"
+									opacity=".8"
+								/></svg
+							><span>{t(path.risk)}</span><small
+								>{path.risk === 'safe'
+									? 'Low volatility'
+									: path.risk === 'balanced'
+										? 'Medium volatility'
+										: 'High volatility'}</small
+							></button
 						>
 					{/each}
 				</div>
-				<p><strong>{t(selectedRisk)}</strong> · {selectedPathNote}</p>
 			</div>
+			<div class="quick-bets" role="group" aria-label="Bet presets">
+				{#each [1, 5, 10, 50, 100] as amount (amount)}
+					<button
+						type="button"
+						class:active={selectedBet === amount}
+						aria-label={`Set bet to ${formatLocalAmount(amount)}`}
+						aria-pressed={selectedBet === amount}
+						disabled={controlsLocked ||
+							amount < minimumBet ||
+							amount > maximumBet ||
+							(wallet.live && !isValidStakeBet(Math.round(amount * 1e6), wallet))}
+						onclick={() => setQuickBet(amount)}>{amount}</button
+					>
+				{/each}
+			</div>
+
+			<button
+				type="button"
+				class="dock-customize"
+				disabled={controlsLocked}
+				aria-haspopup="dialog"
+				aria-controls="customize-flight"
+				aria-expanded={customizeOpen}
+				data-audio-panel
+				onclick={() => (customizeOpen = true)}
+			>
+				<svg viewBox="0 0 40 40" aria-hidden="true"
+					><path d="M5 10h30M5 20h30M5 30h30" /><circle cx="26" cy="10" r="3" /><circle
+						cx="13"
+						cy="20"
+						r="3"
+					/><circle cx="22" cy="30" r="3" /></svg
+				>
+				<span>{t('customize')}</span>
+			</button>
 
 			{#if replayMode}
 				<button
@@ -1846,6 +1946,7 @@
 			{:else}
 				<button
 					class="fly-button"
+					class:launch-ready={wallet.ready && !controlsLocked}
 					aria-live="polite"
 					disabled={controlsLocked || !betInputIsValid}
 					onclick={() => startFlight()}
@@ -1855,25 +1956,47 @@
 							? t('reconnect').toUpperCase()
 							: controlsLocked
 								? t('flightActive')
-								: `${t('fly')} ${formatLocalAmount(selectedBet)}`}</button
+								: t('fly').toUpperCase()}<small>{formatLocalAmount(selectedBet)}</small></button
 				>
 			{/if}
+			<div class="bet-panel-footer">
+				<span class="risk-note"><i aria-hidden="true"></i>{selectedPathNote}</span><span
+					>{replayMode
+						? 'Replay — no bet is placed'
+						: wallet.live
+							? ''
+							: 'Local demo — no real-money bets.'}</span
+				>
+			</div>
 		</section>
 	</section>
 
 	{#if wallet.error}<p role="alert">{wallet.error}</p>
 		<button disabled={wallet.busy} onclick={connectStake}>{t('reconnect')}</button>{/if}
 	{#if flightError}<p role="alert">{flightError}</p>{/if}
-	<footer>
-		<span>{t('explore')}</span><span
-			>{replayMode
-				? 'Replay - no bet is placed'
-				: wallet.live
-					? `${t('balance')} ${formatLocalAmount(wallet.amount / 1e6)} | ${t('netResult')} ${formatLocalAmount(sessionNet)} | ${t('session')} ${Math.floor(sessionSeconds / 60)}m ${sessionSeconds % 60}s`
-					: 'Local demo - No real-money bets.'}</span
-		>
-	</footer>
 </main>
+
+{#if status === 'complete' && currentRound}
+	<FlightResult
+		round={currentRound}
+		creature={activeCreature}
+		title={ENDING_LABELS[currentRound.ending]}
+		entryCost={formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}
+		multiplier={finalMultiplier}
+		payout={formatLocalAmount(finalWin)}
+		netResult={formatLocalAmount(
+			currentRound.finalWin - (currentRound.entryCost ?? currentRound.bet),
+		)}
+		weatherName={activeWeatherConfig.name}
+		timeName={activeTimeConfig.name}
+		live={wallet.live}
+		replay={replayMode}
+		disabled={wallet.busy || !wallet.ready || wallet.active}
+		settingsDisabled={replayMode || wallet.busy || !wallet.ready || wallet.active}
+		onAgain={flyAgain}
+		onSettings={resetPresentation}
+	/>
+{/if}
 
 {#if winCelebrationOpen && currentRound}
 	<WinCelebration
@@ -1952,8 +2075,7 @@
 	}
 	.prototype-header,
 	.game-layout,
-	.control-dock,
-	footer {
+	.control-dock {
 		width: min(1440px, 100%);
 		margin-inline: auto;
 	}
@@ -1991,28 +2113,6 @@
 	}
 	.world.has-impact {
 		animation: impact-shake calc(0.4s / var(--playback-speed, 1)) ease-out;
-	}
-
-	.flight-hud {
-		position: absolute;
-		z-index: 12;
-		top: 14px;
-		left: 50%;
-		display: flex;
-		gap: 18px;
-		padding: 8px 13px;
-		border: 1px solid rgba(189, 139, 46, 0.65);
-		background: rgba(3, 17, 12, 0.82);
-		transform: translateX(-50%);
-		font:
-			700 0.66rem/1 system-ui,
-			sans-serif;
-		letter-spacing: 0.1em;
-		white-space: nowrap;
-	}
-	.flight-hud strong {
-		margin-left: 4px;
-		color: #58eda8;
 	}
 	.gate {
 		position: absolute;
@@ -2148,77 +2248,12 @@
 		transform: translateX(-50%);
 		white-space: nowrap;
 	}
-	.result-panel {
-		position: absolute;
-		z-index: 12;
-		left: 50%;
-		top: 50%;
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 9px;
-		width: min(470px, calc(100% - 24px));
-		min-width: 0;
-		max-height: calc(100% - 24px);
-		overflow: auto;
-		overflow-wrap: anywhere;
-		padding: 22px;
-		border: 1px solid #e16b39;
-		background: rgba(31, 9, 4, 0.96);
-		color: #ffc38c;
-		text-align: center;
-		transform: translate(-50%, -50%);
-		box-shadow: 0 0 45px rgba(234, 82, 30, 0.28);
-	}
-	.result-panel.success {
-		border-color: #43d994;
-		background: #071c20;
-		isolation: isolate;
-		box-shadow: 0 0 45px rgba(35, 218, 134, 0.25);
-	}
 	.has-ending .floor {
 		opacity: 0;
 	}
 	.landed .creature-sprite,
 	.landed .wing {
 		animation: none;
-	}
-	.result-panel > strong,
-	.result-panel > small,
-	.result-panel > button,
-	.result-panel .result-creature {
-		grid-column: 1/-1;
-	}
-	.result-panel > strong {
-		font-size: 1.35rem;
-		letter-spacing: 0.13em;
-	}
-	.result-panel div {
-		padding: 10px 6px;
-		border: 1px solid rgba(221, 174, 82, 0.3);
-		background: rgba(0, 0, 0, 0.2);
-	}
-	.result-panel span {
-		display: block;
-		margin-bottom: 6px;
-		font:
-			700 0.56rem/1 system-ui,
-			sans-serif;
-		letter-spacing: 0.12em;
-	}
-	.result-panel b {
-		color: #ffe0a0;
-		font-size: 1rem;
-	}
-	.result-panel small {
-		color: #8fa394;
-		font:
-			600 0.55rem/1.2 system-ui,
-			sans-serif;
-		letter-spacing: 0.08em;
-	}
-	.result-panel button {
-		border-color: #d2923a;
-		color: #ffe09f;
 	}
 	button {
 		min-height: 42px;
@@ -2255,17 +2290,6 @@
 		box-shadow:
 			inset 0 0 20px rgba(68, 255, 165, 0.16),
 			0 0 18px rgba(20, 197, 117, 0.16);
-	}
-	footer {
-		display: flex;
-		justify-content: space-between;
-		gap: 16px;
-		padding-top: 8px;
-		color: #7f867a;
-		font:
-			0.65rem/1.4 system-ui,
-			sans-serif;
-		letter-spacing: 0.07em;
 	}
 	@keyframes creature-hover {
 		from {
@@ -2316,42 +2340,15 @@
 		}
 	}
 	@media (max-width: 620px) {
-		.flight-hud {
-			top: 8px;
-			right: 8px;
-			left: 8px;
-			font-size: 0.52rem;
-			line-height: 1.2;
-			white-space: normal;
-			transform: none;
-		}
-		.flight-hud span {
-			min-width: 0;
-		}
 		.event-callout {
 			top: 27%;
 			width: max-content;
-		}
-		.result-panel {
-			grid-template-columns: 1fr;
-			max-height: 88%;
-			overflow: auto;
-			padding: 16px;
-		}
-		.result-panel > strong,
-		.result-panel > small,
-		.result-panel > button {
-			grid-column: auto;
 		}
 		.start-hint {
 			max-width: calc(100% - 24px);
 			font-size: 0.52rem;
 			text-align: center;
 			white-space: normal;
-		}
-		footer {
-			flex-direction: column;
-			gap: 2px;
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -2448,16 +2445,6 @@
 			transform: translate(-50%, 0) scale(1);
 		}
 	}
-
-	.stage-readout strong {
-		display: block;
-		margin: 3px 0 0;
-		color: #e2e9df;
-	}
-	.multiplier-readout strong {
-		color: #7dffc2;
-		font-size: 0.78rem;
-	}
 	.stage-transition {
 		position: absolute;
 		z-index: 12;
@@ -2467,15 +2454,20 @@
 		gap: 6px;
 		width: min(430px, 78%);
 		padding: 14px 18px;
-		border-block: 1px solid rgba(226, 176, 75, 0.68);
-		background: linear-gradient(90deg, transparent, rgba(4, 24, 17, 0.92) 18% 82%, transparent);
+		border: 1px solid rgba(208, 170, 96, 0.7);
+		border-radius: 16px;
+		box-shadow:
+			inset 0 0 0 3px #c9963514,
+			0 10px 28px #0004;
+		backdrop-filter: blur(8px);
+		background: var(--glass-background);
 		text-align: center;
 		pointer-events: none;
 		transform: translateX(-50%);
 		animation: stage-transition-in calc(1.05s / var(--playback-speed, 1)) ease both;
 	}
 	.stage-transition span {
-		color: #67e8ac;
+		color: #d0ad73;
 		font:
 			800 0.58rem/1 system-ui,
 			sans-serif;
@@ -2484,69 +2476,9 @@
 	.stage-transition strong {
 		color: #f4cd78;
 		font-size: clamp(1rem, 2.5vw, 1.55rem);
-		letter-spacing: 0.12em;
+		letter-spacing: 0.055em;
 		text-transform: uppercase;
 		text-shadow: 0 2px 15px #000;
-	}
-	.flight-meter {
-		position: absolute;
-		z-index: 9;
-		right: clamp(12px, 2vw, 22px);
-		bottom: clamp(48px, 10%, 68px);
-		left: clamp(12px, 2vw, 22px);
-		display: grid;
-		grid-template-columns: auto minmax(80px, 1fr) auto;
-		align-items: center;
-		gap: 9px;
-		padding: 7px 10px 18px;
-		border: 1px solid rgba(192, 143, 50, 0.52);
-		background: rgba(3, 18, 13, 0.82);
-		color: #b8b69e;
-		font:
-			800 0.5rem/1 system-ui,
-			sans-serif;
-		letter-spacing: 0.12em;
-		pointer-events: none;
-	}
-	.flight-meter-track {
-		position: relative;
-		height: 4px;
-		border-radius: 999px;
-		background: rgba(101, 111, 95, 0.45);
-		box-shadow: inset 0 0 5px #000;
-	}
-	.flight-meter-track i {
-		position: absolute;
-		inset-block: 0;
-		left: 0;
-		border-radius: inherit;
-		background: linear-gradient(90deg, #1cae70, #75f6b8, #e9bd58);
-		box-shadow: 0 0 8px rgba(70, 232, 155, 0.5);
-		transition: width 0.32s ease;
-	}
-	.flight-meter-track b {
-		position: absolute;
-		top: 50%;
-		width: 11px;
-		height: 11px;
-		border: 2px solid #f0c460;
-		border-radius: 50%;
-		background: #1b8a5a;
-		box-shadow: 0 0 10px #46df9a;
-		transform: translate(-50%, -50%);
-		transition: left 0.32s ease;
-	}
-	.flight-meter small {
-		position: absolute;
-		bottom: 4px;
-		left: 50%;
-		color: #79d9a8;
-		font:
-			700 0.48rem/1 system-ui,
-			sans-serif;
-		letter-spacing: 0.1em;
-		transform: translateX(-50%);
-		white-space: nowrap;
 	}
 	@keyframes stage-transition-in {
 		0% {
@@ -2601,27 +2533,10 @@
 			top: 32%;
 			padding: 10px 12px;
 		}
-		.flight-meter {
-			right: 8px;
-			bottom: 42px;
-			left: 8px;
-			gap: 6px;
-			padding-inline: 7px;
-			font-size: 0.44rem;
-		}
-		.flight-meter small {
-			max-width: 72%;
-			overflow: hidden;
-			text-overflow: ellipsis;
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.stage-transition {
 			animation: none;
-		}
-		.flight-meter-track i,
-		.flight-meter-track b {
-			transition: none;
 		}
 	}
 	.multiplier-readout.pulse {
@@ -2762,50 +2677,6 @@
 		min-height: 0;
 	}
 
-	.flight-hud {
-		top: 10px;
-		right: 10px;
-		left: 10px;
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto auto;
-		align-items: center;
-		gap: 0;
-		padding: 6px 9px;
-		border-color: rgba(149, 179, 180, 0.48);
-		background: linear-gradient(90deg, rgba(3, 17, 12, 0.88), rgba(5, 28, 19, 0.78));
-		font-size: 0.56rem;
-		line-height: 1.15;
-		transform: none;
-	}
-	.hud-selection {
-		display: flex;
-		min-width: 0;
-		gap: clamp(8px, 1.25vw, 18px);
-		overflow: hidden;
-	}
-	.hud-selection span {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.flight-hud .stage-readout,
-	.flight-hud .multiplier-readout {
-		display: grid;
-		gap: 2px;
-		min-width: 104px;
-		padding-left: 10px;
-		margin-left: 10px;
-		border-left: 1px solid rgba(149, 179, 180, 0.3);
-	}
-	.flight-hud .stage-readout strong,
-	.flight-hud .multiplier-readout strong {
-		display: block;
-		margin: 0;
-	}
-	.flight-hud .multiplier-readout {
-		min-width: 72px;
-	}
-
 	.bet-stepper {
 		grid-template-columns: 42px minmax(0, 1fr) 42px;
 		gap: 7px;
@@ -2866,42 +2737,6 @@
 		.game-layout {
 			--game-panel-height: clamp(340px, 55dvh, 470px);
 			gap: 10px;
-		}
-
-		.flight-hud {
-			top: 6px;
-			right: 6px;
-			left: 6px;
-			grid-template-columns: minmax(0, 1fr) auto auto;
-			gap: 0;
-			padding: 5px 6px;
-			font-size: 0.45rem;
-		}
-		.hud-selection {
-			display: grid;
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			gap: 3px 7px;
-		}
-		.flight-hud .stage-readout,
-		.flight-hud .multiplier-readout {
-			min-width: 68px;
-			padding-left: 6px;
-			margin-left: 6px;
-		}
-		.flight-hud .stage-readout {
-			max-width: 84px;
-		}
-		.flight-hud .stage-readout strong {
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-		.flight-hud .multiplier-readout {
-			min-width: 54px;
-		}
-
-		footer {
-			display: none;
 		}
 	}
 
@@ -2964,23 +2799,6 @@
 		min-height: 0;
 	}
 
-	.flight-hud {
-		grid-template-columns: minmax(0, 1fr) auto auto;
-	}
-	.hud-selection {
-		align-items: center;
-	}
-	.round-status {
-		flex: 0 0 auto;
-		padding: 4px 6px;
-		border: 1px solid rgba(73, 225, 157, 0.42);
-		color: #70edb2;
-	}
-	.round-status.danger {
-		border-color: rgba(230, 96, 50, 0.56);
-		color: #ff9a6a;
-	}
-
 	.control-dock {
 		position: relative;
 		display: grid;
@@ -3003,35 +2821,6 @@
 			800 0.5rem/1 system-ui,
 			sans-serif;
 		letter-spacing: 0.16em;
-	}
-	.creature-button {
-		display: flex;
-		width: 100%;
-		min-height: 48px;
-		border-radius: 3px;
-		background: #0b1015;
-		color: #d1d5db;
-		align-items: center;
-		justify-content: space-between;
-		gap: 9px;
-		padding: 8px 11px;
-		text-align: left;
-	}
-	.creature-button span {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.creature-chevron {
-		width: 12px;
-		height: 12px;
-		flex-shrink: 0;
-		fill: none;
-		stroke: #94a6b1;
-		stroke-width: 1.5;
-		stroke-linecap: round;
-		stroke-linejoin: round;
 	}
 	.risk-selector {
 		display: grid;
@@ -3056,20 +2845,6 @@
 	.risk-selector button.active {
 		background: #557762;
 		color: #fff;
-	}
-	.risk-control p {
-		margin: 6px 1px 0;
-		overflow: hidden;
-		color: #849087;
-		font:
-			0.54rem/1.2 system-ui,
-			sans-serif;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.risk-control p strong {
-		color: #d9bd7b;
-		text-transform: uppercase;
 	}
 	.bet-control .bet-stepper {
 		grid-template-columns: 42px minmax(90px, 1fr) 42px;
@@ -3141,9 +2916,6 @@
 		.control-dock {
 			padding-block: 7px;
 		}
-		footer {
-			display: none;
-		}
 	}
 
 	@media (max-width: 1000px) {
@@ -3201,39 +2973,11 @@
 			grid-row: 3;
 			min-height: 48px;
 		}
-		.risk-control p {
-			white-space: normal;
-		}
-		.flight-hud {
-			top: 5px;
-			right: 5px;
-			left: 5px;
-			grid-template-columns: minmax(0, 1fr) auto;
-		}
-		.hud-selection {
-			display: grid;
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			gap: 3px 6px;
-		}
-		.flight-hud .stage-readout {
-			display: none;
-		}
-		.flight-hud .multiplier-readout {
-			min-width: 58px;
-		}
-		footer {
-			display: none;
-		}
 	}
 
 	@media (max-width: 390px) {
 		.dock-label {
 			margin-bottom: 4px;
-		}
-		.creature-button {
-			min-height: 40px;
-			padding-inline: 8px;
-			font-size: 0.68rem;
 		}
 		.bet-control .bet-stepper {
 			grid-template-columns: 36px minmax(0, 1fr) 36px;
@@ -3345,7 +3089,7 @@
 		flex-wrap: wrap;
 		gap: 12px 20px;
 	}
-	.prototype-header .control-tools {
+	.control-tools {
 		flex: 1 1 550px;
 		display: flex;
 		flex-wrap: wrap;
@@ -3373,8 +3117,8 @@
 		letter-spacing: 0.01em;
 		text-shadow: none;
 	}
-	.prototype-header .control-tools button,
-	.prototype-header .control-tools select {
+	.control-tools button,
+	.control-tools select {
 		border: 0;
 		border-radius: 3px;
 		background: #0b1015;
@@ -3382,26 +3126,26 @@
 		text-shadow: none;
 		color: #e6eee9;
 	}
-	.prototype-header .control-tools button {
+	.control-tools button {
 		padding: 10px 14px;
 		font-size: 0.65rem;
 		letter-spacing: 0.06em;
 	}
-	.prototype-header .control-tools button:hover:not(:disabled),
-	.prototype-header .control-tools select:hover:not(:disabled) {
+	.control-tools button:hover:not(:disabled),
+	.control-tools select:hover:not(:disabled) {
 		background-color: #1c2b31;
 	}
-	.prototype-header .control-tools button[aria-expanded='true'] {
+	.control-tools button[aria-expanded='true'] {
 		background: #557e69;
 	}
-	.prototype-header .control-tools .bonus-button {
+	.control-tools .bonus-button {
 		color: #f3cc7d;
 	}
-	.prototype-header .control-tools .help-button {
+	.control-tools .help-button {
 		padding: 10px;
 		color: #f3cc7d;
 	}
-	.prototype-header .control-tools select {
+	.control-tools select {
 		min-height: 40px;
 		padding: 8px 30px 8px 12px;
 		appearance: none;
@@ -3410,26 +3154,1038 @@
 		background-position: right 11px center;
 		background-size: 12px 12px;
 	}
-	.prototype-header .control-tools label {
+	.control-tools label {
 		gap: 7px;
 		color: #94a6b1;
 	}
-	.prototype-header .control-tools label span {
+	.control-tools label span {
 		margin-left: 0;
 		color: inherit;
 	}
-	.prototype-header .control-tools button:focus-visible {
+	.control-tools button:focus-visible {
 		outline: 2px solid #8cbca1;
 		outline-offset: 2px;
 	}
 	@media (max-width: 480px) {
-		.prototype-header .control-tools {
+		.control-tools {
 			gap: 8px;
 			justify-content: flex-start;
 		}
 		.control-tools .header-button,
 		.control-tools .bonus-button {
 			flex: 1 1 auto;
+		}
+	}
+	.control-dock {
+		grid-template-columns: minmax(140px, 1fr) minmax(230px, 1.5fr) minmax(190px, 1.1fr) 150px 170px;
+		grid-template-areas: 'creature risk bet quick action' 'details details details details details';
+		align-items: end;
+		gap: 14px 18px;
+		padding: 16px;
+		border-radius: 8px;
+		background: #16212b;
+		--risk-color: #10b981;
+	}
+	.control-dock.safe {
+		--risk-color: #3b82f6;
+	}
+	.control-dock.danger {
+		--risk-color: #ef4444;
+	}
+	.creature-control {
+		grid-area: creature;
+		min-width: 0;
+	}
+	.risk-control {
+		grid-area: risk;
+		min-width: 0;
+	}
+	.bet-control {
+		grid-area: bet;
+		min-width: 0;
+	}
+	.control-dock .dock-label {
+		margin-bottom: 7px;
+		color: #9ba9b7;
+		font-size: 0.62rem;
+		letter-spacing: 0.08em;
+	}
+	.bet-heading {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 8px;
+	}
+	.bet-heading small {
+		color: #9ba9b7;
+		font-size: 0.6rem;
+		white-space: nowrap;
+	}
+	.control-dock .risk-selector {
+		height: 48px;
+		background: #131c25;
+		border-radius: 6px;
+	}
+	.control-dock .risk-selector button {
+		min-height: 40px;
+		font-size: 0.67rem;
+		letter-spacing: 0.04em;
+	}
+	.control-dock .risk-selector button.active {
+		background: var(--risk-color);
+	}
+	.control-dock .bet-stepper {
+		height: 48px;
+		border-radius: 6px;
+		background: #131c25;
+		grid-template-columns: 40px minmax(0, 1fr) 40px;
+	}
+	.control-dock .bet-stepper button {
+		width: 40px;
+		height: 48px;
+		min-height: 48px;
+	}
+	.control-dock .bet-input-shell {
+		height: 48px;
+	}
+	.control-dock .bet-input {
+		font-size: 1.15rem;
+	}
+	.quick-bets {
+		grid-area: quick;
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 4px;
+	}
+	.quick-bets button {
+		grid-column: span 2;
+		min-height: 23px;
+		padding: 3px 4px;
+		border-radius: 4px;
+		background: #1b2733;
+		color: #41f0a5;
+		font-size: 0.65rem;
+		letter-spacing: 0;
+		white-space: nowrap;
+	}
+	.quick-bets button:hover:not(:disabled) {
+		background: #2c4058;
+	}
+	.quick-bets button:focus-visible,
+	.control-dock button:focus-visible {
+		outline: 2px solid #41f0a5;
+		outline-offset: 2px;
+	}
+	.control-dock .fly-button {
+		grid-area: action;
+		margin: 0;
+		min-height: 48px;
+		border-radius: 6px;
+		background: #059669;
+		font-size: 1.05rem;
+		letter-spacing: 0.05em;
+	}
+	.control-dock .fly-button:hover:not(:disabled) {
+		background: #10b981;
+	}
+	.bet-panel-footer {
+		grid-area: details;
+		display: flex;
+		justify-content: space-between;
+		gap: 10px;
+		padding-top: 10px;
+		color: #9ba9b7;
+		font-size: 0.65rem;
+		line-height: 1.45;
+	}
+	.risk-note {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.risk-note i {
+		width: 6px;
+		height: 6px;
+		flex-shrink: 0;
+		border-radius: 50%;
+		background: var(--risk-color);
+	}
+
+	/* Gold framed controls matching the supplied reference. */
+	.prototype-header {
+		display: grid;
+		grid-template-columns: 1fr auto 1fr;
+		position: relative;
+		gap: 16px;
+		padding: 8px 12px;
+	}
+	.header-balance {
+		justify-self: start;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 8px 16px;
+		border: 1px solid #56616a;
+		border-radius: 16px;
+		background: #0b121add;
+	}
+	.header-balance div {
+		display: grid;
+		gap: 3px;
+	}
+	.header-balance span {
+		font-size: 0.8rem;
+		color: #c3c6c7;
+	}
+	.header-balance strong {
+		font-size: 1.2rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.header-balance .currency-medallion {
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		border: 2px solid #f6d47d;
+		background: #bb7b19;
+		color: #ffe7a1;
+		font-size: 1rem;
+		font-weight: 800;
+	}
+	.prototype-header .flight-title {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		color: #efc16d;
+		font-family: Georgia, serif !important;
+		font-size: clamp(1.5rem, 2.8vw, 2.5rem);
+		text-align: center;
+		text-transform: uppercase;
+		line-height: 0.95;
+		letter-spacing: 0.05em;
+	}
+	.flight-title > span:last-child {
+		transform: scaleX(-1);
+	}
+	.flight-title > span:first-child,
+	.flight-title > span:last-child {
+		width: clamp(30px, 4vw, 60px);
+	}
+	.prototype-header .flight-title span {
+		font-family: Georgia, serif !important;
+	}
+	.flight-title svg {
+		width: 100%;
+		fill: none;
+		stroke: #dcae5f;
+		stroke-width: 3;
+		stroke-linecap: round;
+	}
+	.top-icons {
+		display: flex;
+		justify-self: end;
+		border: 1px solid #56616a;
+		border-radius: 16px;
+		padding: 6px;
+		background: #0b121add;
+	}
+	.top-icons button {
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 44px;
+		padding: 10px;
+		background: transparent;
+		border: 0;
+		border-radius: 8px;
+		color: #cdd4db;
+	}
+	.top-icons button:hover {
+		background: #ffffff12;
+		color: #ffe0a1;
+	}
+	.top-icons svg {
+		width: 24px;
+		height: 24px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.8;
+		stroke-linejoin: round;
+		stroke-linecap: round;
+	}
+	.prototype-header .control-tools {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 4px);
+		z-index: 70;
+		width: min(440px, calc(100vw - 32px));
+		padding: 16px;
+		margin: 0;
+		border: 1px solid #736044;
+		border-radius: 12px;
+		background: #0c151ff7;
+		box-shadow: 0 12px 40px #0008;
+		justify-content: flex-start;
+	}
+	.control-tools[hidden] {
+		display: none;
+	}
+	.control-dock {
+		grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 0.95fr) 112px minmax(
+				145px,
+				0.75fr
+			);
+		grid-template-areas: 'creature risk bet customize action' 'creature risk quick customize action' 'bonus details details details details';
+		align-items: stretch;
+		gap: 12px 20px;
+		padding: 20px;
+		border: 1px solid #99703b;
+		border-radius: 24px;
+		background: linear-gradient(135deg, #101a20f5, #080e12fa);
+		box-shadow:
+			inset 0 0 0 5px #c9963520,
+			0 10px 28px #0004;
+	}
+	.control-dock .dock-label {
+		font-size: 0.85rem;
+		letter-spacing: 0.035em;
+		font-weight: 500;
+		color: #dfc8a9;
+		margin-bottom: 16px;
+	}
+	.creature-control,
+	.risk-control,
+	.bet-control {
+		min-width: 0;
+	}
+	.bird-card-list {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 10px;
+	}
+	.bird-card {
+		min-width: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		text-transform: none;
+		letter-spacing: 0;
+		box-shadow: none;
+	}
+	.bird-portrait {
+		position: relative;
+		display: block;
+		aspect-ratio: 100 / 108;
+		overflow: hidden;
+		border: 1px solid #62696d;
+		border-radius: 12px;
+		background: #0a1217;
+	}
+	.bird-portrait img {
+		position: absolute;
+		top: -131.481%;
+		width: 1553%;
+		height: auto;
+		max-width: none;
+		pointer-events: none;
+	}
+	.bird-name {
+		display: block;
+		margin-top: 8px;
+		color: #aeb4b7;
+		font-size: clamp(0.6rem, 0.9vw, 0.82rem);
+		line-height: 1.25;
+	}
+	.bird-card.selected .bird-portrait {
+		border: 2px solid var(--bird-accent);
+		box-shadow:
+			0 0 0 1px var(--bird-accent),
+			0 0 16px color-mix(in srgb, var(--bird-accent) 40%, transparent);
+	}
+	.bird-card.selected .bird-name {
+		color: var(--bird-accent);
+	}
+	.bird-card:disabled {
+		opacity: 0.75;
+	}
+	.bird-card:focus-visible {
+		outline: 2px solid #ffe0a1;
+		outline-offset: 4px;
+		border-radius: 12px;
+	}
+	.control-dock .risk-selector {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 10px;
+		height: calc(100% - 32px);
+		min-height: 140px;
+		padding: 0;
+		background: transparent;
+	}
+	.control-dock .risk-selector button {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 4px;
+		border: 1px solid #56616a;
+		border-radius: 12px;
+		background: linear-gradient(#182127, #090f13);
+		color: #e2e2de;
+		text-transform: none;
+		font-size: 0.85rem;
+		letter-spacing: 0;
+	}
+	.risk-mountains {
+		width: 62px;
+		max-width: 85%;
+		height: 48px;
+		color: #eeba59;
+	}
+	button[data-risk='safe'] .risk-mountains {
+		color: #79c58d;
+	}
+	button[data-risk='danger'] .risk-mountains {
+		color: #e17b4c;
+	}
+	.control-dock .risk-selector button.active {
+		border: 2px solid #ffd471;
+		background: linear-gradient(#342919, #18140e);
+		box-shadow: 0 0 16px #f7b52d44;
+	}
+	.risk-selector small {
+		color: #9aa2a6;
+		font-size: 0.6rem;
+		line-height: 1.3;
+		text-align: center;
+	}
+	.control-dock .bet-stepper {
+		height: 62px;
+		gap: 6px;
+		grid-template-columns: 48px minmax(0, 1fr) 48px;
+		background: transparent;
+	}
+	.control-dock .bet-stepper button {
+		width: 48px;
+		height: 62px;
+		min-height: 62px;
+		border: 1px solid #535b5f;
+		border-radius: 12px;
+		background: linear-gradient(#272d31, #14191d);
+		color: #e2e2de;
+	}
+	.control-dock .bet-input-shell {
+		height: 62px;
+		border: 1px solid #3c474e;
+		border-radius: 12px;
+		background: #090f13;
+	}
+	.control-dock .bet-input {
+		font-size: 1.25rem;
+		color: #f7f5ed;
+	}
+	.control-dock .bet-input-shell > span {
+		color: #f7c564;
+	}
+	.bet-heading {
+		flex-wrap: wrap;
+	}
+	.quick-bets {
+		display: grid;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+		gap: 7px;
+		align-items: end;
+	}
+	.quick-bets button {
+		grid-column: auto;
+		min-height: 44px;
+		padding: 8px 2px;
+		border: 1px solid #535b5f;
+		border-radius: 10px;
+		background: linear-gradient(#272d31, #14191d);
+		color: #f1f1eb;
+		font-size: 0.9rem;
+	}
+	.quick-bets button.active {
+		border: 2px solid #ffd471;
+		color: #fff4d2;
+		background: linear-gradient(#775323, #312213);
+		box-shadow: 0 0 12px #f7b52d44;
+	}
+	.control-dock .fly-button {
+		grid-area: action;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		min-height: 168px;
+		margin: 0;
+		padding: 16px;
+		border: 2px solid #ffe8a3;
+		border-radius: 20px;
+		color: #472605;
+		background: linear-gradient(145deg, #ffda70, #f2af2d 55%, #c47812);
+		box-shadow:
+			inset 0 0 0 3px #ffdf7d55,
+			0 0 22px #e8a32644;
+		font-size: clamp(1.1rem, 2vw, 2rem);
+		letter-spacing: 0.04em;
+		text-shadow: 0 1px #ffe8a1;
+	}
+	.control-dock .fly-button.launch-ready {
+		font-size: clamp(2rem, 3.7vw, 3.4rem);
+		font-weight: 900;
+	}
+	.control-dock .fly-button small {
+		display: block;
+		padding: 8px 12px;
+		border-radius: 10px;
+		background: #74420c33;
+		color: #fff7dd;
+		font-size: 1.1rem;
+		letter-spacing: 0;
+		text-shadow: 0 1px 2px #62380b;
+	}
+	.control-dock .fly-button:hover:not(:disabled) {
+		background: linear-gradient(145deg, #ffe59a, #ffc147 55%, #dd931f);
+	}
+	.control-dock button:focus-visible {
+		outline-color: #ffe0a1;
+	}
+	.control-dock .dock-customize {
+		grid-area: customize;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 20px;
+		min-height: 168px;
+		padding: 16px 8px;
+		border: 1px solid #56616a;
+		border-radius: 18px;
+		background: linear-gradient(#182127, #090f13);
+		color: #dfc8a9;
+		font-size: 0.75rem;
+		letter-spacing: 0.025em;
+	}
+	.dock-customize svg {
+		width: 36px;
+		height: 36px;
+		fill: #111a20;
+		stroke: #dfbc85;
+		stroke-width: 2;
+		stroke-linecap: round;
+	}
+	.control-dock .dock-customize:hover:not(:disabled) {
+		border-color: #e1bb76;
+		background: #1b252b;
+	}
+	@media (max-width: 700px) {
+		.control-dock .dock-customize {
+			flex-direction: row;
+			gap: 10px;
+			min-height: 48px;
+			padding: 8px 12px;
+			border-radius: 10px;
+		}
+		.dock-customize svg {
+			width: 26px;
+			height: 26px;
+		}
+	}
+	.control-dock .dock-bonus {
+		grid-area: bonus;
+		min-height: 32px;
+		align-self: center;
+		justify-self: start;
+		padding: 6px 10px;
+		border: 1px solid #755931;
+		border-radius: 6px;
+		background: #151b1e;
+		color: #dfb66d;
+		font-size: 0.65rem;
+	}
+	.dock-bonus span {
+		margin-left: 6px;
+	}
+	.bet-panel-footer {
+		align-self: center;
+		padding-top: 0;
+	}
+	@media (max-width: 1100px) {
+		.control-dock {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 112px minmax(145px, 0.8fr);
+			grid-template-areas: 'creature creature risk risk' 'bet quick customize action' 'bonus details details details';
+			gap: 14px;
+			padding: 16px;
+		}
+		.control-dock .risk-selector {
+			min-height: 132px;
+		}
+		.control-dock .fly-button {
+			min-height: 160px;
+		}
+	}
+	@media (max-width: 700px) {
+		.prototype-header {
+			grid-template-columns: 1fr auto;
+			gap: 10px;
+			padding: 4px 0;
+		}
+		.prototype-header .flight-title {
+			grid-column: 1 / -1;
+			grid-row: 1;
+			justify-self: center;
+			font-size: 1.8rem;
+		}
+		.header-balance {
+			grid-row: 2;
+			padding: 6px 10px;
+			gap: 8px;
+		}
+		.header-balance strong {
+			font-size: 1rem;
+		}
+		.top-icons {
+			grid-row: 2;
+		}
+		.top-icons button {
+			width: 40px;
+			height: 38px;
+		}
+		.control-dock {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			grid-template-areas: 'creature creature' 'risk risk' 'bet action' 'quick action' 'customize customize' 'bonus bonus' 'details details';
+			padding: 14px;
+			gap: 14px;
+			border-radius: 18px;
+		}
+		.control-dock .dock-label {
+			margin-bottom: 10px;
+			font-size: 0.75rem;
+		}
+		.bird-card-list {
+			gap: 8px;
+		}
+		.bird-name {
+			font-size: 0.7rem;
+		}
+		.bird-portrait {
+			aspect-ratio: 1;
+		}
+		.bird-portrait img {
+			top: -140%;
+		}
+		.control-dock .risk-selector {
+			min-height: 110px;
+			height: auto;
+		}
+		.control-dock .risk-selector button {
+			gap: 5px;
+		}
+		.risk-mountains {
+			height: 36px;
+		}
+		.control-dock .fly-button {
+			min-height: 136px;
+			padding: 8px;
+			font-size: 1.05rem;
+		}
+		.control-dock .fly-button.launch-ready {
+			font-size: 2.4rem;
+		}
+		.control-dock .bet-stepper {
+			grid-template-columns: 30px minmax(0, 1fr) 30px;
+			height: 48px;
+		}
+		.control-dock .bet-stepper button {
+			width: 30px;
+			height: 48px;
+			min-height: 48px;
+		}
+		.control-dock .bet-input-shell {
+			height: 48px;
+		}
+		.control-dock .bet-input {
+			font-size: 1rem;
+		}
+		.quick-bets {
+			gap: 4px;
+		}
+		.quick-bets button {
+			font-size: 0.7rem;
+			min-height: 38px;
+		}
+		.bet-panel-footer {
+			flex-direction: column;
+			gap: 4px;
+		}
+	}
+	.world .prototype-header {
+		position: absolute;
+		top: 12px;
+		left: 12px;
+		right: 12px;
+		z-index: 60;
+		width: auto;
+		margin: 0;
+		padding: 0;
+		pointer-events: none;
+	}
+	.world .prototype-header .header-balance,
+	.world .prototype-header .top-icons,
+	.world .prototype-header .control-tools {
+		pointer-events: auto;
+	}
+	.world .replay-label {
+		top: 152px;
+	}
+	@media (max-width: 700px) {
+		.world .prototype-header {
+			top: 10px;
+			left: 10px;
+			right: 10px;
+		}
+		.world .replay-label {
+			top: 200px;
+		}
+	}
+	/* Keep the scene compact and leave the bird unobstructed on phones. */
+	.game-layout {
+		flex: 0 0 auto;
+		grid-template-rows: auto auto;
+	}
+	.world {
+		height: clamp(300px, 45dvh, 480px);
+	}
+	.header-balance,
+	.top-icons {
+		background: rgba(9, 18, 26, 0.64);
+		border-color: rgba(178, 193, 205, 0.3);
+		backdrop-filter: blur(8px);
+	}
+	@media (max-width: 700px) {
+		.world {
+			height: clamp(260px, 35dvh, 320px);
+		}
+		.world .prototype-header {
+			grid-template-columns: auto minmax(0, 1fr) auto;
+			gap: 6px;
+			align-items: center;
+		}
+		.world .prototype-header .header-balance {
+			grid-column: 1;
+			grid-row: 1;
+			padding: 6px 8px;
+			gap: 6px;
+			border-radius: 12px;
+		}
+		.header-balance span {
+			font-size: 0.58rem;
+		}
+		.header-balance strong {
+			font-size: 0.85rem;
+		}
+		.header-balance .currency-medallion {
+			width: 22px;
+			height: 22px;
+			font-size: 0.75rem;
+		}
+		.world .prototype-header .flight-title {
+			grid-column: 2;
+			grid-row: 1;
+			gap: 3px;
+			font-size: clamp(0.85rem, 3.6vw, 1.2rem);
+		}
+		.flight-title > span:first-child,
+		.flight-title > span:last-child {
+			width: 12px;
+		}
+		.world .prototype-header .top-icons {
+			grid-column: 3;
+			grid-row: 1;
+			padding: 3px;
+			border-radius: 12px;
+		}
+		.top-icons button {
+			width: 32px;
+			height: 36px;
+			padding: 6px;
+		}
+		.top-icons svg {
+			width: 20px;
+			height: 20px;
+		}
+		.world .replay-label {
+			top: 64px;
+		}
+		.world .start-hint {
+			bottom: 66px;
+			max-width: 80%;
+			padding: 6px 8px;
+			font-size: 0.55rem;
+			white-space: normal;
+			text-align: center;
+			line-height: 1.4;
+		}
+	}
+	.bonus-gift,
+	.bonus-arrow {
+		display: none;
+	}
+	@media (max-width: 700px) {
+		.world .start-hint {
+			display: none;
+		}
+		.control-dock {
+			gap: 10px;
+			padding: 12px;
+		}
+		.control-dock .dock-label {
+			margin-bottom: 7px;
+			font-size: 0.65rem;
+		}
+		.bird-card-list {
+			gap: 8px;
+		}
+		.bird-portrait {
+			aspect-ratio: 1.1;
+			border-radius: 9px;
+		}
+		.bird-portrait img {
+			top: -154%;
+		}
+		.bird-name {
+			font-size: 0.58rem;
+			margin-top: 5px;
+		}
+		.control-dock .risk-selector {
+			min-height: 78px;
+			gap: 8px;
+		}
+		.control-dock .risk-selector button {
+			padding: 7px 3px;
+			gap: 3px;
+			border-radius: 9px;
+			font-size: 0.7rem;
+		}
+		.risk-mountains {
+			height: 30px;
+		}
+		.risk-selector small {
+			font-size: 0.5rem;
+		}
+		.bet-heading small {
+			display: none;
+		}
+		.control-dock .bet-stepper,
+		.control-dock .bet-stepper button,
+		.control-dock .bet-input-shell {
+			height: 40px;
+			min-height: 40px;
+		}
+		.control-dock .bet-input {
+			font-size: 0.85rem;
+		}
+		.control-dock .fly-button {
+			min-height: 100px;
+			border-radius: 12px;
+			gap: 6px;
+		}
+		.control-dock .fly-button.launch-ready {
+			font-size: 2rem;
+		}
+		.control-dock .fly-button small {
+			font-size: 0.85rem;
+			padding: 5px 12px;
+		}
+		.quick-bets button {
+			min-height: 30px;
+			font-size: 0.6rem;
+			border-radius: 7px;
+		}
+		.control-dock .dock-customize {
+			min-height: 40px;
+			padding: 6px 10px;
+			font-size: 0.65rem;
+		}
+		.control-dock .dock-bonus {
+			width: 100%;
+			min-height: 40px;
+			display: flex;
+			align-items: center;
+			gap: 7px;
+			padding: 6px 10px;
+			border-radius: 9px;
+			text-align: left;
+			font-size: 0.6rem;
+		}
+		.dock-bonus span {
+			margin: 0;
+			font-size: 0.55rem;
+		}
+		.bonus-gift,
+		.bonus-arrow {
+			display: block;
+			width: 18px;
+			height: 18px;
+			fill: none;
+			stroke: currentColor;
+			stroke-width: 1.6;
+		}
+		.bonus-arrow {
+			margin-left: auto;
+			width: 14px;
+		}
+		.bet-panel-footer .risk-note {
+			display: none;
+		}
+		.bet-panel-footer:has(> span:last-child:empty) {
+			display: none;
+		}
+		.bet-panel-footer {
+			font-size: 0.55rem;
+		}
+	}
+	@media (min-width: 701px) {
+		.game-layout {
+			flex: 1 0 auto;
+			grid-template-rows: minmax(280px, 1fr) auto;
+		}
+		.world {
+			height: auto;
+		}
+	}
+	.world {
+		--glass-background: rgba(9, 18, 26, 0.64);
+		--glass-border: rgba(178, 193, 205, 0.3);
+		--glass-text: #cdd4db;
+	}
+	.world .header-balance,
+	.world .top-icons,
+	.world .event-callout {
+		background: var(--glass-background);
+		border-color: var(--glass-border);
+		color: var(--glass-text);
+		backdrop-filter: blur(8px);
+	}
+	.world .event-callout {
+		color: var(--glass-text);
+	}
+	.world .event-callout {
+		border-radius: 16px;
+	}
+	@media (max-width: 700px) {
+		.world .event-callout {
+			border-radius: 12px;
+		}
+	}
+
+	/* Permanent flight HUD: status, multiplier, and visual progress only. */
+	.flight-hud {
+		position: absolute;
+		z-index: 11;
+		top: 100px;
+		left: 16px;
+		right: 16px;
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+		pointer-events: none;
+	}
+	.round-status,
+	.multiplier-readout {
+		background: var(--glass-background);
+		backdrop-filter: blur(8px);
+		border-radius: 12px;
+		color: var(--glass-text);
+		white-space: nowrap;
+	}
+	.round-status {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		padding: 8px 11px;
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+	}
+	.round-status::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+	.round-status.danger {
+		color: #ff9a6a;
+	}
+	.multiplier-readout {
+		padding: 6px 12px;
+	}
+	.multiplier-readout strong {
+		font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+		line-height: 1.15;
+		font-variant-numeric: tabular-nums;
+	}
+	.flight-progress {
+		position: absolute;
+		z-index: 10;
+		bottom: 22px;
+		left: 50%;
+		width: min(340px, 60%);
+		height: 3px;
+		transform: translateX(-50%);
+		border-radius: 999px;
+		background: #c6ab694d;
+		pointer-events: none;
+	}
+	.flight-progress i {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: #efc56e;
+		transition: width 0.3s ease;
+	}
+	.flight-progress b {
+		position: absolute;
+		top: 50%;
+		width: 7px;
+		height: 7px;
+		transform: translate(-50%, -50%);
+		border-radius: 50%;
+		background: #ffe7aa;
+		transition: left 0.3s ease;
+	}
+	@media (max-width: 700px) {
+		.flight-hud {
+			top: 62px;
+			left: 12px;
+			right: 12px;
+			gap: 8px;
+		}
+		.round-status {
+			padding: 6px 9px;
+			font-size: 0.55rem;
+		}
+		.multiplier-readout {
+			padding: 4px 10px;
+		}
+		.multiplier-readout strong {
+			font-size: 1.3rem;
+		}
+		.flight-progress {
+			bottom: 12px;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.flight-progress i,
+		.flight-progress b {
+			transition: none;
 		}
 	}
 </style>
