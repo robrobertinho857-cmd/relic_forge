@@ -44,15 +44,18 @@
 		);
 	}
 	async function connectStake() {
+		const token = presentationToken;
 		flightError = '';
 		if (new URLSearchParams(window.location.search).get('replay') === 'true') {
 			replayMode = true;
 			wallet = { ...wallet, busy: true };
 			try {
 				const loaded = await loadStakeReplay(window.location.search);
+				if (token !== presentationToken) return;
 				sharedReplay = loaded.round;
 				wallet = { ...wallet, live: true, ready: true, currency: loaded.currency, error: '' };
 			} catch (error) {
+				if (token !== presentationToken) return;
 				wallet = {
 					...wallet,
 					ready: false,
@@ -63,6 +66,7 @@
 			return;
 		}
 		const recovered = await stakeSession.connect(window.location.search, import.meta.env.DEV);
+		if (token !== presentationToken) return;
 		if (!wallet.ready) return;
 		if (wallet.live) {
 			selectedBet = wallet.defaultBet / 1e6;
@@ -85,8 +89,10 @@
 		}
 	}
 	async function startStakeFlight(bonusId?: BonusFlightId) {
+		const token = presentationToken;
 		try {
 			const response = await stakeSession.play(bonusId ?? selectedRisk, stakeAmount);
+			if (token !== presentationToken) return;
 			let round: FlightRound;
 			try {
 				round = decodeStakeRound(response, {
@@ -104,7 +110,8 @@
 			bonusOpen = false;
 			beginFlight(round);
 		} catch (error) {
-			flightError = error instanceof Error ? error.message : 'Could not start flight';
+			if (token === presentationToken)
+				flightError = error instanceof Error ? error.message : 'Could not start flight';
 		}
 	}
 	import { FlightAudio, resultSound } from './audio';
@@ -123,7 +130,7 @@
 		}
 	}
 	$effect(() => {
-		flightAudio.setWeather(activeWeather);
+		flightAudio.setWeather(sceneWeather);
 	});
 	$effect(() => {
 		const animation = activeCreature.flightAnimation;
@@ -189,6 +196,9 @@
 		resizeFlock,
 		updateBirdBody,
 	} from './flock/presentation';
+	import { PresentationTimeline, easeOut, presentationSpeed } from './flock/timeline';
+	import { settleRoundOnce } from './flock/settlement';
+	import { runFlockTimeline, presentationKind } from './flock/director';
 	import CustomizeDrawer from './components/CustomizeDrawer.svelte';
 	import EndingEffect from './components/EndingEffect.svelte';
 	import TerrainObstacle from './components/TerrainObstacle.svelte';
@@ -309,21 +319,14 @@
 	let warningSequence = 0;
 	let comboSequence = 0;
 	let gateResolver: (() => void) | undefined;
-	let stageAnnouncementTimer: ReturnType<typeof setTimeout> | undefined;
-	let comboTimer: ReturnType<typeof setTimeout> | undefined;
-	let valueAnimationFrame = 0;
-	let cancelValueAnimation: (() => void) | undefined;
-	let pendingDelays: Array<() => void> = [];
-
-	// Balanced flights reveal 25% faster; server timing restrictions still take priority.
-	const flightPlaybackSpeed = $derived(
-		wallet.turboDisabled
-			? 1
-			: playbackSpeed *
-					(currentRound?.flock && currentRound.risk === 'balanced' && !currentRound.bonusFlight
-						? 1.25
-						: 1),
-	);
+	const timeline = new PresentationTimeline();
+	const pendingSettlements = new Map<number, Promise<void>>();
+	let flockEventStartMultiplier = 1;
+	let flockDangerTarget = $state<{ x: number; y: number; progress: number; worldWidth: number }>();
+	let flockEventPhase = '';
+	let flockGateBase: ActiveGate | undefined;
+	let impactEnvelope = $state(0);
+	const flightPlaybackSpeed = $derived(presentationSpeed(playbackSpeed, wallet.turboDisabled));
 	const controlsLocked = $derived(
 		replayMode || status !== 'ready' || wallet.busy || !wallet.ready || wallet.active,
 	);
@@ -342,6 +345,7 @@
 	);
 	// Route atmosphere is cosmetic; it never changes the stored result or payout.
 	const activeWeather = $derived(currentRound?.weather ?? selectedWeather);
+	const sceneWeather = $derived(championActive ? 'storm' : activeWeather);
 	const activeTimeOfDay = $derived(
 		currentRound?.timeOfDay ?? (selectedRisk === 'safe' ? 'day' : selectedTimeOfDay),
 	);
@@ -427,66 +431,17 @@
 		betInput = formatBetInput(selectedBet);
 	}
 
-	function delay(milliseconds: number, followFlightSpeed = true) {
-		return new Promise<void>((resolve) => {
-			let settled = false;
-			let timer: ReturnType<typeof setTimeout>;
-			const finish = () => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(timer);
-				pendingDelays = pendingDelays.filter((cancelDelay) => cancelDelay !== finish);
-				resolve();
-			};
-			timer = setTimeout(finish, milliseconds / (followFlightSpeed ? flightPlaybackSpeed : 1));
-			pendingDelays = [...pendingDelays, finish];
-		});
+	async function delay(milliseconds: number, followFlightSpeed = true) {
+		await timeline.animate(milliseconds, presentationToken, undefined, followFlightSpeed);
 	}
-
-	function clearPresentationDelays() {
-		const cancelDelays = pendingDelays;
-		pendingDelays = [];
-		for (const cancelDelay of cancelDelays) cancelDelay();
-	}
-
 	function animatePresentationValues(
 		duration: number,
 		update: (progress: number) => void,
 		token: number,
 		followFlightSpeed = true,
 	) {
-		cancelValueAnimation?.();
-
-		return new Promise<void>((resolve) => {
-			let settled = false;
-			const startedAt = performance.now();
-			const finish = () => {
-				if (settled) return;
-				settled = true;
-				if (valueAnimationFrame) cancelAnimationFrame(valueAnimationFrame);
-				valueAnimationFrame = 0;
-				if (cancelValueAnimation === finish) cancelValueAnimation = undefined;
-				resolve();
-			};
-			const tick = (now: number) => {
-				if (token !== presentationToken) {
-					finish();
-					return;
-				}
-				const speed = followFlightSpeed ? flightPlaybackSpeed : 1;
-				const linearProgress = Math.min(1, ((now - startedAt) * speed) / duration);
-				const easedProgress = 1 - Math.pow(1 - linearProgress, 3);
-				update(easedProgress);
-				if (linearProgress >= 1) finish();
-				else valueAnimationFrame = requestAnimationFrame(tick);
-			};
-
-			cancelValueAnimation = finish;
-			update(0);
-			valueAnimationFrame = requestAnimationFrame(tick);
-		});
+		return timeline.animate(duration, token, (p) => update(easeOut(p)), followFlightSpeed);
 	}
-
 	async function animateCurrentMultiplier(target: number, duration: number, token: number) {
 		const startingMultiplier = currentMultiplier;
 		multiplierPulse = true;
@@ -516,15 +471,14 @@
 	}
 
 	function showCombo(count: number) {
-		comboFeedback = { id: ++comboSequence, count };
-		if (comboTimer) clearTimeout(comboTimer);
-		comboTimer = setTimeout(() => {
-			comboFeedback = undefined;
-			comboTimer = undefined;
-		}, 720 / flightPlaybackSpeed);
+		const id = ++comboSequence;
+		const token = presentationToken;
+		comboFeedback = { id, count };
+		void timeline.animate(650, token).then((ok) => {
+			if (ok && token === presentationToken && comboFeedback?.id === id) comboFeedback = undefined;
+		});
 		emitParticles(Math.min(24, 7 + count * 3));
 	}
-
 	function cancelPresentation() {
 		flightAudio.stopEffects();
 		presentationToken += 1;
@@ -537,20 +491,19 @@
 		const resolveGate = gateResolver;
 		gateResolver = undefined;
 		resolveGate?.();
-		clearPresentationDelays();
-		if (stageAnnouncementTimer) clearTimeout(stageAnnouncementTimer);
-		stageAnnouncementTimer = undefined;
-		if (comboTimer) clearTimeout(comboTimer);
-		comboTimer = undefined;
-		cancelValueAnimation?.();
-		cancelValueAnimation = undefined;
-		valueAnimationFrame = 0;
+		timeline.cancel();
+		impactEnvelope = 0;
+		hunterShot = undefined;
+		activeGate = undefined;
+		particles = [];
+		championAnnouncement = false;
 		stageAnnouncement = undefined;
 		eventWarning = undefined;
 		comboFeedback = undefined;
 		activePickup = undefined;
 		activeCurrent = undefined;
 		activeEncounter = undefined;
+		flockDangerTarget = undefined;
 		activeEnding = undefined;
 		landingProgress = 0;
 		multiplierPulse = false;
@@ -567,11 +520,12 @@
 			name: stage.name,
 			order: stage.order,
 		};
-		if (stageAnnouncementTimer) clearTimeout(stageAnnouncementTimer);
-		stageAnnouncementTimer = setTimeout(() => {
-			stageAnnouncement = undefined;
-			stageAnnouncementTimer = undefined;
-		}, 1050 / flightPlaybackSpeed);
+		const id = stageAnnouncement.id;
+		const token = presentationToken;
+		void timeline.animate(800, token).then((ok) => {
+			if (ok && token === presentationToken && stageAnnouncement?.id === id)
+				stageAnnouncement = undefined;
+		});
 		if (changed) emitParticles(6 + Math.round(stage.intensity * 12));
 	}
 
@@ -580,7 +534,8 @@
 			? 'STORM_HIGHLANDS'
 			: stageForEventIndex(round.stagePlan, eventIndex);
 		enterStage(nextStage, eventIndex === 0);
-		flightProgress = Math.min(100, ((eventIndex + 1) / round.events.length) * 100);
+		if (!round.flock)
+			flightProgress = Math.min(100, ((eventIndex + 1) / round.events.length) * 100);
 	}
 
 	function triggerFlap() {
@@ -597,13 +552,13 @@
 		);
 	}
 
-	function emitParticles(count: number, impact = false) {
+	function emitParticles(count: number, impact = false, origin = player.position) {
 		const additions = Array.from(
 			{ length: count },
 			(): FlightParticle => ({
 				id: particleSequence++,
-				x: player.position.x + (impact ? player.radius : -player.radius),
-				y: player.position.y + (Math.random() - 0.5) * player.radius * 1.5,
+				x: origin.x + (impact ? player.radius : -player.radius),
+				y: origin.y + (Math.random() - 0.5) * player.radius * 1.5,
 				velocityX: impact ? (Math.random() - 0.5) * 220 : -60 - Math.random() * 100,
 				velocityY: (Math.random() - 0.5) * (impact ? 230 : 95),
 				life: 0.35 + Math.random() * 0.45,
@@ -635,6 +590,7 @@
 		activePickup = undefined;
 		activeCurrent = undefined;
 		activeEncounter = undefined;
+		flockDangerTarget = undefined;
 		activeEnding = undefined;
 		comboCount = 0;
 		impactActive = false;
@@ -668,40 +624,7 @@
 		};
 	}
 
-	async function presentHunterShot(birdId: CreatureId, hit: boolean, token: number) {
-		const bird = activeBirds.find((bird) => bird.id === birdId && bird.alive);
-		if (!bird) return;
-		eventCallout = hit ? 'HUNTER TAKES AIM' : 'HUNTER · INCOMING SHOT';
-		const target = () => {
-			const position =
-				activeBirds.find((bird) => bird.id === birdId)?.body.position ?? bird.body.position;
-			return { x: position.x, y: position.y + (hit ? 0 : -80) };
-		};
-		hunterShot = { target: target(), progress: -1, hit };
-		await delay(180);
-		if (token !== presentationToken) return;
-		void flightAudio.play('crash', 0.22, 'hunter-shot');
-		await animatePresentationValues(
-			480,
-			(progress) => {
-				hunterShot = { target: target(), progress, hit };
-			},
-			token,
-		);
-		if (token !== presentationToken) return;
-		hunterShot = undefined;
-		if (!hit) eventCallout = 'SHOT MISSED · FLOCK CONTINUES';
-	}
-
 	async function presentGate(event: Extract<FlightEvent, { type: 'gate' }>) {
-		if (currentRound?.flock && !championActive) {
-			const bird = activeBirds.filter((bird) => bird.alive)[
-				(event.gate - 1) % activeBirds.filter((bird) => bird.alive).length
-			];
-			if (bird) await presentHunterShot(bird.id, false, presentationToken);
-			await delay(380);
-			return;
-		}
 		activeGate = createPresentedGate(event);
 		eventLabel = HAZARD_LABELS[event.hazard];
 		eventCallout = `${HAZARD_LABELS[event.hazard]} · GATE ${event.gate}`;
@@ -871,6 +794,7 @@
 		await delay(event.result === 'crash' ? 420 : 300);
 		if (token !== presentationToken) return;
 		activeEncounter = undefined;
+		flockDangerTarget = undefined;
 		impactActive = event.result === 'crash';
 	}
 
@@ -926,9 +850,15 @@
 	}
 
 	async function presentFinalResult(round: FlightRound, token: number) {
+		if (token !== presentationToken) return;
 		if (wallet.live && !isReplay && !settledRounds.has(round.id)) {
 			try {
-				await stakeSession.settle();
+				await settleRoundOnce(
+					round.id,
+					() => stakeSession.settle(),
+					pendingSettlements,
+					settledRounds,
+				);
 			} catch {
 				return;
 			}
@@ -945,10 +875,39 @@
 		const tier = getWinTier(round.finalWin / (round.entryCost ?? round.bet));
 		eventLabel = tier.label;
 		eventCallout = round.flock?.bonusTriggered
-			? 'CHAMPION FLIGHT COMPLETE'
+			? round.flock.bonus?.ending === 'crash'
+				? 'BONUS FAILED · BASE WIN RETAINED'
+				: 'CHAMPION BONUS WON'
 			: round.ending === 'crash'
 				? 'CRASH'
 				: tier.label;
+
+		if (round.flock) {
+			activeGate = undefined;
+			activeCurrent = undefined;
+			activePickup = undefined;
+			activeEncounter = undefined;
+			flockDangerTarget = undefined;
+			hunterShot = undefined;
+			flightProgress = 100;
+			currentMultiplier = round.finalMultiplier;
+			finalMultiplier = round.finalMultiplier;
+			finalWin = round.finalWin;
+			const bonus = round.flock.bonus;
+			if (bonus && bonus.ending !== 'crash')
+				eventCallout = `BONUS WON · +${formatLocalAmount(round.bet * bonus.multiplier)}`;
+			void flightAudio.play(
+				bonus?.ending === 'crash'
+					? 'result-return'
+					: resultSound(round.finalWin, round.entryCost ?? round.bet),
+				0.35,
+				'result',
+			);
+			await delay(450);
+			if (token !== presentationToken) return;
+			status = 'complete';
+			return;
+		}
 
 		if (round.finalWin <= 0) {
 			void flightAudio.play(
@@ -993,54 +952,179 @@
 		status = 'complete';
 	}
 
+	function beginFlockEvent(event: FlightEvent, index: number) {
+		eventProgress = index + 1;
+		flockEventStartMultiplier = currentMultiplier;
+		flockEventPhase = '';
+		flockDangerTarget = undefined;
+		activeGate = undefined;
+		activePickup = undefined;
+		activeCurrent = undefined;
+		activeEncounter = undefined;
+		flockDangerTarget = undefined;
+		hunterShot = undefined;
+		status = 'flying';
+		const kind = presentationKind(event);
+		flightTargetY = bounds.floorY * (kind === 'wind' ? 0.44 : kind === 'predator' ? 0.56 : 0.5);
+		eventLabel = kind.toUpperCase();
+		eventCallout =
+			event.type === 'gate'
+				? HAZARD_LABELS[event.hazard]
+				: event.type === 'elimination'
+					? `${getCreature(event.bird).name.toUpperCase()} · ${event.reason.toUpperCase()} DANGER`
+					: event.type === 'pickup'
+						? PICKUP_LABELS[event.pickupType]
+						: event.type === 'current'
+							? CURRENT_LABELS[event.currentType]
+							: event.type === 'encounter'
+								? 'PREDATOR APPROACHING'
+								: event.type === 'championFlight'
+									? '4/4 SURVIVED'
+									: event.type === 'ending'
+										? ENDING_LABELS[event.ending]
+										: '';
+		if (event.type === 'launch') {
+			void flightAudio.play('wind', 0.4, 'flock-launch');
+			emitParticles(12);
+		}
+		if (kind === 'terrain') {
+			flockGateBase = createPresentedGate(
+				event.type === 'gate'
+					? event
+					: { type: 'gate', gate: index + 1, hazard: 'cliffGap', gapRatio: 0.5, result: 'pass' },
+			);
+			flockGateBase.gapCenterY =
+				(bounds.floorY + Math.min(165, Math.max(145, bounds.height * 0.38))) / 2;
+			flockGateBase.gapHeight = bounds.floorY - Math.min(125, bounds.height * 0.34);
+			activeGate = flockGateBase;
+		}
+		if (event.type === 'pickup') {
+			activePickup = {
+				pickupType: event.pickupType,
+				fromMultiplier: currentMultiplier,
+				toMultiplier: event.multiplier,
+			};
+			void flightAudio.play('feather-pickup', 0.3, 'pickup');
+		}
+		if (kind === 'wind') void flightAudio.play('air-current', 0.3);
+		if (kind === 'predator') void flightAudio.play('encounter-warning', 0.3);
+		if (event.type === 'championFlight') {
+			landingProgress = 0;
+			championAnnouncement = true;
+			void flightAudio.play('bonus-start', 0.4);
+		}
+		if (event.type === 'ending') {
+			activeEnding = event.ending;
+			status = 'ending';
+			landingProgress = 0;
+		}
+	}
+	function frameFlockEvent(event: FlightEvent, p: number) {
+		const kind = presentationKind(event);
+		const phase = p < 0.3 ? 'enter' : p < 0.72 ? 'engage' : 'resolve';
+		if (kind === 'terrain' && flockGateBase)
+			activeGate = {
+				...flockGateBase,
+				x: bounds.width + flockGateBase.width - p * (bounds.width + flockGateBase.width * 2),
+			};
+		if (kind === 'hunter' && event.type === 'elimination' && p < 0.52) {
+			const target = activeBirds.find((b) => b.id === event.bird)?.body.position;
+			if (target) hunterShot = { target, hit: true, progress: p < 0.16 ? -1 : (p - 0.16) / 0.36 };
+		}
+		if (kind === 'predator' && (event.type === 'elimination' || championActive)) {
+			const id = event.type === 'elimination' ? event.bird : 'archaeopteryx';
+			const bird = activeBirds.find((b) => b.id === id);
+			if (bird)
+				flockDangerTarget = {
+					...bird.body.position,
+					progress: Math.min(1, p / 0.52),
+					worldWidth: bounds.width,
+				};
+		}
+		if (phase !== flockEventPhase) {
+			flockEventPhase = phase;
+			if (kind === 'wind')
+				activeCurrent = {
+					currentType: event.type === 'current' ? event.currentType : 'crosswind',
+					phase: phase === 'enter' ? 'approach' : phase === 'engage' ? 'enter' : 'release',
+					multiplier: 'multiplier' in event ? event.multiplier : currentMultiplier,
+				};
+			if (kind === 'predator')
+				activeEncounter = {
+					encounterType: event.type === 'encounter' ? event.encounterType : 'ridgeDragon',
+					result: event.type === 'encounter' ? event.result : 'crash',
+					phase,
+				};
+		}
+		if ('multiplier' in event && event.type !== 'finalWin')
+			currentMultiplier =
+				flockEventStartMultiplier + (event.multiplier - flockEventStartMultiplier) * easeOut(p);
+		if (event.type === 'ending') landingProgress = p;
+		if (event.type === 'championFlight' && p > 0.8) championAnnouncement = false;
+	}
+	function commitFlockEvent(event: FlightEvent) {
+		if (event.type === 'elimination') {
+			const bird = activeBirds.find((b) => b.id === event.bird);
+			if (bird) emitParticles(18, true, bird.body.position);
+			activeBirds = eliminateBird(activeBirds, event.bird, event.reason);
+			hunterShot = undefined;
+			impactEnvelope = 0.18;
+			flockAnnouncement = `${getCreature(event.bird).name} eliminated. ${activeBirds.filter((b) => b.alive).length} of four birds remain.`;
+			void flightAudio.play(
+				event.reason === 'wind' ? 'air-current' : 'crash',
+				0.3,
+				'flock-elimination',
+			);
+		} else if (event.type === 'championFlight') {
+			activeEnding = undefined;
+			activeBirds = startChampion(activeBirds);
+			focusBirdId = 'archaeopteryx';
+			championActive = true;
+			enterStage('STORM_HIGHLANDS');
+			flockAnnouncement = '4/4 survived. Champion Flight started.';
+		} else if (event.type === 'encounter' && event.result === 'crash' && championActive) {
+			activeBirds = eliminateBird(activeBirds, 'archaeopteryx', 'predator');
+			impactEnvelope = 0.18;
+			flockAnnouncement = 'Bonus failed. Base win retained.';
+		} else if (event.type === 'ending') {
+			void flightAudio.play('landing', 0.3);
+			emitParticles(12);
+		}
+	}
+
 	async function presentRound(round: FlightRound, token: number) {
+		if (round.flock) {
+			await runFlockTimeline(round, {
+				valid: () => token === presentationToken,
+				animate: (duration, update) => timeline.animate(duration, token, update),
+				travel: () => {
+					activeGate = undefined;
+					activeCurrent = undefined;
+					activeEncounter = undefined;
+					activePickup = undefined;
+					flockDangerTarget = undefined;
+					hunterShot = undefined;
+					eventLabel = 'FLIGHT';
+					eventCallout = '';
+					status = 'flying';
+				},
+				begin: beginFlockEvent,
+				frame: frameFlockEvent,
+				commit: commitFlockEvent,
+				progress: (value) => {
+					flightProgress = value;
+				},
+				settle: () => presentFinalResult(round, token),
+			});
+			return;
+		}
+
 		for (const [index, event] of round.events.entries()) {
 			if (token !== presentationToken) return;
 			eventProgress = index + 1;
 			updateFlightProgress(round, index);
 
 			switch (event.type) {
-				case 'elimination':
-					if (!championActive) await presentHunterShot(event.bird, true, token);
-					if (token !== presentationToken) return;
-					activeBirds = eliminateBird(
-						activeBirds,
-						event.bird,
-						championActive ? event.reason : 'hunter',
-					);
-					flockAnnouncement = `${getCreature(event.bird).name} eliminated. ${activeBirds.filter((bird) => bird.alive).length} of four birds remain.`;
-					eventCallout = `${getCreature(event.bird).name.toUpperCase()} · ${!championActive ? 'HUNTER HIT' : event.reason === 'predator' ? 'PREDATOR STRIKE' : event.reason === 'wind' ? 'STORM KNOCKBACK' : 'TERRAIN IMPACT'}`;
-					void flightAudio.play(
-						event.reason === 'wind'
-							? 'air-current'
-							: event.reason === 'predator'
-								? 'ridge-dragon-call'
-								: 'crash',
-						0.3,
-						'flock-elimination',
-					);
-					focusBirdId = activeBirds.find((bird) => bird.alive)?.id ?? event.bird;
-					await delay(750);
-					break;
-				case 'championFlight':
-					hunterShot = undefined;
-					championAnnouncement = true;
-					flockAnnouncement = 'All four birds reached the destination. Champion Flight started.';
-					activeEnding = undefined;
-					landingProgress = 0;
-					void flightAudio.play('bonus-start', 0.4);
-					await delay(1300);
-					if (token !== presentationToken) return;
-					activeBirds = startChampion(activeBirds);
-					focusBirdId = 'archaeopteryx';
-					championActive = true;
-					status = 'flying';
-					enterStage('STORM_HIGHLANDS');
-					championAnnouncement = false;
-					flightTargetY = bounds.floorY * 0.45;
-					await delay(450);
-					break;
-
 				case 'launch':
 					void flightAudio.play('wind', 0.5, 'flock-launch');
 					eventLabel = 'LAUNCH';
@@ -1097,15 +1181,8 @@
 					await presentCurrent(event, token);
 					break;
 				case 'encounter':
-					if (round.flock && !championActive) {
-						const bird = activeBirds.find((bird) => bird.alive);
-						if (bird) await presentHunterShot(bird.id, false, token);
-						await animateCurrentMultiplier(event.multiplier, 300, token);
-						break;
-					}
 					await presentEncounter(event, token);
-					if (championActive && event.result === 'crash')
-						activeBirds = eliminateBird(activeBirds, 'archaeopteryx', 'predator');
+
 					break;
 				case 'ending':
 					eventLabel = ENDING_LABELS[event.ending];
@@ -1210,6 +1287,7 @@
 		activePickup = undefined;
 		activeCurrent = undefined;
 		activeEncounter = undefined;
+		flockDangerTarget = undefined;
 		activeEnding = undefined;
 		eventWarning = undefined;
 		comboFeedback = undefined;
@@ -1358,7 +1436,10 @@
 	onMount(() => {
 		document.documentElement.lang = language;
 		document.documentElement.dir = textDirection;
+		let disposed = false;
 		stakeSession = new StakeSession((state) => {
+			if (disposed) return;
+			if (state.error && !wallet.error) cancelPresentation();
 			wallet = state;
 		});
 		void connectStake();
@@ -1435,7 +1516,6 @@
 		document.addEventListener('click', click, true);
 		document.addEventListener('change', change);
 		document.addEventListener('visibilitychange', visibility);
-		let disposed = false;
 		for (const creature of CREATURES) {
 			if (!creature.flightAnimation) continue;
 			void loadDecodedFlightFrames(creature.flightAnimation.frames)
@@ -1452,32 +1532,38 @@
 		let lastTime = performance.now();
 
 		const update = (now: number) => {
-			const deltaSeconds = Math.min((now - lastTime) / 1000, 0.05);
+			const deltaSeconds = document.hidden
+				? 0
+				: Math.max(0, Math.min((now - lastTime) / 1000, 0.05));
 			lastTime = now;
 			const moving = status === 'flying' || status === 'ending' || status === 'collided';
-			const flightDelta =
-				deltaSeconds * flightPlaybackSpeed * (activeGate ? GATE_APPROACH_RATE : 1);
+			const flightDelta = deltaSeconds * flightPlaybackSpeed;
+			timeline.tick(deltaSeconds, flightPlaybackSpeed, presentationToken, document.hidden);
+			impactEnvelope = Math.max(0, impactEnvelope - flightDelta);
 			const environmentSpeed = WORLD_SPEED * currentStage.parallaxSpeed;
 			const presentationSpeed = status === 'collided' ? environmentSpeed * 0.22 : environmentSpeed;
 			parallaxOffset =
 				(parallaxOffset +
-					(dragonVictory ? 0 : moving ? flightDelta * presentationSpeed : deltaSeconds * 30)) %
+					(moving
+						? flightDelta * presentationSpeed * (impactEnvelope > 0 ? 0.65 : 1)
+						: deltaSeconds * 30)) %
 				1800;
-			updateParticles(moving ? flightDelta : deltaSeconds);
+			updateParticles(flightDelta);
 
-			if (!dragonVictory) {
+			if (!dragonVictory || currentRound?.flock) {
 				activeBirds = stepFlock(
 					activeBirds,
-					moving ? flightDelta : deltaSeconds,
+					flightDelta,
 					bounds,
 					flightTargetY,
-					status === 'flying',
+					moving,
 					status === 'ending' ? landingProgress : 0,
 					currentRound?.launchStyle,
 				);
 			}
 			if (status === 'flying') {
-				updateActiveGate(flightDelta);
+				if (!currentRound?.flock)
+					updateActiveGate(flightDelta * (activeGate ? GATE_APPROACH_RATE : 1));
 				distanceTravelled += WORLD_SPEED * flightDelta;
 			}
 			animationFrame = requestAnimationFrame(update);
@@ -1522,22 +1608,23 @@
 			class:has-ending={Boolean(activeEnding)}
 			class:dragon-defeat={Boolean(dragonVictory)}
 			class:bird-burst={Boolean(birdBurst)}
-			class={`world ${currentStage.className} weather-${activeWeather}`}
-			style={`--floor-scroll:${-parallaxOffset}px;`}
+			class={`world ${currentStage.className} weather-${sceneWeather}`}
+			style={`--floor-scroll:${-(parallaxOffset % (43 / Math.sin(Math.PI / 12)))}px;--flight-offset:${parallaxOffset}px;`}
 		>
 			<Landscape
 				ending={activeEnding}
 				stage={currentStageId}
-				weather={activeWeather}
+				weather={sceneWeather}
 				timeOfDay={activeTimeOfDay}
 				{parallaxOffset}
+				playbackSpeed={flightPlaybackSpeed}
 			/>
 			<Atmosphere
 				onThunder={() => {
 					void flightAudio.play('thunder', 0.18, 'thunder');
 				}}
 				finishScene={Boolean(activeEnding)}
-				weather={activeWeather}
+				weather={sceneWeather}
 				timeOfDay={activeTimeOfDay}
 				stageIntensity={currentStage.intensity}
 				{parallaxOffset}
@@ -1740,15 +1827,19 @@
 					aria-valuenow={Math.round(flightProgress)}
 					aria-valuetext={`${Math.round(flightProgress)}% · ${eventProgress}/${currentRound.events.length} · ${eventLabel}`}
 				>
-					<i style={`width:${flightProgress}%;`}></i>
-					<b style={`left:${flightProgress}%;`}></b>
+					<i style={`width:100%;transform:scaleX(${flightProgress / 100});transform-origin:left;`}
+					></i>
+					<b
+						style={`left:0;width:100%;height:100%;border-radius:0;background:none;transform:translate3d(${flightProgress}%,0,0);`}
+						><span class="progress-marker"></span></b
+					>
 				</div>
 			{/if}
 
 			{#if activeGate}
 				<div
 					class={`gate hazard-${activeGate.hazard} ${activeGate.result}`}
-					style={`left:${activeGate.x}px;width:${activeGate.width}px;`}
+					style={`transform:translate3d(${activeGate.x}px,0,0);width:${activeGate.width}px;`}
 				>
 					<TerrainObstacle
 						hazard={activeGate.hazard}
@@ -1784,11 +1875,13 @@
 				<DangerEncounter
 					encounterType={activeEncounter.encounterType}
 					result={activeEncounter.result}
+					target={flockDangerTarget}
 					phase={activeEncounter.phase}
 				/>
 			{/if}
 			{#if birdBurst === 'playing'}
 				<BirdBurst
+					playbackSpeed={flightPlaybackSpeed}
 					bird={activeCreature.id === 'archaeopteryx'
 						? 'archaeopteryx'
 						: activeCreature.id === 'azure-swift'
@@ -1849,11 +1942,20 @@
 			{#each particles as particle (particle.id)}
 				<span
 					class="flight-particle"
-					style={`left:${particle.x}px;top:${particle.y}px;width:${particle.size}px;height:${particle.size}px;opacity:${Math.min(1, particle.life * 2.4)};`}
+					style={`left:0;top:0;transform:translate3d(${particle.x}px,${particle.y}px,0);width:${particle.size}px;height:${particle.size}px;opacity:${Math.min(1, particle.life * 2.4)};`}
 				></span>
 			{/each}
 
+			{#if currentRound?.flock && status !== 'ready' && status !== 'complete'}<div
+					class="flight-speed-lines"
+					class:launching={eventLabel === 'LAUNCH'}
+					class:champion={championActive}
+					style={`transform:translate3d(${-parallaxOffset % 90}px,0,0);`}
+					aria-hidden="true"
+				></div>{/if}
+
 			<Flock
+				playbackSpeed={flightPlaybackSpeed}
 				birds={activeBirds}
 				frames={loadedCreatureFrames}
 				hidden={Boolean(dragonVictory) || birdBurst === 'playing' || birdBurst === 'finished'}
@@ -1867,7 +1969,9 @@
 					round={currentRound}
 					creature={activeCreature}
 					title={currentRound.flock?.bonusTriggered
-						? 'CHAMPION FLIGHT COMPLETE'
+						? currentRound.flock.bonus?.ending === 'crash'
+							? 'BONUS FAILED · BASE WIN RETAINED'
+							: 'CHAMPION BONUS WON'
 						: ENDING_LABELS[currentRound.ending]}
 					entryCost={formatLocalAmount(currentRound.entryCost ?? currentRound.bet)}
 					multiplier={finalMultiplier}
@@ -2111,6 +2215,40 @@
 />
 
 <style>
+	.flight-speed-lines {
+		position: absolute;
+		inset: 100px -90px 40px;
+		pointer-events: none;
+		z-index: 8;
+		opacity: 0.07;
+		background: repeating-linear-gradient(
+			0deg,
+			transparent 0 33px,
+			#d7edff 34px 35px,
+			transparent 36px 74px
+		);
+		mask-image: linear-gradient(
+			90deg,
+			transparent,
+			#0002 12%,
+			transparent 25%,
+			transparent 68%,
+			#0008 90%,
+			transparent
+		);
+	}
+	.flight-speed-lines.champion {
+		opacity: 0.025;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.flight-speed-lines {
+			display: none;
+		}
+	}
+	.flight-speed-lines.launching {
+		opacity: 0.2;
+	}
+
 	.flock-hud-group {
 		display: flex;
 		align-items: flex-start;
@@ -2198,8 +2336,15 @@
 		right: 0;
 		bottom: 0;
 		border-top: 2px solid #7a927b;
+		overflow: hidden;
+		background: #293e36;
+	}
+	.floor::before {
+		content: '';
+		position: absolute;
+		inset: 0 -180px 0 0;
 		background: repeating-linear-gradient(165deg, #293e36 0 22px, #31473e 23px 43px);
-		background-position-x: var(--floor-scroll);
+		transform: translate3d(var(--floor-scroll), 0, 0);
 	}
 	.start-hint {
 		position: absolute;
@@ -3702,7 +3847,7 @@
 	}
 	@media (max-width: 700px) {
 		.world {
-			height: clamp(260px, 35dvh, 320px);
+			height: clamp(300px, 35dvh, 340px);
 		}
 		.world .prototype-header {
 			grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3970,6 +4115,16 @@
 		background: #efc56e;
 		transition: width 0.3s ease;
 	}
+	.progress-marker {
+		position: absolute;
+		top: 50%;
+		left: 0;
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: #ffe7aa;
+		transform: translate(-50%, -50%);
+	}
 	.flight-progress b {
 		position: absolute;
 		top: 50%;
@@ -4012,6 +4167,12 @@
 	.control-dock {
 		grid-template-columns: minmax(240px, 1.2fr) minmax(220px, 1fr) 112px minmax(160px, 0.8fr);
 		grid-template-areas: 'risk bet customize action' 'risk quick customize action' 'bonus details details details';
+	}
+	@media (min-width: 701px) and (max-width: 1000px) {
+		.control-dock {
+			grid-template-columns: minmax(240px, 1fr) 112px minmax(160px, 1fr);
+			grid-template-areas: 'risk risk risk' 'bet customize action' 'quick customize action' 'bonus details details';
+		}
 	}
 	.sr-only {
 		position: absolute;

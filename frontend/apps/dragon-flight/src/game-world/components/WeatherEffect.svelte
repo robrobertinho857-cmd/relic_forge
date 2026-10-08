@@ -23,40 +23,12 @@
 		onThunder,
 	}: Props = $props();
 	const presentation = $derived(getWeather(weather));
-	let lightningVisible = $state(false);
-
+	// Deterministic cosmetic flashes share the world's presentation clock.
+	const lightningVisible = $derived(
+		weather === 'storm' && active && parallaxOffset % 900 > 600 && parallaxOffset % 900 < 625,
+	);
 	$effect(() => {
-		if (weather !== 'storm') {
-			lightningVisible = false;
-			return;
-		}
-
-		let cancelled = false;
-		let flashTimer: ReturnType<typeof setTimeout>;
-		let hideTimer: ReturnType<typeof setTimeout>;
-
-		function scheduleFlash() {
-			const delay = 2800 + Math.random() * 6200;
-			flashTimer = setTimeout(() => {
-				if (cancelled) return;
-				lightningVisible = true;
-				onThunder?.();
-				hideTimer = setTimeout(
-					() => {
-						lightningVisible = false;
-						if (!cancelled) scheduleFlash();
-					},
-					90 + Math.random() * 90,
-				);
-			}, delay);
-		}
-
-		scheduleFlash();
-		return () => {
-			cancelled = true;
-			clearTimeout(flashTimer);
-			clearTimeout(hideTimer);
-		};
+		if (lightningVisible) onThunder?.();
 	});
 </script>
 

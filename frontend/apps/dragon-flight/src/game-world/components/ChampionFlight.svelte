@@ -26,6 +26,17 @@
 		background: var(--glass-background);
 		backdrop-filter: blur(8px);
 		color: #f4cd78;
+		animation: champion-enter calc(0.28s / var(--playback-speed, 1)) ease-out;
+	}
+	@keyframes champion-enter {
+		from {
+			opacity: 0;
+			transform: translate(-50%, -45%) scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translate(-50%, -50%) scale(1);
+		}
 	}
 	span,
 	small {

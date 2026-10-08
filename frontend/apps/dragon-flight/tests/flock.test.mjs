@@ -4,7 +4,8 @@ import { loadTypescript } from './typescript.mjs';
 const load = (name) => loadTypescript(new URL(`../src/game-world/${name}.ts`, import.meta.url));
 const { generateMockRound, generateLegacyMockRound } = await load('mockRound');
 const { validateFlock } = await load('flock/outcome');
-const { createFlock, stepFlock, eliminateBird, startChampion } = await load('flock/presentation');
+const { createFlock, stepFlock, eliminateBird, startChampion, resizeFlock } =
+	await load('flock/presentation');
 const { decodeStakeRound, loadStakeReplay } = await load('stake');
 const { FLOCK_ORDER } = await load('flock/types');
 const { hunterTrajectory } = await load('flock/hunter');
@@ -188,4 +189,252 @@ test('one shared tick stages launches, keeps formations separate and applies onl
 		champion.filter((b) => !b.exiting).map((b) => b.id),
 		['archaeopteryx'],
 	);
+});
+
+const { PresentationTimeline, presentationSpeed } = await load('flock/timeline');
+const { presentationKind, buildFlockTimeline, runFlockTimeline } = await load('flock/director');
+const { settleRoundOnce } = await load('flock/settlement');
+
+test('launch uses 100ms stagger and finishes the four arcs within 0.9s', () => {
+	const bounds = { width: 390, height: 300, floorY: 266 };
+	let birds = createFlock(bounds, samples[0]);
+	assert.deepEqual(
+		birds.map((b) => Math.round(b.launchDelay * 1000)),
+		[0, 100, 200, 300],
+	);
+	const startY = birds.map((b) => b.body.position.y);
+	assert.equal(new Set(startY).size, 4);
+	for (let i = 0; i < 54; i++) birds = stepFlock(birds, 1 / 60, bounds, 170, true, 0);
+	assert(birds.every((b) => b.launched && b.body.position.x > 0));
+	assert.equal(new Set(birds.map((b) => b.frame)).size > 1, true);
+});
+test('formation is frame-rate independent, bounded and preserves positions after elimination', () => {
+	for (const width of [320, 390, 768, 1280]) {
+		const bounds = { width, height: 300, floorY: 266 };
+		const run = (hz) => {
+			let birds = createFlock(bounds, samples[0]);
+			for (let i = 0; i < hz * 4; i++) birds = stepFlock(birds, 1 / hz, bounds, 190, true, 0);
+			return birds;
+		};
+		const fine = run(120);
+		for (const hz of [30, 60]) {
+			const coarse = run(hz);
+			for (let i = 0; i < 4; i++)
+				assert(
+					Math.hypot(
+						coarse[i].body.position.x - fine[i].body.position.x,
+						coarse[i].body.position.y - fine[i].body.position.y,
+					) < 3,
+				);
+		}
+		const before = run(60);
+		let after = eliminateBird(before, 'azure-swift', 'terrain');
+		for (let i = 0; i < 4; i++) assert.deepEqual(before[i].body.position, after[i].body.position);
+		const oneTick = stepFlock(after, 1 / 60, bounds, 150, true, 0);
+		for (const bird of oneTick.filter((b) => b.alive)) {
+			const original = before.find((b) => b.id === bird.id);
+			assert(
+				Math.hypot(
+					bird.body.position.x - original.body.position.x,
+					bird.body.position.y - original.body.position.y,
+				) < 4,
+			);
+		}
+		for (let i = 0; i < 150; i++) after = stepFlock(after, 1 / 60, bounds, 150, true, 0);
+		const dead = after.find((b) => b.id === 'azure-swift');
+		assert.equal(dead.alive, false);
+		assert.equal(dead.visible, false);
+		const handoff = startChampion(after);
+		assert.equal(handoff.find((b) => b.id === 'azure-swift').alive, false);
+		for (let i = 0; i < 4; i++) assert.deepEqual(after[i].body, handoff[i].body);
+	}
+});
+test('hidden-tab gap is clamped and Champion handoff never resets its leader', () => {
+	const bounds = { width: 768, height: 450, floorY: 408 };
+	let birds = createFlock(bounds, samples[0]);
+	for (let i = 0; i < 120; i++) birds = stepFlock(birds, 1 / 60, bounds, 240, true, 0);
+	const champion = startChampion(birds);
+	assert.deepEqual(
+		champion.find((b) => b.id === 'archaeopteryx').body,
+		birds.find((b) => b.id === 'archaeopteryx').body,
+	);
+	const resumed = stepFlock(champion, 40, bounds, 240, true, 0);
+	const arch = resumed.find((b) => b.id === 'archaeopteryx');
+	const old = champion.find((b) => b.id === arch.id);
+	assert(
+		Math.hypot(
+			arch.body.position.x - old.body.position.x,
+			arch.body.position.y - old.body.position.y,
+		) < 45,
+	);
+	assert.equal(arch.age - old.age <= 0.100001, true);
+});
+test('timeline applies playback speed once, supports changes, cancellation and hidden gaps', async () => {
+	for (const speed of [1, 1.5, 2]) {
+		const clock = new PresentationTimeline();
+		let p = 0;
+		const result = clock.animate(900, 1, (value) => (p = value));
+		for (let i = 0; i < 6; i++) clock.tick(0.05, speed, 1);
+		assert(Math.abs(p - speed / 3) < 1e-8);
+		clock.tick(20, speed, 1, true);
+		assert(Math.abs(p - speed / 3) < 1e-8);
+		clock.cancel();
+		assert.equal(await result, false);
+		let staleWrites = 0;
+		const stale = clock.animate(100, 1, () => staleWrites++);
+		clock.tick(0.05, speed, 2);
+		assert.equal(await stale, false);
+		assert.equal(staleWrites, 1);
+		assert.equal(clock.pending, 0);
+	}
+	const clock = new PresentationTimeline();
+	let p = 0;
+	const result = clock.animate(900, 1, (x) => (p = x));
+	for (let i = 0; i < 6; i++) clock.tick(0.05, 1, 1);
+	for (let i = 0; i < 6; i++) clock.tick(0.05, 2, 1);
+	assert.equal(await result, true);
+	assert.equal(p, 1);
+	assert.equal(presentationSpeed(2, true), 1);
+});
+test('dispatcher respects authored elimination causes; timing stays readable in long books', () => {
+	for (const reason of ['hunter', 'terrain', 'wind', 'predator'])
+		assert.equal(presentationKind({ type: 'elimination', bird: 'eagle', reason }), reason);
+	assert.equal(presentationKind({ type: 'gate', hazard: 'forestPass' }), 'terrain');
+	assert.equal(presentationKind({ type: 'gate', hazard: 'windPass' }), 'wind');
+	for (const round of samples) {
+		const plan = buildFlockTimeline(round);
+		assert.equal(plan.filter((s) => s.event.type === 'launch')[0].duration, 800);
+		const championIndex = round.events.findIndex((e) => e.type === 'championFlight');
+		const baseMs = plan
+			.filter((s) => championIndex < 0 || s.index < championIndex)
+			.reduce((n, s) => n + s.duration + s.travel, 0);
+		assert(baseMs >= 6999 && baseMs <= 12000);
+		for (const step of plan) if (step.event.type !== 'finalWin') assert(step.duration >= 400);
+		if (round.flock.bonusTriggered) {
+			const bonus = plan
+				.filter((s) => s.index >= round.events.findIndex((e) => e.type === 'championFlight'))
+				.reduce((n, s) => n + s.duration, 0);
+			assert(bonus >= 5000 && bonus <= 8000);
+		}
+	}
+});
+test('director preserves replay commit order, cancels stale events and settles exactly once', async () => {
+	const round = samples.find((r) => r.flock.bonusTriggered);
+	const run = async () => {
+		const commits = [];
+		let settlements = 0;
+		const progress = [];
+		await runFlockTimeline(round, {
+			valid: () => true,
+			animate: async (_d, update) => {
+				for (const p of [0, 0.3, 0.6, 1]) update(p);
+			},
+			begin: () => {},
+			frame: () => {},
+			commit: (e) => commits.push(e),
+			progress: (p) => progress.push(p),
+			settle: async () => {
+				settlements++;
+			},
+		});
+		assert.equal(settlements, 1);
+		assert(progress.every((p, i) => i === 0 || p >= progress[i - 1]));
+		return commits;
+	};
+	assert.deepEqual(await run(), await run());
+	let valid = true;
+	const commits = [];
+	let settled = 0;
+	await runFlockTimeline(round, {
+		valid: () => valid,
+		animate: async (_d, update) => {
+			update(0.2);
+			valid = false;
+			update(1);
+		},
+		begin: () => {},
+		frame: () => {},
+		commit: (e) => commits.push(e),
+		progress: () => {},
+		settle: async () => {
+			settled++;
+		},
+	});
+	assert.equal(commits.length, 0);
+	assert.equal(settled, 0);
+});
+test('concurrent settlement shares one server request and records completion once', async () => {
+	const pending = new Map();
+	const done = new Set();
+	let calls = 0;
+	let finish;
+	const settle = () => {
+		calls++;
+		return new Promise((resolve) => (finish = resolve));
+	};
+	const a = settleRoundOnce(9, settle, pending, done);
+	const b = settleRoundOnce(9, settle, pending, done);
+	assert.equal(calls, 1);
+	finish();
+	await Promise.all([a, b]);
+	assert(done.has(9));
+	assert.equal(pending.size, 0);
+	await settleRoundOnce(9, settle, pending, done);
+	assert.equal(calls, 1);
+});
+
+test('cancellation inside a frame callback also cancels queued sibling effects', async () => {
+	const clock = new PresentationTimeline();
+	let writes = 0;
+	const first = clock.animate(100, 1, (p) => {
+		if (p > 0) clock.cancel();
+	});
+	const second = clock.animate(100, 1, (p) => {
+		if (p > 0) writes++;
+	});
+	clock.tick(0.05, 1, 1);
+	assert.deepEqual(await Promise.all([first, second]), [false, false]);
+	assert.equal(writes, 0);
+	assert.equal(clock.pending, 0);
+});
+
+test('responsive resizing preserves normalized positions and survivor state', () => {
+	const before = { width: 1280, height: 520, floorY: 478 };
+	const after = { width: 320, height: 300, floorY: 266 };
+	let birds = createFlock(before, samples[0]);
+	for (let i = 0; i < 90; i++) birds = stepFlock(birds, 1 / 60, before, 220, true, 0);
+	birds = eliminateBird(birds, 'eagle', 'wind');
+	const resized = resizeFlock(birds, before, after);
+	for (let i = 0; i < 4; i++) {
+		assert.equal(resized[i].alive, birds[i].alive);
+		assert(
+			Math.abs(resized[i].body.position.x / after.width - birds[i].body.position.x / before.width) <
+				1e-9,
+		);
+		assert(
+			Math.abs(
+				resized[i].body.position.y / after.height - birds[i].body.position.y / before.height,
+			) < 1e-9,
+		);
+	}
+});
+
+test('director stops on an explicitly cancelled clock job even before token changes', async () => {
+	let began = 0,
+		committed = 0,
+		settled = 0;
+	await runFlockTimeline(samples[0], {
+		valid: () => true,
+		animate: async () => false,
+		begin: () => began++,
+		frame: () => {},
+		progress: () => {},
+		commit: () => committed++,
+		settle: async () => {
+			settled++;
+		},
+	});
+	assert.equal(began, 1);
+	assert.equal(committed, 0);
+	assert.equal(settled, 0);
 });

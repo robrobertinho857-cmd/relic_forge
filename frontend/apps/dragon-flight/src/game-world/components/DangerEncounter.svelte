@@ -7,13 +7,23 @@
 		encounterType: EncounterType;
 		result: 'pass' | 'crash';
 		phase: 'enter' | 'engage' | 'resolve';
+		target?: { x: number; y: number; progress: number; worldWidth: number };
 	};
 
-	let { encounterType, result, phase }: Props = $props();
+	let { encounterType, result, phase, target }: Props = $props();
 </script>
 
 <div class={`encounter-event ${encounterType} ${phase} ${result}`}>
-	<img class="encounter-artwork" src={ENCOUNTER_ARTWORK[encounterType]} alt="" draggable="false" />
+	<img
+		class="encounter-artwork"
+		class:targeted={Boolean(target)}
+		style={target
+			? `animation:none;right:auto;top:0;left:0;width:120px;height:100px;transform:translate3d(calc(${target.x}px + (${target.worldWidth}px - ${target.x}px) * ${1 - target.progress}),${target.y}px,0) translate(-50%,-50%);`
+			: undefined}
+		src={ENCOUNTER_ARTWORK[encounterType]}
+		alt=""
+		draggable="false"
+	/>
 	<div class="encounter-label">
 		<strong>{ENCOUNTER_LABELS[encounterType]}</strong><span
 			>{phase === 'resolve' ? result.toUpperCase() : 'ENCOUNTER'}</span

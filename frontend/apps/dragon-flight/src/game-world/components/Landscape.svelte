@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
+	import { decodeScene } from '../sceneCache';
 	import {
 		getLandscapeBackground,
 		getFinishBackground,
@@ -14,8 +15,9 @@
 		timeOfDay: TimeOfDay;
 		parallaxOffset: number;
 		ending?: SuccessfulEnding;
+		playbackSpeed?: number;
 	};
-	let { stage, weather, timeOfDay, parallaxOffset, ending }: Props = $props();
+	let { stage, weather, timeOfDay, parallaxOffset, ending, playbackSpeed = 1 }: Props = $props();
 	const requestedSrc = $derived(
 		ending
 			? getFinishBackground(ending, weather, timeOfDay)
@@ -23,7 +25,7 @@
 	);
 	let displayedSrc = $state(getLandscapeBackground('clear', 'day'));
 	let reducedMotion = $state(false);
-	const drift = $derived(Math.sin((parallaxOffset / 1800) * Math.PI * 2) * 0.6);
+	const drift = $derived(Math.sin((parallaxOffset / 1800) * Math.PI * 2) * 1.4);
 
 	$effect(() => {
 		const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -37,10 +39,7 @@
 		const nextSrc = requestedSrc;
 		if (nextSrc === displayedSrc) return;
 		let cancelled = false;
-		const nextImage = new Image();
-		nextImage.src = nextSrc;
-		void nextImage
-			.decode()
+		void decodeScene(nextSrc)
 			.then(() => {
 				if (!cancelled) displayedSrc = nextSrc;
 			})
@@ -53,11 +52,15 @@
 	});
 </script>
 
-<div class="landscape" data-stage={stage} aria-hidden="true">
+<div
+	class="landscape"
+	style={`--foreground-drift:${Math.sin((parallaxOffset / 1800) * Math.PI * 2) * 3.5}%;--camera-y:${Math.sin(parallaxOffset / 450) * 1.5}px;`}
+	data-stage={stage}
+	aria-hidden="true"
+>
 	{#key displayedSrc}
 		<img
 			class="landscape-image"
-			class:fixed-rain={weather === 'rain' && !ending}
 			class:finish-scene={displayedSrc.includes('/finishes/')}
 			src={displayedSrc}
 			alt=""
@@ -67,12 +70,25 @@
 			fetchpriority="high"
 			draggable="false"
 			style={`--landscape-drift:${drift}%;--landing-x:${LANDING_ANCHOR.x * 100}%;--landing-y:${LANDING_ANCHOR.y * 100}%;`}
-			transition:fade={{ duration: reducedMotion ? 0 : 220 }}
+			transition:fade={{ duration: reducedMotion ? 0 : 220 / playbackSpeed }}
 		/>
 	{/key}
+	{#if !ending}<div
+			class="foreground-parallax"
+			style={`background-image:url("${displayedSrc}");`}
+		></div>{/if}
 </div>
 
 <style>
+	.foreground-parallax {
+		position: absolute;
+		inset: 0;
+		background-size: cover;
+		background-position: center;
+		mask-image: linear-gradient(transparent 65%, #000 95%);
+		transform: translate(var(--foreground-drift), var(--camera-y)) scale(1.08);
+		pointer-events: none;
+	}
 	.landscape {
 		position: absolute;
 		inset: 0;
@@ -88,7 +104,7 @@
 		height: 100%;
 		object-fit: cover;
 		object-position: center;
-		transform: translateX(var(--landscape-drift)) scale(1.04);
+		transform: translate(var(--landscape-drift), var(--camera-y)) scale(1.04);
 		user-select: none;
 	}
 	.finish-scene {
@@ -96,11 +112,10 @@
 		object-position: var(--landing-x) var(--landing-y);
 		transform: none;
 	}
-	.fixed-rain {
-		transform: scale(1.04);
-	}
+
 	@media (prefers-reduced-motion: reduce) {
-		.landscape-image {
+		.landscape-image,
+		.foreground-parallax {
 			transform: none;
 		}
 	}

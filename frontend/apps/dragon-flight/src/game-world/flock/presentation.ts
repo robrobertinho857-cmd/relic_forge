@@ -1,6 +1,6 @@
 import type { CreatureId, FlightRound, LaunchStyle, PlayerBody, WorldBounds } from '../types';
 import { getCreature } from '../creatures';
-import { clamp, createPlayer, steerPlayer } from '../physics';
+import { clamp, createPlayer } from '../physics';
 import { FLOCK_ORDER, type ActiveBird, type EliminationReason } from './types';
 
 export function createFlock(bounds: WorldBounds, round?: FlightRound): ActiveBird[] {
@@ -52,13 +52,9 @@ export function eliminateBird(
 	);
 }
 export function startChampion(birds: ActiveBird[]): ActiveBird[] {
-	return birds.map((bird) => ({
-		...bird,
-		exiting: bird.id !== 'archaeopteryx',
-		finished: false,
-		age: 1,
-		body: { ...bird.body, velocity: { x: 0, y: 0 } },
-	}));
+	return birds.map((bird) =>
+		bird.alive ? { ...bird, exiting: bird.id !== 'archaeopteryx', finished: false } : bird,
+	);
 }
 export function resizeFlock(
 	birds: ActiveBird[],
@@ -67,8 +63,13 @@ export function resizeFlock(
 ): ActiveBird[] {
 	return birds.map((bird) => ({
 		...bird,
+		targetY: (bird.targetY * after.height) / before.height,
 		body: {
 			...bird.body,
+			velocity: {
+				x: (bird.body.velocity.x * after.width) / before.width,
+				y: (bird.body.velocity.y * after.height) / before.height,
+			},
 			radius: clamp(after.width * 0.026, 17, 25),
 			position: {
 				x: (bird.body.position.x * after.width) / before.width,
@@ -78,7 +79,17 @@ export function resizeFlock(
 	}));
 }
 
-// Shared presentation tick; never decides survival, financial results or event order.
+// Exact critically damped spring for a stationary target. No Euler overshoot.
+function damp(position: number, velocity: number, target: number, omega: number, dt: number) {
+	const offset = position - target;
+	const c = velocity + omega * offset;
+	const decay = Math.exp(-omega * dt);
+	return {
+		position: target + (offset + c * dt) * decay,
+		velocity: (velocity - omega * c * dt) * decay,
+	};
+}
+// Shared visual tick. Survival is changed only by authored events, never physics.
 export function stepFlock(
 	birds: ActiveBird[],
 	delta: number,
@@ -88,11 +99,25 @@ export function stepFlock(
 	landing: number,
 	launchStyle: LaunchStyle = 'glide',
 ): ActiveBird[] {
-	const living = birds.filter((bird) => bird.alive && !bird.exiting);
-	const champion = birds.some((bird) => bird.exiting);
+	const dt = Math.max(0, Math.min(delta, 0.1));
+	let count = 0;
+	let champion = false;
+	for (const bird of birds) {
+		if (bird.alive && !bird.exiting) count++;
+		if (bird.exiting) champion = true;
+	}
+	const top = Math.min(165, Math.max(145, bounds.height * 0.38));
+	const bottom = Math.max(top + 12, bounds.floorY - 28);
+	const spacing = Math.min(54, (bottom - top) / Math.max(1, count - 1));
+	const center = clamp(
+		targetY,
+		top + (spacing * (count - 1)) / 2,
+		bottom - (spacing * (count - 1)) / 2,
+	);
+	let slot = 0;
 	return birds.map((bird, index) => {
+		const age = bird.age + dt;
 		const profile = getCreature(bird.id);
-		const age = bird.age + delta;
 		const animation = profile.flightAnimation;
 		const frame = animation
 			? animation.frameOrder[
@@ -100,129 +125,97 @@ export function stepFlock(
 				]
 			: 1;
 		if (bird.elimination) {
-			const elapsed = bird.elimination.age + delta;
+			const elapsed = bird.elimination.age + dt;
 			return {
 				...bird,
 				age,
 				frame,
-				visible: elapsed < 1.3,
-				rotation: bird.rotation + delta * (bird.elimination.reason === 'wind' ? -110 : 85),
+				visible: bird.visible && elapsed < 0.9,
+				rotation: bird.rotation + dt * (bird.elimination.reason === 'wind' ? -100 : 70),
 				elimination: { ...bird.elimination, age: elapsed },
 				body: {
 					...bird.body,
 					position: {
-						x: bird.body.position.x + bird.body.velocity.x * delta,
-						y: bird.body.position.y + bird.body.velocity.y * delta,
+						x: bird.body.position.x + bird.body.velocity.x * dt,
+						y: bird.body.position.y + bird.body.velocity.y * dt,
 					},
 				},
 			};
 		}
+		if (!bird.alive) return bird;
 		if (bird.exiting)
 			return {
 				...bird,
 				age,
 				frame,
-				visible: bird.body.position.x < bounds.width + 100,
+				visible: bird.visible && bird.body.position.x < bounds.width + 100,
 				body: {
 					...bird.body,
 					position: {
-						x: bird.body.position.x + delta * 520,
-						y: bird.body.position.y - delta * (50 + index * 35),
+						x: bird.body.position.x + dt * 470,
+						y: bird.body.position.y - dt * (30 + index * 15),
 					},
 				},
 			};
-		if (!bird.alive) return bird;
-		if (moving && age < bird.launchDelay) return { ...bird, age, frame, visible: false };
-		const slot = living.findIndex((other) => other.id === bird.id);
-		const top = bounds.height < 360 ? 145 : 150;
-		const bottom = bounds.floorY - 32;
-		const spacing = Math.min(
-			clamp(bounds.height * 0.12, 30, 58),
-			(bottom - top) / Math.max(1, living.length - 1),
-		);
-		const centerY = clamp(
-			targetY,
-			top + (spacing * (living.length - 1)) / 2,
-			bottom - (spacing * (living.length - 1)) / 2,
-		);
-		const formationY = clamp(
-			centerY +
-				(slot - (living.length - 1) / 2) * spacing +
-				Math.sin(age * (1.5 + index * 0.13) + index * 1.7) * 7,
+		const ownSlot = slot++;
+		const goalY = clamp(
+			center +
+				(ownSlot - (count - 1) / 2) * spacing +
+				Math.sin(age * (1.5 + index * 0.13) + index * 1.7) * 4,
 			top,
 			bottom,
 		);
-		const formationX =
-			bounds.width * (champion ? 0.74 : 0.19 + (index % 2) * 0.08 + Math.floor(index / 2) * 0.025);
-		if (moving && age < bird.launchDelay + 0.65) {
-			const t = clamp((age - bird.launchDelay) / 0.65, 0, 1);
+		const goalX =
+			bounds.width * (champion ? 0.64 : 0.2 + (index % 2) * 0.24 + Math.floor(index / 2) * 0.035) +
+			Math.sin(age * 0.8 + index) * 3;
+		if (moving && age < bird.launchDelay) return { ...bird, age, frame, visible: false };
+		if (moving && age < bird.launchDelay + 0.55) {
+			const t = clamp((age - bird.launchDelay) / 0.55, 0, 1);
 			const eased = 1 - (1 - t) ** 3;
+			const arc =
+				launchStyle === 'dive' ? -38 : launchStyle === 'boost' ? 42 : index % 2 ? -20 : 22;
 			return {
 				...bird,
 				age,
 				frame,
 				visible: true,
 				launched: true,
+				targetY: goalY,
+				rotation: arc * 0.2 * (1 - eased),
 				body: {
 					...bird.body,
 					position: {
-						x: -60 + (formationX + 60) * eased,
-						y:
-							formationY +
-							(1 - eased) *
-								(launchStyle === 'dive'
-									? -80
-									: launchStyle === 'boost'
-										? 65
-										: index % 2
-											? -28
-											: 24),
+						x: -60 + (goalX + 60) * eased,
+						y: goalY + Math.sin(((1 - t) * Math.PI) / 2) * arc,
 					},
-					velocity: { x: 200 * (1 - eased), y: (index % 2 ? 1 : -1) * 90 * (1 - eased) },
+					velocity: {
+						x: ((goalX + 60) * 3 * (1 - t) ** 2) / 0.55,
+						y: (-arc * Math.cos(((1 - t) * Math.PI) / 2) * Math.PI) / (2 * 0.55),
+					},
 				},
-				rotation: (index % 2 ? 10 : -15) * (1 - eased),
 			};
 		}
-		let body = bird.body;
-		if (moving && !landing) {
-			const steps = Math.max(1, Math.ceil(delta / (1 / 60)));
-			for (let i = 0; i < steps; i++)
-				body = steerPlayer(body, formationY, delta / steps, bounds, profile);
-			body = {
-				...body,
-				position: {
-					...body.position,
-					x: body.position.x + (formationX - body.position.x) * Math.min(1, delta * 5),
-				},
-			};
-		} else if (landing) {
-			body = {
-				...body,
-				position: {
-					x:
-						body.position.x +
-						(bounds.width * 0.7 + slot * 15 - body.position.x) * Math.min(1, delta * 3),
-					y:
-						body.position.y +
-						(bounds.floorY * 0.75 + slot * 7 - body.position.y) * Math.min(1, delta * 3),
-				},
-				velocity: { x: 0, y: 0 },
-			};
-		}
+		// Targets re-form over time; positions and velocities are preserved at handoff.
+		const smoothed = bird.targetY + (goalY - bird.targetY) * (1 - Math.exp(-dt * 4));
+		const destinationX = landing ? bounds.width * 0.7 + ownSlot * 10 : goalX;
+		const destinationY = landing ? bounds.floorY * 0.75 + ownSlot * 7 : smoothed;
+		const x = damp(bird.body.position.x, bird.body.velocity.x, destinationX, 5, dt);
+		const y = damp(bird.body.position.y, bird.body.velocity.y, destinationY, 5 + index * 0.2, dt);
+		const bank = clamp(y.velocity / profile.rotationDivisor + x.velocity * 0.025, -18, 18);
 		return {
 			...bird,
-			body,
 			age,
 			frame,
 			launched: true,
-			visible: true,
-			targetY: formationY,
+			visible: bird.visible || moving,
 			finished: landing === 1,
-			rotation: clamp(
-				body.velocity.y / profile.rotationDivisor,
-				-profile.rotationLimit,
-				profile.rotationLimit,
-			),
+			targetY: smoothed,
+			rotation: bird.rotation + (bank - bird.rotation) * (1 - Math.exp(-dt * 8)),
+			body: {
+				...bird.body,
+				position: { x: x.position, y: y.position },
+				velocity: { x: x.velocity, y: y.velocity },
+			},
 		};
 	});
 }

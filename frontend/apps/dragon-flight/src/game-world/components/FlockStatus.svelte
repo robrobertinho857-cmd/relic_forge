@@ -31,6 +31,7 @@
 		color: #dfbd7c;
 		font-size: 0.6rem;
 		white-space: nowrap;
+		min-width: 76px;
 	}
 	i {
 		width: 6px;
@@ -38,6 +39,9 @@
 		border-radius: 50%;
 		background: #73838c;
 		opacity: 0.4;
+		transition:
+			opacity calc(0.2s / var(--playback-speed, 1)),
+			background-color calc(0.2s / var(--playback-speed, 1));
 	}
 	i.alive {
 		background: #f4cd78;

@@ -8,19 +8,22 @@
 		birds,
 		frames,
 		hidden = false,
+		playbackSpeed = 1,
 	}: {
 		birds: ActiveBird[];
 		frames: Partial<Record<CreatureId, readonly ImageBitmap[]>>;
 		hidden?: boolean;
+		playbackSpeed?: number;
 	} = $props();
 </script>
 
 {#if !hidden}
 	{#each birds as bird (bird.id)}
 		{#if bird.visible}
-			{#if bird.elimination?.reason === 'terrain' || bird.elimination?.reason === 'hunter'}
+			{#if bird.elimination && bird.elimination.reason !== 'wind'}
 				<BirdBurst
 					compact
+					{playbackSpeed}
 					bird={bird.id}
 					x={bird.body.position.x}
 					y={bird.body.position.y}

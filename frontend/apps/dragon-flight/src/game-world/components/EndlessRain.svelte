@@ -23,9 +23,10 @@
 		overflow: hidden;
 	}
 	.rain {
+		inset: -768px -384px;
 		background-repeat: repeat;
 		background-size: 384px 384px;
-		animation: rainfall var(--rain-duration) linear infinite;
+		animation: rainfall calc(var(--rain-duration) / var(--playback-speed, 1)) linear infinite;
 	}
 	.far {
 		--rain-duration: 4s;
@@ -42,7 +43,7 @@
 		animation-delay: -0.37s;
 	}
 	.storm .rain {
-		animation-duration: calc(var(--rain-duration) * 0.75);
+		animation-duration: calc(var(--rain-duration) * 0.75 / var(--playback-speed, 1));
 	}
 	.storm .mid,
 	.storm .near {
@@ -50,11 +51,11 @@
 	}
 	@keyframes rainfall {
 		from {
-			background-position: 0 0;
+			transform: translate3d(0, 0, 0);
 		}
 		/* Both offsets are whole tile periods, making the wrap visually identical. */
 		to {
-			background-position: -384px 768px;
+			transform: translate3d(-384px, 768px, 0);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

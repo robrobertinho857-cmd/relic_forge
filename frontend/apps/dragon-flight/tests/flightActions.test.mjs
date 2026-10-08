@@ -20,6 +20,15 @@ const { createTubeFlight, tubeFlightOffer } = await loadTypescript(
 	new URL('../src/game-world/tubeFlight.ts', import.meta.url),
 );
 
+const { runFlockTimeline, presentationKind } = await loadTypescript(
+	new URL('../src/game-world/flock/director.ts', import.meta.url),
+);
+const { settleRoundOnce } = await loadTypescript(
+	new URL('../src/game-world/flock/settlement.ts', import.meta.url),
+);
+const { easeOut } = await loadTypescript(
+	new URL('../src/game-world/flock/timeline.ts', import.meta.url),
+);
 // Exercise the component's real action bodies, with only rendering/animation boundaries stubbed.
 const source = fs.readFileSync(
 	new URL('../src/game-world/GameWorld.svelte', import.meta.url),
@@ -29,6 +38,7 @@ const actions = {};
 for (const name of [
 	'resetPresentation',
 	'startFlight',
+	'startStakeFlight',
 	'beginFlight',
 	'flyAgain',
 	'flyFromMenu',
@@ -36,7 +46,9 @@ for (const name of [
 	'replayFlight',
 	'presentFinalResult',
 	'presentRound',
-	'presentHunterShot',
+	'beginFlockEvent',
+	'frameFlockEvent',
+	'commitFlockEvent',
 ]) {
 	const text = source.match(new RegExp(`(?:async )?function ${name}\\([^]*?\\n\\t}`))[0];
 	actions[name] = await transpile(text);
@@ -75,13 +87,35 @@ function setup(ticket = 9999) {
 		triggerFlap: () => {},
 		emitParticles: () => {},
 		presentGate: async () => {},
-		presentHunterShot: async () => {},
+
 		animateCurrentMultiplier: async () => {},
 		showCombo: () => {},
 		presentPickup: async () => {},
 		presentCurrent: async () => {},
 		presentEncounter: async () => {},
 		presentEnding: async () => {},
+		runFlockTimeline,
+		presentationKind,
+		settleRoundOnce,
+		easeOut,
+		pendingSettlements: new Map(),
+		formatLocalAmount: (value) => `$${value.toFixed(2)}`,
+		HAZARD_LABELS: {},
+		PICKUP_LABELS: {},
+		CURRENT_LABELS: {},
+		createPresentedGate: (event) => ({
+			...event,
+			x: 1000,
+			width: 100,
+			gapCenterY: 240,
+			gapHeight: 200,
+		}),
+		timeline: {
+			animate: async (_duration, _token, update) => {
+				for (const p of [0, 0.2, 0.4, 0.55, 0.75, 1]) update?.(p);
+				return true;
+			},
+		},
 		generateMockRound,
 		createTubeFlight,
 		tubeFlightOffer,
@@ -116,8 +150,6 @@ function setup(ticket = 9999) {
 	}
 	ctx.runRound = ctx.presentRound;
 	ctx.presentRound = () => {};
-	ctx.runShot = ctx.presentHunterShot;
-	ctx.presentHunterShot = async () => {};
 	return ctx;
 }
 test('buy locks controls, repeated click cannot generate another round, and history records once', async () => {
@@ -139,18 +171,13 @@ test('hunter hit animation never decides survival; only the scheduled eliminatio
 	const ctx = setup();
 	ctx.startFlight();
 	const before = ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive }));
-	await ctx.runShot('woodpecker', false, ctx.presentationToken);
+	const elimination = { type: 'elimination', bird: 'woodpecker', reason: 'hunter' };
+	ctx.beginFlockEvent(elimination, 1);
+	ctx.frameFlockEvent(elimination, 0.4);
 	assert.deepEqual(
-		ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive })),
+		ctx.activeBirds.map((b) => ({ id: b.id, alive: b.alive })),
 		before,
 	);
-	assert.equal(ctx.eventCallout, 'SHOT MISSED · FLOCK CONTINUES');
-	await ctx.runShot('woodpecker', true, ctx.presentationToken);
-	assert.deepEqual(
-		ctx.activeBirds.map((bird) => ({ id: bird.id, alive: bird.alive })),
-		before,
-	);
-	ctx.presentHunterShot = ctx.runShot;
 	await ctx.runRound(ctx.currentRound, ctx.presentationToken);
 	assert.equal(
 		ctx.activeBirds.filter((bird) => bird.alive).length,
@@ -275,7 +302,16 @@ test('Champion sequencing settles one paid round and preserves base return after
 		await ctx.runRound(round, ctx.presentationToken);
 		assert.equal(settlements, 1);
 		assert.equal(ctx.flightHistory.length, 1);
-		if (ending === 'crash') assert.equal(ctx.finalWin, round.flock.baseMultiplier * round.bet);
+		if (ending === 'crash') {
+			assert.equal(ctx.finalWin, round.flock.baseMultiplier * round.bet);
+			assert.equal(ctx.eventCallout, 'BONUS FAILED · BASE WIN RETAINED');
+			assert.equal(ctx.activeBirds.find((b) => b.id === 'archaeopteryx').alive, false);
+		} else
+			assert.equal(
+				ctx.eventCallout,
+				`BONUS WON · +$${(round.bet * round.flock.bonus.multiplier).toFixed(2)}`,
+			);
+		assert.equal(ctx.finalMultiplier, round.finalMultiplier);
 	}
 });
 
@@ -319,23 +355,75 @@ test('Fluppy offer rejects losses, history replays and invalid or connected stak
 	assert.equal(tubeFlightOffer(fluppy, 0.1, 10000, false, false), undefined);
 });
 
-
 test('main Fly starts a fresh hunter round from inline results and never repeats Fluppy', async () => {
- const ctx=setup();
- ctx.startFlight();
- await ctx.presentFinalResult(ctx.currentRound,ctx.presentationToken);
- ctx.flyFromMenu();
- assert.equal(ctx.roundSequence,2);
- assert.equal(ctx.status,'flying');
- assert(ctx.currentRound.flock);
- ctx.flyFromMenu();
- assert.equal(ctx.roundSequence,2);
- await ctx.presentFinalResult(ctx.currentRound,ctx.presentationToken);
- const fluppy=createTubeFlight(ctx.currentRound,1,3);
- ctx.resetPresentation();
- ctx.beginFlight(fluppy);
- await ctx.presentFinalResult(fluppy,ctx.presentationToken);
- ctx.flyFromMenu();
- assert(ctx.currentRound.flock);
- assert.equal(ctx.currentRound.route,undefined);
+	const ctx = setup();
+	ctx.startFlight();
+	await ctx.presentFinalResult(ctx.currentRound, ctx.presentationToken);
+	ctx.flyFromMenu();
+	assert.equal(ctx.roundSequence, 2);
+	assert.equal(ctx.status, 'flying');
+	assert(ctx.currentRound.flock);
+	ctx.flyFromMenu();
+	assert.equal(ctx.roundSequence, 2);
+	await ctx.presentFinalResult(ctx.currentRound, ctx.presentationToken);
+	const fluppy = createTubeFlight(ctx.currentRound, 1, 3);
+	ctx.resetPresentation();
+	ctx.beginFlight(fluppy);
+	await ctx.presentFinalResult(fluppy, ctx.presentationToken);
+	ctx.flyFromMenu();
+	assert(ctx.currentRound.flock);
+	assert.equal(ctx.currentRound.route, undefined);
+});
+
+test('non-hunter elimination effects preserve the authored cause and other birds', () => {
+	for (const reason of ['terrain', 'wind', 'predator']) {
+		const ctx = setup();
+		ctx.startFlight();
+		const event = { type: 'elimination', bird: 'eagle', reason };
+		ctx.beginFlockEvent(event, 1);
+		ctx.frameFlockEvent(event, 0.4);
+		assert.equal(ctx.hunterShot, undefined);
+		assert(ctx.activeBirds.every((b) => b.alive));
+		ctx.commitFlockEvent(event);
+		assert.equal(ctx.activeBirds.find((b) => b.id === 'eagle').elimination.reason, reason);
+		assert.equal(ctx.activeBirds.filter((b) => b.alive).length, 3);
+	}
+});
+
+test('stale result cannot settle or alter the following round', async () => {
+	const ctx = setup();
+	ctx.startFlight();
+	const round = ctx.currentRound;
+	ctx.wallet.live = true;
+	ctx.settledRounds = new Set();
+	let calls = 0;
+	ctx.stakeSession = {
+		settle: async () => {
+			calls++;
+		},
+	};
+	await ctx.presentFinalResult(round, ctx.presentationToken - 1);
+	assert.equal(calls, 0);
+	assert.equal(ctx.flightHistory.length, 0);
+	assert.equal(ctx.status, 'flying');
+});
+
+test('late live play response cannot start a stale presentation after cancellation', async () => {
+	const ctx = setup();
+	let resolve;
+	let calls = 0;
+	ctx.stakeAmount = 1000000;
+	ctx.stakeSession = {
+		play: () => {
+			calls++;
+			return new Promise((done) => (resolve = done));
+		},
+	};
+	const pending = ctx.startStakeFlight();
+	ctx.presentationToken++;
+	resolve({});
+	await pending;
+	assert.equal(calls, 1);
+	assert.equal(ctx.currentRound, undefined);
+	assert.equal(ctx.status, 'ready');
 });

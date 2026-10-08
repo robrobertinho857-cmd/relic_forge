@@ -7,6 +7,7 @@
 		y,
 		muted,
 		compact = false,
+		playbackSpeed = 1,
 		onfallback,
 		onfinish,
 	}: {
@@ -15,14 +16,18 @@
 		y: number;
 		muted: boolean;
 		compact?: boolean;
+		playbackSpeed?: number;
 		onfallback: () => void;
 		onfinish: () => void;
 	} = $props();
 	let video: HTMLVideoElement;
 	let hidden = $state(false);
+	$effect(() => {
+		if (video) video.playbackRate = (compact ? 4 : 1) * playbackSpeed;
+	});
 	onMount(() => {
 		// Compact flock hits must reach the feather burst before their short exit ends.
-		if (compact) video.playbackRate = 4;
+		video.playbackRate = (compact ? 4 : 1) * playbackSpeed;
 		let done = false;
 		const visibility = () => (hidden = document.hidden);
 		visibility();
@@ -71,8 +76,7 @@
 	muted={muted || hidden}
 	playsinline
 	preload="auto"
-	style:left={`${x}px`}
-	style:top={`${y}px`}
+	style={`left:0;top:0;transform:translate3d(${x}px,${y}px,0) translate(-50%,-42%);`}
 	aria-label={`${bird} disappearing in a burst of feathers`}
 ></video>
 
