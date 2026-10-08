@@ -1,3 +1,4 @@
+import type { FlockLineup } from '../flock/types';
 import type { CreatureId } from './creature';
 import type { EliminationReason, FlockOutcome } from '../flock/types';
 
@@ -77,6 +78,8 @@ export type FlightRound = {
 	route?: 'tube-flight';
 	// Absent only for legacy published books and existing feature-buy routes.
 	flock?: FlockOutcome;
+	// Cosmetic lineup snapshot for history and replay; never used to generate outcomes.
+	lineup?: FlockLineup;
 	bonusFlight?: BonusFlightId;
 	entryCost?: number;
 	id: number;

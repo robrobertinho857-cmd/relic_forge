@@ -6,6 +6,7 @@ export const FLOCK_ORDER = [
 	'eagle',
 	'archaeopteryx',
 ] as const satisfies readonly CreatureId[];
+export type FlockLineup = [CreatureId, CreatureId, CreatureId, CreatureId];
 export type EliminationReason = 'terrain' | 'wind' | 'predator' | 'hunter';
 export type BirdRoundResult =
 	| { bird: CreatureId; status: 'finish' }
@@ -24,7 +25,9 @@ export type FlockOutcome = {
 	bonus?: { bird: 'archaeopteryx'; multiplier: number; ending: FlightEnding };
 };
 export type ActiveBird = {
+	// Stable outcome slot, independent of the selected species.
 	id: CreatureId;
+	species?: CreatureId;
 	body: PlayerBody;
 	alive: boolean;
 	visible: boolean;

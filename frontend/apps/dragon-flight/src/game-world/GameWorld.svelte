@@ -184,6 +184,8 @@
 	import DragonVictory from './components/DragonVictory.svelte';
 	import BirdBurst from './components/BirdBurst.svelte';
 	import Flock from './components/Flock.svelte';
+	import { copyLineup, setLineupBird, attachLineup } from './flock/lineup';
+	import type { FlockLineup } from './flock/types';
 	import Hunter from './components/Hunter.svelte';
 	import type { HunterShot } from './flock/hunter';
 	import FlockStatus from './components/FlockStatus.svelte';
@@ -235,6 +237,7 @@
 
 	let worldElement = $state<HTMLDivElement>();
 	let bounds = $state<WorldBounds>(INITIAL_BOUNDS);
+	let selectedLineup = $state<FlockLineup>(copyLineup(undefined));
 	let activeBirds = $state(createFlock(INITIAL_BOUNDS));
 	let focusBirdId = $state<CreatureId>('archaeopteryx');
 	let championActive = $state(false);
@@ -244,6 +247,11 @@
 	const player = $derived(
 		activeBirds.find((bird) => bird.id === focusBirdId)?.body ?? createPlayer(bounds),
 	);
+	function chooseLineupBird(slot: number, species: CreatureId) {
+		if (controlsLocked || wallet.busy || wallet.active) return;
+		selectedLineup = setLineupBird(selectedLineup, slot, species);
+		activeBirds = createFlock(bounds, undefined, selectedLineup);
+	}
 	function setLeadBody(body: PlayerBody) {
 		activeBirds = updateBirdBody(activeBirds, focusBirdId, body);
 	}
@@ -335,7 +343,9 @@
 	const betInputIsValid = $derived(
 		wallet.live ? isValidStakeBet(stakeAmount, wallet) : isBetInputValid(betInput),
 	);
-	const activeCreature = $derived(getCreature(focusBirdId));
+	const activeCreature = $derived(
+		getCreature(activeBirds.find((b) => b.id === focusBirdId)?.species ?? focusBirdId),
+	);
 	const selectedPathNote = $derived(getRiskNote(selectedRisk));
 	const currentStage = $derived(getFlightStage(currentStageId));
 	const resultWinTier = $derived(
@@ -572,7 +582,7 @@
 		hunterShot = undefined;
 		winCelebrationOpen = false;
 		cancelPresentation();
-		activeBirds = createFlock(bounds);
+		activeBirds = createFlock(bounds, undefined, selectedLineup);
 		focusBirdId = 'archaeopteryx';
 		championActive = false;
 		championAnnouncement = false;
@@ -971,7 +981,7 @@
 			event.type === 'gate'
 				? HAZARD_LABELS[event.hazard]
 				: event.type === 'elimination'
-					? `${getCreature(event.bird).name.toUpperCase()} · ${event.reason.toUpperCase()} DANGER`
+					? `${getCreature(activeBirds.find((b) => b.id === event.bird)?.species ?? event.bird).name.toUpperCase()} · ${event.reason.toUpperCase()} DANGER`
 					: event.type === 'pickup'
 						? PICKUP_LABELS[event.pickupType]
 						: event.type === 'current'
@@ -1069,7 +1079,7 @@
 			activeBirds = eliminateBird(activeBirds, event.bird, event.reason);
 			hunterShot = undefined;
 			impactEnvelope = 0.18;
-			flockAnnouncement = `${getCreature(event.bird).name} eliminated. ${activeBirds.filter((b) => b.alive).length} of four birds remain.`;
+			flockAnnouncement = `${getCreature(bird?.species ?? event.bird).name} eliminated. ${activeBirds.filter((b) => b.alive).length} of four birds remain.`;
 			void flightAudio.play(
 				event.reason === 'wind' ? 'air-current' : 'crash',
 				0.3,
@@ -1248,6 +1258,7 @@
 
 	function beginFlight(round: FlightRound, replay = false) {
 		if (status !== 'ready') return;
+		round = attachLineup(round, selectedLineup, replay);
 		hunterShot = undefined;
 		settingsMenuOpen = false;
 		flightAudio.stopEffects();
@@ -1418,7 +1429,9 @@
 		const widthRatio = width / previous.width;
 		const heightRatio = height / previous.height;
 		activeBirds =
-			status === 'ready' ? createFlock(bounds) : resizeFlock(activeBirds, previous, bounds);
+			status === 'ready'
+				? createFlock(bounds, undefined, selectedLineup)
+				: resizeFlock(activeBirds, previous, bounds);
 		flightTargetY *= heightRatio;
 		if (!currentRound?.flock && activeEnding && landingProgress === 1)
 			setLeadBody({ ...player, position: landingPosition() });
@@ -2206,6 +2219,8 @@
 	weather={selectedWeather}
 	timeOfDay={selectedRisk === 'safe' ? 'day' : selectedTimeOfDay}
 	launchStyle={selectedLaunchStyle}
+	lineup={selectedLineup}
+	onLineupSelect={chooseLineupBird}
 	timeLocked={selectedRisk === 'safe'}
 	onTimeSelect={(time) => {
 		selectedTimeOfDay = time;
@@ -2661,7 +2676,6 @@
 	}
 	@keyframes multiplier-hud-pulse {
 		35% {
-			transform: scale(1.16);
 			color: #baffd7;
 		}
 	}
@@ -4092,6 +4106,9 @@
 		padding: 6px 12px;
 	}
 	.multiplier-readout strong {
+		display: block;
+		min-width: 8ch;
+		text-align: right;
 		font-size: clamp(1.35rem, 2.4vw, 1.9rem);
 		line-height: 1.15;
 		font-variant-numeric: tabular-nums;

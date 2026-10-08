@@ -24,14 +24,18 @@
 				<BirdBurst
 					compact
 					{playbackSpeed}
-					bird={bird.id}
+					bird={bird.species ?? bird.id}
 					x={bird.body.position.x}
 					y={bird.body.position.y}
 					muted={true}
 					onfallback={() => {}}
 					onfinish={() => {}}
 				/>
-			{:else}<FlyingBird {bird} profile={getCreature(bird.id)} frames={frames[bird.id]} />{/if}
+			{:else}<FlyingBird
+					{bird}
+					profile={getCreature(bird.species ?? bird.id)}
+					frames={frames[bird.species ?? bird.id]}
+				/>{/if}
 		{/if}
 	{/each}
 {/if}

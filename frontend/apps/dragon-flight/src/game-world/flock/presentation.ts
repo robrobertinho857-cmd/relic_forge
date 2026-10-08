@@ -1,12 +1,19 @@
 import type { CreatureId, FlightRound, LaunchStyle, PlayerBody, WorldBounds } from '../types';
 import { getCreature } from '../creatures';
 import { clamp, createPlayer } from '../physics';
-import { FLOCK_ORDER, type ActiveBird, type EliminationReason } from './types';
+import { copyLineup } from './lineup';
+import { FLOCK_ORDER, type FlockLineup, type ActiveBird, type EliminationReason } from './types';
 
-export function createFlock(bounds: WorldBounds, round?: FlightRound): ActiveBird[] {
+export function createFlock(
+	bounds: WorldBounds,
+	round?: FlightRound,
+	lineup?: FlockLineup,
+): ActiveBird[] {
 	const ids: readonly CreatureId[] = round && !round.flock ? [round.creature] : FLOCK_ORDER;
+	const species = copyLineup(round?.flock ? round.lineup : lineup);
 	return ids.map((id, index) => ({
 		id,
+		species: round && !round.flock ? id : species[index],
 		body: {
 			...createPlayer(bounds),
 			position: {
@@ -53,7 +60,15 @@ export function eliminateBird(
 }
 export function startChampion(birds: ActiveBird[]): ActiveBird[] {
 	return birds.map((bird) =>
-		bird.alive ? { ...bird, exiting: bird.id !== 'archaeopteryx', finished: false } : bird,
+		bird.alive
+			? {
+					...bird,
+					species: bird.id === 'archaeopteryx' ? 'archaeopteryx' : bird.species,
+					frame: bird.id === 'archaeopteryx' ? 1 : bird.frame,
+					exiting: bird.id !== 'archaeopteryx',
+					finished: false,
+				}
+			: bird,
 	);
 }
 export function resizeFlock(
@@ -117,7 +132,7 @@ export function stepFlock(
 	let slot = 0;
 	return birds.map((bird, index) => {
 		const age = bird.age + dt;
-		const profile = getCreature(bird.id);
+		const profile = getCreature(bird.species ?? bird.id);
 		const animation = profile.flightAnimation;
 		const frame = animation
 			? animation.frameOrder[

@@ -20,3 +20,7 @@ One clock scales presentation time once. Hidden tabs discard elapsed gaps; resum
 Formation springs preserve position and velocity during elimination/handoff, normalize coordinates during resize and use separate flap phases. Decoded sprite frames and scene promises are reused. Sprite, terrain, floor, particle and progress motion use transforms; canvas redraws occur only when the decoded frame changes. Rain uses transformed tiled layers; lightning follows the shared scroll clock rather than random timers.
 
 Local Node measurement of the warmed four-bird motion kernel over 10,000 ticks: median 0.00093ms and p95 0.00417ms per tick. This excludes Svelte, canvas, video decode and browser compositing; it is not a measured 60fps claim. Browser tools do not expose frame-timing instrumentation here.
+
+## Custom four-bird lineups
+
+Customize includes a species selector for each of the four slots. Duplicates are allowed, including four of the same species. Stable authored slot IDs remain separate from cosmetic species: an elimination affects exactly one slot, with the selected bird's animation and burst artwork. The chosen tuple is copied into the round for session history/replay. Lineups do not enter outcome generation, payout math or Stake play parameters. Legacy single-bird feature routes remain unchanged; Champion uses Archaeopteryx in its existing leader slot.

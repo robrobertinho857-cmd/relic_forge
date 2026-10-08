@@ -5,6 +5,9 @@
 	import { LAUNCH_OPTIONS } from '../config';
 	import type { LaunchStyle, TimeOfDay, WeatherCondition } from '../types';
 	import { t } from '../i18n';
+	import FlockLineupPicker from './FlockLineupPicker.svelte';
+	import { FLOCK_ORDER, type FlockLineup } from '../flock/types';
+	import type { CreatureId } from '../types';
 
 	type Props = {
 		open: boolean;
@@ -13,6 +16,8 @@
 		timeOfDay: TimeOfDay;
 		launchStyle: LaunchStyle;
 		timeLocked?: boolean;
+		lineup: FlockLineup;
+		onLineupSelect: (slot: number, species: CreatureId) => void;
 		onTimeSelect: (time: TimeOfDay) => void;
 		onLaunchSelect: (launch: LaunchStyle) => void;
 		onClose: () => void;
@@ -25,13 +30,18 @@
 		timeOfDay,
 		launchStyle,
 		timeLocked = false,
+		lineup,
+		onLineupSelect,
 		onTimeSelect,
 		onLaunchSelect,
 		onClose,
 	}: Props = $props();
 	let dialogElement = $state<HTMLDialogElement>();
 	const defaultSettingsSelected = $derived(
-		timeOfDay === 'day' && weather === 'clear' && launchStyle === 'glide',
+		timeOfDay === 'day' &&
+			weather === 'clear' &&
+			launchStyle === 'glide' &&
+			lineup.every((id, index) => id === FLOCK_ORDER[index]),
 	);
 	const launchCaptions: Record<LaunchStyle, string> = {
 		glide: 'Level flight',
@@ -52,6 +62,7 @@
 
 	function resetDefaults() {
 		if (disabled) return;
+		FLOCK_ORDER.forEach((id, index) => onLineupSelect(index, id));
 		onTimeSelect('day');
 
 		onLaunchSelect('glide');
@@ -91,6 +102,7 @@
 			>
 		</header>
 		<div class="customize-content">
+			<FlockLineupPicker {lineup} {disabled} onSelect={onLineupSelect} />
 			<fieldset
 				class="option-section"
 				disabled={disabled || timeLocked}

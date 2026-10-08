@@ -29,6 +29,9 @@ const { settleRoundOnce } = await loadTypescript(
 const { easeOut } = await loadTypescript(
 	new URL('../src/game-world/flock/timeline.ts', import.meta.url),
 );
+const { copyLineup, setLineupBird, attachLineup } = await loadTypescript(
+	new URL('../src/game-world/flock/lineup.ts', import.meta.url),
+);
 // Exercise the component's real action bodies, with only rendering/animation boundaries stubbed.
 const source = fs.readFileSync(
 	new URL('../src/game-world/GameWorld.svelte', import.meta.url),
@@ -40,6 +43,7 @@ for (const name of [
 	'startFlight',
 	'startStakeFlight',
 	'beginFlight',
+	'chooseLineupBird',
 	'flyAgain',
 	'flyFromMenu',
 	'playTubeFlight',
@@ -76,6 +80,10 @@ function setup(ticket = 9999) {
 		bounds: { width: 900, height: 520, floorY: 478 },
 		createPlayer,
 		createFlock,
+		copyLineup,
+		setLineupBird,
+		attachLineup,
+		selectedLineup: copyLineup(undefined),
 		eliminateBird,
 		startChampion,
 		getCreature: (id) => ({ name: id }),
@@ -426,4 +434,31 @@ test('late live play response cannot start a stale presentation after cancellati
 	assert.equal(calls, 1);
 	assert.equal(ctx.currentRound, undefined);
 	assert.equal(ctx.status, 'ready');
+});
+
+test('custom four-bird lineup is locked during flight and saved for history replay', async () => {
+	const ctx = setup();
+	ctx.chooseLineupBird(1, 'woodpecker');
+	ctx.chooseLineupBird(3, 'eagle');
+	assert.deepEqual(ctx.selectedLineup, ['woodpecker', 'woodpecker', 'eagle', 'eagle']);
+	ctx.startFlight();
+	const round = ctx.currentRound;
+	assert.deepEqual(round.lineup, ctx.selectedLineup);
+	assert.deepEqual(
+		ctx.activeBirds.map((b) => b.species),
+		round.lineup,
+	);
+	ctx.chooseLineupBird(0, 'azure-swift');
+	assert.equal(ctx.selectedLineup[0], 'woodpecker');
+	await ctx.runRound(round, ctx.presentationToken);
+	ctx.selectedLineup = copyLineup(undefined);
+	ctx.replayFlight(round);
+	assert.deepEqual(ctx.currentRound.lineup, ['woodpecker', 'woodpecker', 'eagle', 'eagle']);
+	assert.deepEqual(
+		ctx.activeBirds.map((b) => b.species),
+		round.lineup,
+	);
+	await ctx.runRound(round, ctx.presentationToken);
+	assert.equal(ctx.flightHistory.length, 1);
+	assert.equal(ctx.finalWin, round.finalWin);
 });

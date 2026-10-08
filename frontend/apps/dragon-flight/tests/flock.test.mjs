@@ -438,3 +438,42 @@ test('director stops on an explicitly cancelled clock job even before token chan
 	assert.equal(committed, 0);
 	assert.equal(settled, 0);
 });
+
+const { copyLineup, setLineupBird, attachLineup } = await load('flock/lineup');
+test('lineup supports duplicates while retaining unique outcome slots and unchanged accounting', () => {
+	const lineup = copyLineup(['woodpecker', 'woodpecker', 'eagle', 'eagle']);
+	const original = samples[0];
+	const round = attachLineup(original, lineup, false);
+	assert.notEqual(round.lineup, lineup);
+	assert.equal(original.lineup, undefined);
+	for (const key of ['events', 'flock', 'seed', 'bet', 'finalWin', 'finalMultiplier'])
+		assert.equal(round[key], original[key]);
+	const bounds = { width: 390, height: 300, floorY: 266 };
+	const birds = createFlock(bounds, round);
+	assert.deepEqual(
+		birds.map((b) => b.species),
+		lineup,
+	);
+	assert.equal(new Set(birds.map((b) => b.id)).size, 4);
+	const after = eliminateBird(birds, 'woodpecker', 'hunter');
+	assert.equal(after.filter((b) => b.species === 'woodpecker' && b.alive).length, 1);
+	assert.equal(after.filter((b) => b.alive).length, 3);
+	assert.equal(attachLineup(round, copyLineup(undefined), true), round);
+	assert.deepEqual(attachLineup(round, copyLineup(undefined), true).lineup, lineup);
+	const changed = setLineupBird(lineup, 0, 'azure-swift');
+	assert.equal(changed[0], 'azure-swift');
+	assert.equal(lineup[0], 'woodpecker');
+	const champion = startChampion(birds);
+	assert.equal(champion.find((b) => b.id === 'archaeopteryx').species, 'archaeopteryx');
+	assert.deepEqual(
+		champion.find((b) => b.id === 'archaeopteryx').body,
+		birds.find((b) => b.id === 'archaeopteryx').body,
+	);
+});
+test('invalid lineups fall back safely and do not change single-bird feature routes', () => {
+	for (const invalid of [null, [], ['eagle'], ['eagle', 'eagle', 'eagle', 'invalid']])
+		assert.deepEqual(copyLineup(invalid), FLOCK_ORDER);
+	const legacy = generateLegacyMockRound(1, 'safe', 1, appearance);
+	assert.equal(attachLineup(legacy, ['eagle', 'eagle', 'eagle', 'eagle'], false), legacy);
+	assert.equal(createFlock({ width: 390, height: 300, floorY: 266 }, legacy).length, 1);
+});

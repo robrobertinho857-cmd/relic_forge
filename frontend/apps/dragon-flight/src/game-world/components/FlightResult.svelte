@@ -133,6 +133,7 @@
 		font-weight: 700;
 	}
 	strong {
+		font-variant-numeric: tabular-nums;
 		font-size: 1.2rem;
 		overflow-wrap: anywhere;
 	}

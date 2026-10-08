@@ -13,7 +13,7 @@
 	{#if champion}CHAMPION FLIGHT{:else}
 		{#each birds as bird (bird.id)}<i
 				class:alive={bird.alive}
-				title={`${getCreature(bird.id).name}: ${bird.alive ? 'flying' : 'eliminated'}`}
+				title={`${getCreature(bird.species ?? bird.id).name}: ${bird.alive ? 'flying' : 'eliminated'}`}
 			></i>{/each}
 		<b>{birds.filter((b) => b.alive).length}/4</b>
 	{/if}
